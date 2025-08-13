@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'core.apps.CoreConfig',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -55,8 +56,7 @@ ROOT_URLCONF = 'server.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates']
-        ,
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -122,3 +122,14 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
+}

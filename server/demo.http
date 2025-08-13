@@ -1,0 +1,36 @@
+POST http://localhost:8000/api/auth/token/
+Content-Type: application/json
+
+{
+    "username": "gokul",
+    "password": "renduidli123"
+}
+
+####
+
+GET http://localhost:8000/api/customers/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDc3ODA5LCJpYXQiOjE3NTUwNzc1MDksImp0aSI6IjY5YzY0ZWY4MjM0MTQ0ZDBiM2ZmYWJmNjg5MzNkYzE4IiwidXNlcl9pZCI6IjIifQ.56L0RQx_oub_0AsXWwWE9hTgnGs2620jaSlH-afMums
+Content-Type: application/json
+
+####
+
+POST http://localhost:8000/api/customers/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDc3ODA5LCJpYXQiOjE3NTUwNzc1MDksImp0aSI6IjY5YzY0ZWY4MjM0MTQ0ZDBiM2ZmYWJmNjg5MzNkYzE4IiwidXNlcl9pZCI6IjIifQ.56L0RQx_oub_0AsXWwWE9hTgnGs2620jaSlH-afMums
+Content-Type: application/json
+
+{
+    "name": "Acme Corp2",
+    "email": "info2@acme.com",
+    "company_name": "Acme Corporation",
+    "address": "123 Main St",
+    "phone": "1234567891"
+}
+
+####
+POST http://localhost:8000/api/auth/token/refresh/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDc3NzQ0LCJpYXQiOjE3NTUwNzc0NDQsImp0aSI6ImIzOGM3MGI4ZTA2NzQ0OTM4NDVmZWZhZmVkN2Y3YjM2IiwidXNlcl9pZCI6IjIifQ.9tuBmN43-WPChQ6zu5sqPUnWUSNFvY0HvyOIaAA1CQU
+Content-Type: application/json
+
+{
+    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1NTE2Mzg0NCwiaWF0IjoxNzU1MDc3NDQ0LCJqdGkiOiI2M2ViYjZmMTJlYWQ0MGQwYWJiOWU0OTgwZGRhZTUzYSIsInVzZXJfaWQiOiIyIn0.noJe_FhpvVvEDf7uNW9mIvzXRXoXIz8TM8HbcS1_gOc"
+}

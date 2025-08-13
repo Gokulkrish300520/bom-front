@@ -1,0 +1,81 @@
+Quick Start: Running the Django REST Server, Adding Users, and Using JWT Authentication
+
+1. Run the Django REST Server
+-----------------------------
+# From the project root, apply migrations and start the server:
+python manage.py migrate
+python manage.py runserver
+
+# The server will be available at http://localhost:8000/
+
+2. Add a New User (Admin Only)
+------------------------------
+# Create a superuser (if you haven't already):
+python manage.py createsuperuser
+
+# Visit the Django admin site:
+http://localhost:8000/admin/
+
+# Log in with your superuser credentials.
+# Go to "Users" under "AUTHENTICATION AND AUTHORIZATION".
+# Click "Add user" to create a new user (set username, password, etc.).
+
+3. Obtain a JWT Token
+---------------------
+# Use the following endpoint to obtain a JWT token (login):
+POST http://localhost:8000/api/auth/token/
+
+# Example request body (JSON):
+{
+    "username": "your_username",
+    "password": "your_password"
+}
+
+# Example response:
+{
+    "refresh": "<refresh_token>",
+    "access": "<access_token>"
+}
+
+4. Use JWT Token to Access Protected Endpoints
+----------------------------------------------
+# Add the access token to the Authorization header for all API requests:
+Authorization: Bearer <access_token>
+
+# Example: List customers
+GET http://localhost:8000/api/customers/
+Headers:
+    Authorization: Bearer <access_token>
+
+# Example: Create a new customer
+POST http://localhost:8000/api/customers/
+Headers:
+    Authorization: Bearer <access_token>
+Body (JSON):
+{
+    "name": "Acme Corp",
+    "email": "info@acme.com",
+    "company_name": "Acme Corporation",
+    "address": "123 Main St",
+    "phone": "1234567890"
+}
+
+5. Refresh JWT Token
+--------------------
+# When your access token expires, use the refresh token to get a new one:
+POST http://localhost:8000/api/auth/token/refresh/
+Body (JSON):
+{
+    "refresh": "<refresh_token>"
+}
+
+# Example response:
+{
+    "access": "<new_access_token>"
+}
+
+Notes
+-----
+- All API endpoints require JWT authentication.
+- Only admin can create users via the Django admin interface.
+- For more endpoints and details, see plan.txt in the project root.
