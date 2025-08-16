@@ -39,53 +39,53 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#e6f4f1] to-[#d0ebe3] font-poppins px-4">
-      <div className="w-full max-w-sm p-8 bg-white border border-gray-200 shadow-md rounded-xl">
-        <div className="flex justify-center mb-6">
-          <Image
-            src="/logo.png"
-            alt="Early Circuit Logo"
-            width={160}
-            height={80}
+  <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#e6f4f1] to-[#d0ebe3] font-poppins px-4">
+    <div className="w-full max-w-sm p-8 bg-white border border-gray-200 shadow-md rounded-xl">
+      <div className="flex justify-center mb-6">
+        <Image
+          src="/logo.png"
+          alt="Early Circuit Logo"
+          width={160}
+          height={80}
+          priority
           />
-        </div>
-        <h2 className="text-xl font-semibold mb-6 text-center text-[#008060]">
-          Login to Early Circuit
-        </h2>
-        <form onSubmit={handleLogin} className="space-y-4">
+      </div>
+      <h2 className="text-xl font-semibold mb-6 text-center text-[#008060]">
+        Login to Early Circuit
+      </h2>
+      <form onSubmit={handleLogin} className="space-y-4">
+        <input
+          type="text"
+          placeholder="Username"
+          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#008060] text-sm"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+        />
+        <div className="relative">
           <input
-            type="text"
-            placeholder="Username"
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#008060] text-sm"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#008060] text-sm"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute text-xs text-gray-500 -translate-y-1/2 right-3 top-2/4 focus:outline-none"
-            >
-              {showPassword ? "Hide" : "Show"}
-            </button>
-          </div>
           <button
-            type="submit"
-            className="w-full bg-[#008060] hover:bg-[#006747] text-white py-2 rounded-md text-sm font-medium transition duration-200"
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute text-xs text-gray-500 -translate-y-1/2 right-3 top-2/4 focus:outline-none"
           >
-            Login
+            {showPassword ? "Hide" : "Show"}
           </button>
-        </form>
-      </div>
+        </div>
+        <button
+          type="submit"
+          className="w-full bg-[#008060] hover:bg-[#006747] text-white py-2 rounded-md text-sm font-medium transition duration-200">
+          Login
+        </button>
+      </form>
     </div>
-  );
+  </div>
+);
 }
