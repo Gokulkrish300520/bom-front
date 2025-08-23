@@ -5,48 +5,39 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  //dummy login function
+
+  // Real login handler
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (email === "admin@example.com" && password === "1234") {
-      router.push("/dashboard");
-    } else {
-      alert("Invalid credentials");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/auth/token/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username, // Use username if backend expects that
+          password: password,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.access) {
+        localStorage.setItem("accessToken", data.access);
+        localStorage.setItem("refreshToken", data.refresh);
+        router.push("/dashboard");
+      } else {
+        alert("Login failed: " + (data.detail || "Invalid credentials"));
+      }
+    } catch (err) {
+      alert("Error logging in");
+      console.error(err);
     }
   };
-    /*
-    // Uncomment the following code to connect to your backend API for login
-    // delete the dummy login function above if you do so
-    const handleLogin = async (e: React.FormEvent) => {
-      e.preventDefault();
-      console.log("Logging in:", { email, password });
 
-      try {
-        const res = await fetch("http://your-backend-api.com/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-
-        const data = await res.json();
-        if (res.ok) {
-          alert("Login successful!");
-          console.log(data);
-          router.push("/dashboard");
-        } else {
-          alert("Login failed!");
-        }
-      } catch (err) {
-        alert("Error logging in");
-        console.error(err);
-      }
-    };
-  */ 
   return (
   <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#e6f4f1] to-[#d0ebe3] font-poppins px-4">
     <div className="w-full max-w-sm p-8 bg-white border border-gray-200 shadow-md rounded-xl">
@@ -56,18 +47,19 @@ export default function LoginPage() {
           alt="Early Circuit Logo"
           width={160}
           height={80}
-        />
+          priority
+          />
       </div>
       <h2 className="text-xl font-semibold mb-6 text-center text-[#008060]">
         Login to Early Circuit
       </h2>
       <form onSubmit={handleLogin} className="space-y-4">
         <input
-          type="email"
-          placeholder="Email"
+          type="text"
+          placeholder="Username"
           className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#008060] text-sm"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
           required
         />
         <div className="relative">
@@ -89,13 +81,11 @@ export default function LoginPage() {
         </div>
         <button
           type="submit"
-          className="w-full bg-[#008060] hover:bg-[#006747] text-white py-2 rounded-md text-sm font-medium transition duration-200"
-        >
+          className="w-full bg-[#008060] hover:bg-[#006747] text-white py-2 rounded-md text-sm font-medium transition duration-200">
           Login
         </button>
       </form>
     </div>
   </div>
 );
-
 }
