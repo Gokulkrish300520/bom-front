@@ -1,36 +1,429 @@
+### AUTHENTICATION
+
+# Obtain JWT token
 POST http://localhost:8000/api/auth/token/
 Content-Type: application/json
 
 {
-    "username": "gokul",
-    "password": "renduidli123"
+    "username": "your_username",
+    "password": "your_password"
 }
 
 ####
-
-GET http://localhost:8000/api/customers/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDc3ODA5LCJpYXQiOjE3NTUwNzc1MDksImp0aSI6IjY5YzY0ZWY4MjM0MTQ0ZDBiM2ZmYWJmNjg5MzNkYzE4IiwidXNlcl9pZCI6IjIifQ.56L0RQx_oub_0AsXWwWE9hTgnGs2620jaSlH-afMums
-Content-Type: application/json
-
-####
-
-POST http://localhost:8000/api/customers/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDc3ODA5LCJpYXQiOjE3NTUwNzc1MDksImp0aSI6IjY5YzY0ZWY4MjM0MTQ0ZDBiM2ZmYWJmNjg5MzNkYzE4IiwidXNlcl9pZCI6IjIifQ.56L0RQx_oub_0AsXWwWE9hTgnGs2620jaSlH-afMums
+# Refresh JWT token
+POST http://localhost:8000/api/auth/token/refresh/
 Content-Type: application/json
 
 {
-    "name": "Acme Corp2",
-    "email": "info2@acme.com",
+    "refresh": "<refresh_token>"
+}
+
+### CUSTOMERS CRUD
+
+# List customers
+GET http://localhost:8000/api/customers/
+Authorization: Bearer <access_token>
+
+####
+# Create customer
+POST http://localhost:8000/api/customers/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "name": "Acme Corp",
+    "email": "info@acme.com",
     "company_name": "Acme Corporation",
     "address": "123 Main St",
-    "phone": "1234567891"
+    "phone": "1234567890"
 }
 
 ####
-POST http://localhost:8000/api/auth/token/refresh/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDc3NzQ0LCJpYXQiOjE3NTUwNzc0NDQsImp0aSI6ImIzOGM3MGI4ZTA2NzQ0OTM4NDVmZWZhZmVkN2Y3YjM2IiwidXNlcl9pZCI6IjIifQ.9tuBmN43-WPChQ6zu5sqPUnWUSNFvY0HvyOIaAA1CQU
+# Retrieve customer
+GET http://localhost:8000/api/customers/1/
+Authorization: Bearer <access_token>
+
+####
+# Update customer
+PUT http://localhost:8000/api/customers/1/
+Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1NTE2Mzg0NCwiaWF0IjoxNzU1MDc3NDQ0LCJqdGkiOiI2M2ViYjZmMTJlYWQ0MGQwYWJiOWU0OTgwZGRhZTUzYSIsInVzZXJfaWQiOiIyIn0.noJe_FhpvVvEDf7uNW9mIvzXRXoXIz8TM8HbcS1_gOc"
+    "name": "Acme Corp Updated",
+    "email": "info@acme.com",
+    "company_name": "Acme Corporation",
+    "address": "456 Main St",
+    "phone": "1234567890"
 }
+
+####
+# Delete customer
+DELETE http://localhost:8000/api/customers/1/
+Authorization: Bearer <access_token>
+
+### VENDORS CRUD
+
+# List vendors
+GET http://localhost:8000/api/vendors/
+Authorization: Bearer <access_token>
+
+####
+# Create vendor
+POST http://localhost:8000/api/vendors/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "name": "Vendor Inc",
+    "email": "vendor@example.com",
+    "company_name": "Vendor Incorporated",
+    "address": "456 Vendor St",
+    "phone": "9876543210"
+}
+
+####
+# Retrieve vendor
+GET http://localhost:8000/api/vendors/1/
+Authorization: Bearer <access_token>
+
+####
+# Update vendor
+PUT http://localhost:8000/api/vendors/1/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "name": "Vendor Inc Updated",
+    "email": "vendor@example.com",
+    "company_name": "Vendor Incorporated",
+    "address": "789 Vendor Ave",
+    "phone": "9876543210"
+}
+
+####
+# Delete vendor
+DELETE http://localhost:8000/api/vendors/1/
+Authorization: Bearer <access_token>
+
+### INVOICES CRUD
+
+# List invoices
+GET http://localhost:8000/api/invoices/
+Authorization: Bearer <access_token>
+
+####
+# Create invoice
+POST http://localhost:8000/api/invoices/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "customer_id": 1,
+    "invoice_number": "INV-1001",
+    "date": "2025-08-24",
+    "due_date": "2025-09-24",
+    "amount": "500.00",
+    "status": "draft",
+    "notes": "First invoice"
+}
+
+####
+# Retrieve invoice
+GET http://localhost:8000/api/invoices/1/
+Authorization: Bearer <access_token>
+
+####
+# Update invoice
+PUT http://localhost:8000/api/invoices/1/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "customer_id": 1,
+    "invoice_number": "INV-1001",
+    "date": "2025-08-24",
+    "due_date": "2025-09-24",
+    "amount": "600.00",
+    "status": "sent",
+    "notes": "Updated invoice"
+}
+
+####
+# Delete invoice
+DELETE http://localhost:8000/api/invoices/1/
+Authorization: Bearer <access_token>
+
+### ITEMS CRUD
+
+# List items
+GET http://localhost:8000/api/items/
+Authorization: Bearer <access_token>
+
+####
+# Create item
+POST http://localhost:8000/api/items/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "name": "Item 1",
+    "description": "A sample item",
+    "price": "10.00",
+    "sku": "SKU001"
+}
+
+####
+# Retrieve item
+GET http://localhost:8000/api/items/1/
+Authorization: Bearer <access_token>
+
+####
+# Update item
+PUT http://localhost:8000/api/items/1/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "name": "Item 1 Updated",
+    "description": "Updated description",
+    "price": "12.00",
+    "sku": "SKU001"
+}
+
+####
+# Delete item
+DELETE http://localhost:8000/api/items/1/
+Authorization: Bearer <access_token>
+
+### PAYMENTS CRUD
+
+# List payments
+GET http://localhost:8000/api/payments/
+Authorization: Bearer <access_token>
+
+####
+# Create payment
+POST http://localhost:8000/api/payments/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "invoice_id": 1,
+    "amount": "500.00",
+    "date": "2025-08-25",
+    "method": "Bank Transfer",
+    "notes": "Full payment received"
+}
+
+####
+# Retrieve payment
+GET http://localhost:8000/api/payments/1/
+Authorization: Bearer <access_token>
+
+####
+# Update payment
+PUT http://localhost:8000/api/payments/1/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "invoice_id": 1,
+    "amount": "600.00",
+    "date": "2025-08-26",
+    "method": "Credit Card",
+    "notes": "Updated payment"
+}
+
+####
+# Delete payment
+DELETE http://localhost:8000/api/payments/1/
+Authorization: Bearer <access_token>
+
+### QUOTES CRUD
+
+# List quotes
+GET http://localhost:8000/api/quotes/
+Authorization: Bearer <access_token>
+
+####
+# Create quote
+POST http://localhost:8000/api/quotes/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "customer_id": 1,
+    "quote_number": "Q-1001",
+    "date": "2025-08-24",
+    "valid_until": "2025-09-01",
+    "amount": "1000.00",
+    "status": "draft",
+    "notes": "First quote"
+}
+
+####
+# Retrieve quote
+GET http://localhost:8000/api/quotes/1/
+Authorization: Bearer <access_token>
+
+####
+# Update quote
+PUT http://localhost:8000/api/quotes/1/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "customer_id": 1,
+    "quote_number": "Q-1001",
+    "date": "2025-08-24",
+    "valid_until": "2025-09-01",
+    "amount": "1200.00",
+    "status": "sent",
+    "notes": "Updated quote"
+}
+
+####
+# Delete quote
+DELETE http://localhost:8000/api/quotes/1/
+Authorization: Bearer <access_token>
+
+### PROFORMA INVOICES CRUD
+
+# List proforma invoices
+GET http://localhost:8000/api/proforma-invoices/
+Authorization: Bearer <access_token>
+
+####
+# Create proforma invoice
+POST http://localhost:8000/api/proforma-invoices/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "customer_id": 1,
+    "proforma_number": "P-1001",
+    "date": "2025-08-24",
+    "due_date": "2025-09-24",
+    "amount": "1500.00",
+    "status": "draft",
+    "notes": "First proforma"
+}
+
+####
+# Retrieve proforma invoice
+GET http://localhost:8000/api/proforma-invoices/1/
+Authorization: Bearer <access_token>
+
+####
+# Update proforma invoice
+PUT http://localhost:8000/api/proforma-invoices/1/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "customer_id": 1,
+    "proforma_number": "P-1001",
+    "date": "2025-08-24",
+    "due_date": "2025-09-24",
+    "amount": "1600.00",
+    "status": "sent",
+    "notes": "Updated proforma"
+}
+
+####
+# Delete proforma invoice
+DELETE http://localhost:8000/api/proforma-invoices/1/
+Authorization: Bearer <access_token>
+
+### DELIVERY CHALLANS CRUD
+
+# List delivery challans
+GET http://localhost:8000/api/delivery-challans/
+Authorization: Bearer <access_token>
+
+####
+# Create delivery challan
+POST http://localhost:8000/api/delivery-challans/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "customer_id": 1,
+    "challan_number": "DC-1001",
+    "date": "2025-08-24",
+    "delivery_date": "2025-08-25",
+    "status": "draft",
+    "notes": "First delivery challan"
+}
+
+####
+# Retrieve delivery challan
+GET http://localhost:8000/api/delivery-challans/1/
+Authorization: Bearer <access_token>
+
+####
+# Update delivery challan
+PUT http://localhost:8000/api/delivery-challans/1/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "customer_id": 1,
+    "challan_number": "DC-1001",
+    "date": "2025-08-24",
+    "delivery_date": "2025-08-25",
+    "status": "delivered",
+    "notes": "Delivered"
+}
+
+####
+# Delete delivery challan
+DELETE http://localhost:8000/api/delivery-challans/1/
+Authorization: Bearer <access_token>
+
+### INVENTORY ADJUSTMENTS CRUD
+
+# List inventory adjustments
+GET http://localhost:8000/api/inventory-adjustments/
+Authorization: Bearer <access_token>
+
+####
+# Create inventory adjustment
+POST http://localhost:8000/api/inventory-adjustments/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "item_id": 1,
+    "adjustment_number": "ADJ-1001",
+    "date": "2025-08-24",
+    "quantity": 10,
+    "reason": "Stock count correction",
+    "notes": "Initial adjustment"
+}
+
+####
+# Retrieve inventory adjustment
+GET http://localhost:8000/api/inventory-adjustments/1/
+Authorization: Bearer <access_token>
+
+####
+# Update inventory adjustment
+PUT http://localhost:8000/api/inventory-adjustments/1/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "item_id": 1,
+    "adjustment_number": "ADJ-1001",
+    "date": "2025-08-24",
+    "quantity": 12,
+    "reason": "Correction",
+    "notes": "Updated adjustment"
+}
+
+####
+# Delete inventory adjustment
+DELETE http://localhost:8000/api/inventory-adjustments/1/
+Authorization: Bearer <access_token>

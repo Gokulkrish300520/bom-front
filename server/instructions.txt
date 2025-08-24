@@ -1,81 +1,349 @@
-Quick Start: Running the Django REST Server, Adding Users, and Using JWT Authentication
+# Django REST API: Complete Usage Guide
 
-1. Run the Django REST Server
------------------------------
-# From the project root, apply migrations and start the server:
-python manage.py migrate
-python manage.py runserver
+## 1. Running the Server
+- Apply migrations and start the server:
 
-# The server will be available at http://localhost:8000/
+    python manage.py migrate
+    python manage.py runserver
 
-2. Add a New User (Admin Only)
-------------------------------
-# Create a superuser (if you haven't already):
-python manage.py createsuperuser
+- The server will be available at http://localhost:8000/
 
-# Visit the Django admin site:
-http://localhost:8000/admin/
+## 2. User Management (Admin Only)
+- Create a superuser:
 
-# Log in with your superuser credentials.
-# Go to "Users" under "AUTHENTICATION AND AUTHORIZATION".
-# Click "Add user" to create a new user (set username, password, etc.).
+    python manage.py createsuperuser
 
-3. Obtain a JWT Token
----------------------
-# Use the following endpoint to obtain a JWT token (login):
-POST http://localhost:8000/api/auth/token/
+- Visit http://localhost:8000/admin/ and log in.
+- Add users via the Django admin interface (no public registration endpoint).
 
-# Example request body (JSON):
-{
-    "username": "your_username",
-    "password": "your_password"
-}
+## 3. Authentication (JWT)
+- Obtain a JWT token:
 
-# Example response:
-{
-    "refresh": "<refresh_token>",
-    "access": "<access_token>"
-}
+    POST /api/auth/token/
+    {
+        "username": "<username>",
+        "password": "<password>"
+    }
 
-4. Use JWT Token to Access Protected Endpoints
-----------------------------------------------
-# Add the access token to the Authorization header for all API requests:
-Authorization: Bearer <access_token>
+- Response:
+    {
+        "refresh": "<refresh_token>",
+        "access": "<access_token>"
+    }
 
-# Example: List customers
-GET http://localhost:8000/api/customers/
-Headers:
+- Use the access token in the Authorization header for all API requests:
+
     Authorization: Bearer <access_token>
 
-# Example: Create a new customer
-POST http://localhost:8000/api/customers/
-Headers:
-    Authorization: Bearer <access_token>
-Body (JSON):
-{
-    "name": "Acme Corp",
-    "email": "info@acme.com",
-    "company_name": "Acme Corporation",
-    "address": "123 Main St",
-    "phone": "1234567890"
-}
+- Refresh the access token:
 
-5. Refresh JWT Token
---------------------
-# When your access token expires, use the refresh token to get a new one:
-POST http://localhost:8000/api/auth/token/refresh/
-Body (JSON):
-{
-    "refresh": "<refresh_token>"
-}
+    POST /api/auth/token/refresh/
+    {
+        "refresh": "<refresh_token>"
+    }
 
-# Example response:
-{
-    "access": "<new_access_token>"
-}
+- Response:
+    {
+        "access": "<new_access_token>"
+    }
 
-Notes
------
-- All API endpoints require JWT authentication.
-- Only admin can create users via the Django admin interface.
-- For more endpoints and details, see plan.txt in the project root.
+## 4. API Endpoints (CRUD)
+
+### Customers
+- List:      GET    /api/customers/
+- Create:    POST   /api/customers/
+- Retrieve:  GET    /api/customers/{id}/
+- Update:    PUT    /api/customers/{id}/
+- Delete:    DELETE /api/customers/{id}/
+
+### Vendors
+- List:      GET    /api/vendors/
+- Create:    POST   /api/vendors/
+- Retrieve:  GET    /api/vendors/{id}/
+- Update:    PUT    /api/vendors/{id}/
+- Delete:    DELETE /api/vendors/{id}/
+
+### Invoices
+- List:      GET    /api/invoices/
+- Create:    POST   /api/invoices/
+- Retrieve:  GET    /api/invoices/{id}/
+- Update:    PUT    /api/invoices/{id}/
+- Delete:    DELETE /api/invoices/{id}/
+
+### Items
+- List:      GET    /api/items/
+- Create:    POST   /api/items/
+- Retrieve:  GET    /api/items/{id}/
+- Update:    PUT    /api/items/{id}/
+- Delete:    DELETE /api/items/{id}/
+
+### Payments
+- List:      GET    /api/payments/
+- Create:    POST   /api/payments/
+- Retrieve:  GET    /api/payments/{id}/
+- Update:    PUT    /api/payments/{id}/
+- Delete:    DELETE /api/payments/{id}/
+
+### Quotes
+- List:      GET    /api/quotes/
+- Create:    POST   /api/quotes/
+- Retrieve:  GET    /api/quotes/{id}/
+- Update:    PUT    /api/quotes/{id}/
+- Delete:    DELETE /api/quotes/{id}/
+
+### Proforma Invoices
+- List:      GET    /api/proforma-invoices/
+- Create:    POST   /api/proforma-invoices/
+- Retrieve:  GET    /api/proforma-invoices/{id}/
+- Update:    PUT    /api/proforma-invoices/{id}/
+- Delete:    DELETE /api/proforma-invoices/{id}/
+
+### Delivery Challans
+- List:      GET    /api/delivery-challans/
+- Create:    POST   /api/delivery-challans/
+- Retrieve:  GET    /api/delivery-challans/{id}/
+- Update:    PUT    /api/delivery-challans/{id}/
+- Delete:    DELETE /api/delivery-challans/{id}/
+
+### Inventory Adjustments
+- List:      GET    /api/inventory-adjustments/
+- Create:    POST   /api/inventory-adjustments/
+- Retrieve:  GET    /api/inventory-adjustments/{id}/
+- Update:    PUT    /api/inventory-adjustments/{id}/
+- Delete:    DELETE /api/inventory-adjustments/{id}/
+
+## 5. Example Requests (All Resources)
+
+### Customers
+- Create:
+    POST /api/customers/
+    {
+        "name": "Acme Corp",
+        "email": "info@acme.com",
+        "company_name": "Acme Corporation",
+        "address": "123 Main St",
+        "phone": "1234567890"
+    }
+- Update:
+    PUT /api/customers/1/
+    {
+        "name": "Acme Corp Updated",
+        "email": "info@acme.com",
+        "company_name": "Acme Corporation",
+        "address": "456 Main St",
+        "phone": "1234567890"
+    }
+- Retrieve:
+    GET /api/customers/1/
+- Delete:
+    DELETE /api/customers/1/
+
+### Vendors
+- Create:
+    POST /api/vendors/
+    {
+        "name": "Vendor Inc",
+        "email": "vendor@example.com",
+        "company_name": "Vendor Incorporated",
+        "address": "456 Vendor St",
+        "phone": "9876543210"
+    }
+- Update:
+    PUT /api/vendors/1/
+    {
+        "name": "Vendor Inc Updated",
+        "email": "vendor@example.com",
+        "company_name": "Vendor Incorporated",
+        "address": "789 Vendor Ave",
+        "phone": "9876543210"
+    }
+- Retrieve:
+    GET /api/vendors/1/
+- Delete:
+    DELETE /api/vendors/1/
+
+### Invoices
+- Create:
+    POST /api/invoices/
+    {
+        "customer_id": 1,
+        "invoice_number": "INV-1001",
+        "date": "2025-08-24",
+        "due_date": "2025-09-24",
+        "amount": "500.00",
+        "status": "draft",
+        "notes": "First invoice"
+    }
+- Update:
+    PUT /api/invoices/1/
+    {
+        "customer_id": 1,
+        "invoice_number": "INV-1001",
+        "date": "2025-08-24",
+        "due_date": "2025-09-24",
+        "amount": "600.00",
+        "status": "sent",
+        "notes": "Updated invoice"
+    }
+- Retrieve:
+    GET /api/invoices/1/
+- Delete:
+    DELETE /api/invoices/1/
+
+### Items
+- Create:
+    POST /api/items/
+    {
+        "name": "Item 1",
+        "description": "A sample item",
+        "price": "10.00",
+        "sku": "SKU001"
+    }
+- Update:
+    PUT /api/items/1/
+    {
+        "name": "Item 1 Updated",
+        "description": "Updated description",
+        "price": "12.00",
+        "sku": "SKU001"
+    }
+- Retrieve:
+    GET /api/items/1/
+- Delete:
+    DELETE /api/items/1/
+
+### Payments
+- Create:
+    POST /api/payments/
+    {
+        "invoice_id": 1,
+        "amount": "500.00",
+        "date": "2025-08-25",
+        "method": "Bank Transfer",
+        "notes": "Full payment received"
+    }
+- Update:
+    PUT /api/payments/1/
+    {
+        "invoice_id": 1,
+        "amount": "600.00",
+        "date": "2025-08-26",
+        "method": "Credit Card",
+        "notes": "Updated payment"
+    }
+- Retrieve:
+    GET /api/payments/1/
+- Delete:
+    DELETE /api/payments/1/
+
+### Quotes
+- Create:
+    POST /api/quotes/
+    {
+        "customer_id": 1,
+        "quote_number": "Q-1001",
+        "date": "2025-08-24",
+        "valid_until": "2025-09-01",
+        "amount": "1000.00",
+        "status": "draft",
+        "notes": "First quote"
+    }
+- Update:
+    PUT /api/quotes/1/
+    {
+        "customer_id": 1,
+        "quote_number": "Q-1001",
+        "date": "2025-08-24",
+        "valid_until": "2025-09-01",
+        "amount": "1200.00",
+        "status": "sent",
+        "notes": "Updated quote"
+    }
+- Retrieve:
+    GET /api/quotes/1/
+- Delete:
+    DELETE /api/quotes/1/
+
+### Proforma Invoices
+- Create:
+    POST /api/proforma-invoices/
+    {
+        "customer_id": 1,
+        "proforma_number": "P-1001",
+        "date": "2025-08-24",
+        "due_date": "2025-09-24",
+        "amount": "1500.00",
+        "status": "draft",
+        "notes": "First proforma"
+    }
+- Update:
+    PUT /api/proforma-invoices/1/
+    {
+        "customer_id": 1,
+        "proforma_number": "P-1001",
+        "date": "2025-08-24",
+        "due_date": "2025-09-24",
+        "amount": "1600.00",
+        "status": "sent",
+        "notes": "Updated proforma"
+    }
+- Retrieve:
+    GET /api/proforma-invoices/1/
+- Delete:
+    DELETE /api/proforma-invoices/1/
+
+### Delivery Challans
+- Create:
+    POST /api/delivery-challans/
+    {
+        "customer_id": 1,
+        "challan_number": "DC-1001",
+        "date": "2025-08-24",
+        "delivery_date": "2025-08-25",
+        "status": "draft",
+        "notes": "First delivery challan"
+    }
+- Update:
+    PUT /api/delivery-challans/1/
+    {
+        "customer_id": 1,
+        "challan_number": "DC-1001",
+        "date": "2025-08-24",
+        "delivery_date": "2025-08-25",
+        "status": "delivered",
+        "notes": "Delivered"
+    }
+- Retrieve:
+    GET /api/delivery-challans/1/
+- Delete:
+    DELETE /api/delivery-challans/1/
+
+### Inventory Adjustments
+- Create:
+    POST /api/inventory-adjustments/
+    {
+        "item_id": 1,
+        "adjustment_number": "ADJ-1001",
+        "date": "2025-08-24",
+        "quantity": 10,
+        "reason": "Stock count correction",
+        "notes": "Initial adjustment"
+    }
+- Update:
+    PUT /api/inventory-adjustments/1/
+    {
+        "item_id": 1,
+        "adjustment_number": "ADJ-1001",
+        "date": "2025-08-24",
+        "quantity": 12,
+        "reason": "Correction",
+        "notes": "Updated adjustment"
+    }
+- Retrieve:
+    GET /api/inventory-adjustments/1/
+- Delete:
+    DELETE /api/inventory-adjustments/1/
+
+## 6. Notes
+- All endpoints require JWT authentication.
+- Only admin can create users via Django admin.
