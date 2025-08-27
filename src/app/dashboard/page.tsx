@@ -21,7 +21,7 @@ export default function DashboardPage() {
 
       try {
         // Attempt silent refresh of access token
-        const res = await fetch("http://127.0.0.1:8000/api/auth/token/refresh/", {
+        const res = await fetch("https://bpm-production.up.railway.app/api/auth/token/refresh/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ refresh: refreshToken }),
