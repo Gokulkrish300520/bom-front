@@ -273,46 +273,63 @@ GET http://localhost:8000/api/quotes/
 Authorization: Bearer <access_token>
 
 ####
-# Create quote
+# Create quote (all fields, no items)
 POST http://localhost:8000/api/quotes/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "customer_id": 1,
-    "quote_number": "Q-1001",
-    "date": "2025-08-24",
-    "valid_until": "2025-09-01",
-    "amount": "1000.00",
-    "status": "draft",
-    "notes": "First quote"
+  "customer_id": 1,
+  "quote_number": "Q-2025-001",
+  "reference_number": "REF-123",
+  "quote_date": "2025-08-27",
+  "expiry_date": "2025-09-10",
+  "salesperson": "Alice Smith",
+  "project_name": "Project X",
+  "subject": "Quotation for Project X",
+  "customer_notes": "Please review and confirm.",
+  "terms_and_conditions": "Payment within 30 days.",
+  "subtotal": "10000.00",
+  "discount": "5.00",
+  "tax_type": "TDS",
+  "tax_percentage": "5",
+  "adjustment": "-100.00",
+  "total_amount": "9500.00"
 }
 
 ####
-# Retrieve quote
+# Retrieve quote (with nested item details)
 GET http://localhost:8000/api/quotes/1/
 Authorization: Bearer <access_token>
 
 ####
-# Update quote
+# Update quote (partial or full)
 PUT http://localhost:8000/api/quotes/1/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "customer_id": 1,
-    "quote_number": "Q-1001",
-    "date": "2025-08-24",
-    "valid_until": "2025-09-01",
-    "amount": "1200.00",
-    "status": "sent",
-    "notes": "Updated quote"
+  "subject": "Updated subject",
+  "discount": "10.00"
 }
 
 ####
 # Delete quote
 DELETE http://localhost:8000/api/quotes/1/
 Authorization: Bearer <access_token>
+
+# Add item to quote (QuoteItem)
+POST http://localhost:8000/api/quoteitems/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "quote": 1,
+  "item_id": 1,
+  "quantity": 2,
+  "rate": "5000.00",
+  "amount": "10000.00"
+}
 
 ### PROFORMA INVOICES CRUD
 

@@ -146,13 +146,36 @@ class Payment(models.Model):
         return f"Payment {self.amount} for Invoice {self.invoice.invoice_number}"
 
 
+
 # Quote model
 class Quote(models.Model):
+    TAX_TYPE_CHOICES = [
+        ('TDS', 'TDS'),
+        ('TCS', 'TCS'),
+    ]
+    TAX_PERCENTAGE_CHOICES = [
+        ('0', '0%'),
+        ('5', '5%'),
+        ('12', '12%'),
+        ('18', '18%'),
+        ('28', '28%'),
+    ]
     customer = models.ForeignKey(Customer, related_name='quotes', on_delete=models.CASCADE)
     quote_number = models.CharField(max_length=50, unique=True)
-    date = models.DateField()
-    valid_until = models.DateField()
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    reference_number = models.CharField(max_length=50, blank=True)
+    quote_date = models.DateField()
+    expiry_date = models.DateField()
+    salesperson = models.CharField(max_length=100, blank=True)
+    project_name = models.CharField(max_length=255, blank=True)
+    subject = models.CharField(max_length=255, blank=True)
+    customer_notes = models.TextField(blank=True)
+    terms_and_conditions = models.TextField(blank=True)
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    discount = models.DecimalField(max_digits=5, decimal_places=2, default=0)  # percentage
+    tax_type = models.CharField(max_length=3, choices=TAX_TYPE_CHOICES, default='TDS')
+    tax_percentage = models.CharField(max_length=3, choices=TAX_PERCENTAGE_CHOICES, default='0')
+    adjustment = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=[
         ('draft', 'Draft'),
         ('sent', 'Sent'),
@@ -160,11 +183,22 @@ class Quote(models.Model):
         ('rejected', 'Rejected'),
         ('expired', 'Expired'),
     ], default='draft')
-    notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Quote {self.quote_number} - {self.customer.name}"
+        return f"Quote {self.quote_number} - {self.customer.display_name}"
+
+
+# QuoteItem model
+class QuoteItem(models.Model):
+    quote = models.ForeignKey(Quote, related_name='item_details', on_delete=models.CASCADE)
+    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    rate = models.DecimalField(max_digits=12, decimal_places=2)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.item.name} x {self.quantity} for Quote {self.quote.quote_number}"
 
 
 # Proforma Invoice model

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Customer, Invoice, Vendor, Item, Payment, Quote, ProformaInvoice, DeliveryChallan, InventoryAdjustment, CustomerDocument, ContactPerson
+from .models import Customer, Invoice, Vendor, Item, Payment, Quote, ProformaInvoice, DeliveryChallan, InventoryAdjustment, CustomerDocument, ContactPerson, QuoteItem
 
 
 # CustomerDocument serializer
@@ -77,20 +77,36 @@ class PaymentSerializer(serializers.ModelSerializer):
         return InvoiceSerializer(obj.invoice).data if obj.invoice else None
 
 
+
+# QuoteItem serializer
+class QuoteItemSerializer(serializers.ModelSerializer):
+    item = ItemSerializer(read_only=True)
+    item_id = serializers.PrimaryKeyRelatedField(
+        queryset=Item.objects.all(), source='item', write_only=True
+    )
+
+    class Meta:
+        model = QuoteItem
+        fields = ['id', 'item', 'item_id', 'quantity', 'rate', 'amount']
+        read_only_fields = ['id', 'item', 'amount']
+
 # Quote serializer
 class QuoteSerializer(serializers.ModelSerializer):
     customer = CustomerSerializer(read_only=True)
     customer_id = serializers.PrimaryKeyRelatedField(
         queryset=Customer.objects.all(), source='customer', write_only=True
     )
+    item_details = QuoteItemSerializer(many=True, read_only=True)
 
     class Meta:
         model = Quote
         fields = [
-            'id', 'customer', 'customer_id', 'quote_number', 'date', 'valid_until',
-            'amount', 'status', 'notes', 'created_at'
+            'id', 'customer', 'customer_id', 'quote_number', 'reference_number', 'quote_date', 'expiry_date',
+            'salesperson', 'project_name', 'subject', 'item_details', 'customer_notes', 'terms_and_conditions',
+            'subtotal', 'discount', 'tax_type', 'tax_percentage', 'adjustment', 'total_amount',
+            'status', 'created_at'
         ]
-        read_only_fields = ['id', 'created_at', 'customer']
+        read_only_fields = ['id', 'created_at', 'customer', 'item_details']
 
 
 # ProformaInvoice serializer

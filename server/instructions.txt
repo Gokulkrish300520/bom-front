@@ -215,6 +215,89 @@ Response:
 - Update:    PUT    /api/quotes/{id}/
 - Delete:    DELETE /api/quotes/{id}/
 
+#### Quote Fields
+- customer: Customer object (from Customers endpoint)
+- quote_number: string (required, unique)
+- reference_number: string (optional)
+- quote_date: date (YYYY-MM-DD)
+- expiry_date: date (YYYY-MM-DD)
+- salesperson: string (optional)
+- project_name: string (optional)
+- subject: string (optional)
+- item_details: array of QuoteItem objects (see below)
+- customer_notes: string (optional)
+- terms_and_conditions: string (optional)
+- subtotal: decimal
+- discount: decimal (percentage, e.g. 10.00 for 10%)
+- tax_type: "TDS" or "TCS" (default: TDS)
+- tax_percentage: "0", "5", "12", "18", "28" (default: "0")
+- adjustment: decimal
+- total_amount: decimal
+- status: "draft", "sent", "accepted", "rejected", "expired" (default: draft)
+- created_at: datetime
+
+#### QuoteItem Fields
+- id: integer
+- item: Item object (from Items endpoint, read-only)
+- item_id: integer (write-only)
+- quantity: integer
+- rate: decimal
+- amount: decimal (read-only)
+
+#### Example: Create Quote
+POST /api/quotes/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+  "customer_id": 1,
+  "quote_number": "Q-2025-001",
+  "reference_number": "REF-123",
+  "quote_date": "2025-08-27",
+  "expiry_date": "2025-09-10",
+  "salesperson": "Alice Smith",
+  "project_name": "Project X",
+  "subject": "Quotation for Project X",
+  "customer_notes": "Please review and confirm.",
+  "terms_and_conditions": "Payment within 30 days.",
+  "subtotal": "10000.00",
+  "discount": "5.00",
+  "tax_type": "TDS",
+  "tax_percentage": "5",
+  "adjustment": "-100.00",
+  "total_amount": "9500.00"
+}
+
+#### Example: Retrieve Quote (with nested item details)
+GET /api/quotes/1/
+Authorization: Bearer <access_token>
+
+Response:
+{
+  "id": 1,
+  "customer": { ... },
+  "quote_number": "Q-2025-001",
+  "reference_number": "REF-123",
+  "quote_date": "2025-08-27",
+  "expiry_date": "2025-09-10",
+  "salesperson": "Alice Smith",
+  "project_name": "Project X",
+  "subject": "Quotation for Project X",
+  "item_details": [
+    {"id": 1, "item": { ... }, "quantity": 2, "rate": "5000.00", "amount": "10000.00"}
+  ],
+  "customer_notes": "Please review and confirm.",
+  "terms_and_conditions": "Payment within 30 days.",
+  "subtotal": "10000.00",
+  "discount": "5.00",
+  "tax_type": "TDS",
+  "tax_percentage": "5",
+  "adjustment": "-100.00",
+  "total_amount": "9500.00",
+  "status": "draft",
+  "created_at": "2025-08-27T10:00:00Z"
+}
+
 ### Proforma Invoices
 - List:      GET    /api/proforma-invoices/
 - Create:    POST   /api/proforma-invoices/
