@@ -1,17 +1,111 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 
+
+from django.core.validators import FileExtensionValidator
+
 class Customer(models.Model):
-    name = models.CharField(max_length=255)
-    email = models.EmailField(unique=True)
+    CUSTOMER_TYPE_CHOICES = [
+        ('business', 'Business'),
+        ('individual', 'Individual'),
+    ]
+    SALUTATION_CHOICES = [
+        ('dr', 'Dr'),
+        ('mr', 'Mr'),
+        ('ms', 'Ms'),
+        ('mrs', 'Mrs'),
+    ]
+    CURRENCY_CHOICES = [
+        ('AED', 'AED'), ('AUD', 'AUD'), ('BND', 'BND'), ('CAD', 'CAD'),
+        ('CNY', 'CNY'), ('EUR', 'EUR'), ('GBP', 'GBP'), ('INR', 'INR'),
+        ('JPY', 'JPY'), ('SAR', 'SAR'), ('USD', 'USD'), ('ZAR', 'ZAR'),
+    ]
+    PAYMENT_TERMS_CHOICES = [
+        ('due_on_receipt', 'Due on Receipt'),
+        ('net_7', 'Net 7'),
+        ('net_15', 'Net 15'),
+        ('net_30', 'Net 30'),
+        ('net_45', 'Net 45'),
+    ]
+
+    customer_type = models.CharField(max_length=20, choices=CUSTOMER_TYPE_CHOICES, default='business')
+    salutation = models.CharField(max_length=5, choices=SALUTATION_CHOICES, blank=True, null=True)
+    first_name = models.CharField(max_length=100, blank=True)
+    last_name = models.CharField(max_length=100, blank=True)
     company_name = models.CharField(max_length=255, blank=True)
-    address = models.TextField(blank=True)
-    phone = models.CharField(max_length=50, blank=True)
+    display_name = models.CharField(max_length=255)
+    email = models.EmailField(unique=True)
+    work_phone = models.CharField(max_length=50, blank=True)
+    mobile = models.CharField(max_length=50, blank=True)
+    pan = models.CharField(max_length=20, blank=True)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='INR')
+    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    payment_terms = models.CharField(max_length=20, choices=PAYMENT_TERMS_CHOICES, default='due_on_receipt')
+    documents = models.ManyToManyField('CustomerDocument', blank=True)
+    # Billing address
+    billing_attention = models.CharField(max_length=255, blank=True)
+    billing_country = models.CharField(max_length=100, blank=True)
+    billing_street1 = models.CharField(max_length=255, blank=True)
+    billing_street2 = models.CharField(max_length=255, blank=True)
+    billing_city = models.CharField(max_length=100, blank=True)
+    billing_state = models.CharField(max_length=100, blank=True)
+    billing_pin_code = models.CharField(max_length=20, blank=True)
+    billing_phone = models.CharField(max_length=50, blank=True)
+    billing_fax = models.CharField(max_length=50, blank=True)
+    # Shipping address
+    shipping_attention = models.CharField(max_length=255, blank=True)
+    shipping_country = models.CharField(max_length=100, blank=True)
+    shipping_street1 = models.CharField(max_length=255, blank=True)
+    shipping_street2 = models.CharField(max_length=255, blank=True)
+    shipping_city = models.CharField(max_length=100, blank=True)
+    shipping_state = models.CharField(max_length=100, blank=True)
+    shipping_pin_code = models.CharField(max_length=20, blank=True)
+    shipping_phone = models.CharField(max_length=50, blank=True)
+    shipping_fax = models.CharField(max_length=50, blank=True)
+    # Custom fields as key-value pairs (JSON)
+    custom_fields = models.JSONField(default=dict, blank=True)
+    # Tags as array of strings
+    tags = models.JSONField(default=list, blank=True)
+    remarks = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name
+        return self.display_name
+
+
+class CustomerDocument(models.Model):
+    file = models.FileField(
+        upload_to='customer_documents/',
+        validators=[
+            FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx'])
+        ]
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        if self.file.size > 10 * 1024 * 1024:
+            raise ValidationError("File size must be under 10MB.")
+
+
+class ContactPerson(models.Model):
+    SALUTATION_CHOICES = [
+        ('dr', 'Dr'),
+        ('mr', 'Mr'),
+        ('ms', 'Ms'),
+        ('mrs', 'Mrs'),
+    ]
+    customer = models.ForeignKey(Customer, related_name='contact_persons', on_delete=models.CASCADE)
+    salutation = models.CharField(max_length=5, choices=SALUTATION_CHOICES, blank=True, null=True)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    email = models.EmailField()
+    work_phone = models.CharField(max_length=50, blank=True)
+    mobile = models.CharField(max_length=50, blank=True)
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.email})"
 
 
 # Vendor model

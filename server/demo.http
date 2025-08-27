@@ -25,36 +25,62 @@ GET http://localhost:8000/api/customers/
 Authorization: Bearer <access_token>
 
 ####
-# Create customer
+# Create customer (all fields)
 POST http://localhost:8000/api/customers/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "name": "Acme Corp",
-    "email": "info@acme.com",
-    "company_name": "Acme Corporation",
-    "address": "123 Main St",
-    "phone": "1234567890"
+  "customer_type": "business",
+  "salutation": "mr",
+  "first_name": "John",
+  "last_name": "Doe",
+  "company_name": "Acme Corp",
+  "display_name": "Acme Corp (John Doe)",
+  "email": "john.doe@acme.com",
+  "work_phone": "1234567890",
+  "mobile": "9876543210",
+  "pan": "ABCDE1234F",
+  "currency": "INR",
+  "opening_balance": "1000.00",
+  "payment_terms": "net_30",
+  "billing_attention": "Accounts",
+  "billing_country": "India",
+  "billing_street1": "123 Main St",
+  "billing_street2": "Suite 100",
+  "billing_city": "Mumbai",
+  "billing_state": "MH",
+  "billing_pin_code": "400001",
+  "billing_phone": "0221234567",
+  "billing_fax": "0227654321",
+  "shipping_attention": "Warehouse",
+  "shipping_country": "India",
+  "shipping_street1": "456 Warehouse Rd",
+  "shipping_street2": "",
+  "shipping_city": "Mumbai",
+  "shipping_state": "MH",
+  "shipping_pin_code": "400002",
+  "shipping_phone": "0229876543",
+  "shipping_fax": "0223456789",
+  "custom_fields": {"GSTIN": "27ABCDE1234F1Z5"},
+  "tags": ["priority", "2025"],
+  "remarks": "Important customer"
 }
 
 ####
-# Retrieve customer
+# Retrieve customer (with nested documents and contact persons)
 GET http://localhost:8000/api/customers/1/
 Authorization: Bearer <access_token>
 
 ####
-# Update customer
+# Update customer (partial or full)
 PUT http://localhost:8000/api/customers/1/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "name": "Acme Corp Updated",
-    "email": "info@acme.com",
-    "company_name": "Acme Corporation",
-    "address": "456 Main St",
-    "phone": "1234567890"
+  "display_name": "Acme Corp (John D.)",
+  "remarks": "Updated remarks"
 }
 
 ####

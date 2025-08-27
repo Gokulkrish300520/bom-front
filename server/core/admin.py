@@ -1,3 +1,6 @@
 from django.contrib import admin
+from .models import Customer, CustomerDocument, ContactPerson
 
-# Register your models here.
+admin.site.register(Customer)
+admin.site.register(CustomerDocument)
+admin.site.register(ContactPerson)

@@ -1,13 +1,40 @@
 from rest_framework import serializers
-from .models import Customer, Invoice, Vendor, Item, Payment, Quote, ProformaInvoice, DeliveryChallan, InventoryAdjustment
+from .models import Customer, Invoice, Vendor, Item, Payment, Quote, ProformaInvoice, DeliveryChallan, InventoryAdjustment, CustomerDocument, ContactPerson
+
+
+# CustomerDocument serializer
+class CustomerDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomerDocument
+        fields = ['id', 'file', 'uploaded_at']
+        read_only_fields = ['id', 'uploaded_at']
+
+# ContactPerson serializer
+class ContactPersonSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactPerson
+        fields = [
+            'id', 'salutation', 'first_name', 'last_name', 'email', 'work_phone', 'mobile'
+        ]
+        read_only_fields = ['id']
 
 class CustomerSerializer(serializers.ModelSerializer):
+    documents = CustomerDocumentSerializer(many=True, read_only=True)
+    contact_persons = ContactPersonSerializer(many=True, read_only=True)
+
     class Meta:
         model = Customer
         fields = [
-            'id', 'name', 'email', 'company_name', 'address', 'phone', 'created_at'
+            'id', 'customer_type', 'salutation', 'first_name', 'last_name', 'company_name',
+            'display_name', 'email', 'work_phone', 'mobile', 'pan', 'currency', 'opening_balance',
+            'payment_terms', 'documents',
+            'billing_attention', 'billing_country', 'billing_street1', 'billing_street2',
+            'billing_city', 'billing_state', 'billing_pin_code', 'billing_phone', 'billing_fax',
+            'shipping_attention', 'shipping_country', 'shipping_street1', 'shipping_street2',
+            'shipping_city', 'shipping_state', 'shipping_pin_code', 'shipping_phone', 'shipping_fax',
+            'contact_persons', 'custom_fields', 'tags', 'remarks', 'created_at'
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'documents', 'contact_persons']
 
 
 # Vendor serializer
