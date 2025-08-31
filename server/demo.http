@@ -18,6 +18,65 @@ Content-Type: application/json
     "refresh": "<refresh_token>"
 }
 
+
+
+### FILES (UPLOADED DOCUMENTS) ENDPOINT
+
+
+# Upload a PDF file
+POST http://localhost:8000/api/files/
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+
+file: @./sample_invoice.pdf
+
+####
+
+# Upload a JPG file
+POST http://localhost:8000/api/files/
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+
+file: @./sample_receipt.jpg
+
+####
+
+# Update/replace a file (PDF)
+PUT http://localhost:8000/api/files/1/
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+
+file: @./updated_invoice.pdf
+
+####
+
+# Update/replace a file (JPG)
+PUT http://localhost:8000/api/files/2/
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+
+file: @./updated_receipt.jpg
+
+####
+# List all files
+GET http://localhost:8000/api/files/
+Authorization: Bearer <access_token>
+
+####
+# View/Download a file (PDF or JPG)
+GET http://localhost:8000/api/files/1/
+Authorization: Bearer <access_token>
+
+# Response: (file stream, e.g. PDF, JPG, etc)
+# If the file exists, the file will be returned as a download or inline view.
+# If the file does not exist, HTTP 404 will be returned.
+
+####
+# Delete a file
+DELETE http://localhost:8000/api/files/1/
+Authorization: Bearer <access_token>
+
+
 ### CUSTOMERS CRUD
 
 # List customers
@@ -139,40 +198,36 @@ GET http://localhost:8000/api/invoices/
 Authorization: Bearer <access_token>
 
 ####
-# Create invoice
+# Create invoice (all fields, with files)
 POST http://localhost:8000/api/invoices/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "customer_id": 1,
-    "invoice_number": "INV-1001",
-    "date": "2025-08-24",
-    "due_date": "2025-09-24",
-    "amount": "500.00",
-    "status": "draft",
-    "notes": "First invoice"
+  "customer_id": 1,
+  "invoice_number": "INV-2025-001",
+  "order_number": "ORD-123",
+  "invoice_date": "2025-08-30",
+  "customer_notes": "Thank you for your business.",
+  "terms_and_conditions": "Payment due in 30 days.",
+  "total_amount": "15000.00",
+  "file_ids": [1, 2]
 }
 
 ####
-# Retrieve invoice
+# Retrieve invoice (with nested item details and files)
 GET http://localhost:8000/api/invoices/1/
 Authorization: Bearer <access_token>
 
 ####
-# Update invoice
+# Update invoice (partial or full)
 PUT http://localhost:8000/api/invoices/1/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "customer_id": 1,
-    "invoice_number": "INV-1001",
-    "date": "2025-08-24",
-    "due_date": "2025-09-24",
-    "amount": "600.00",
-    "status": "sent",
-    "notes": "Updated invoice"
+  "customer_notes": "Updated notes",
+  "total_amount": "16000.00"
 }
 
 ####
@@ -318,7 +373,7 @@ Content-Type: application/json
 DELETE http://localhost:8000/api/quotes/1/
 Authorization: Bearer <access_token>
 
-# Add item to quote (QuoteItem)
+## Add item to quote (QuoteItem; structure identical to ProformaInvoiceItem)
 POST http://localhost:8000/api/quoteitems/
 Authorization: Bearer <access_token>
 Content-Type: application/json
@@ -338,46 +393,63 @@ GET http://localhost:8000/api/proforma-invoices/
 Authorization: Bearer <access_token>
 
 ####
-# Create proforma invoice
+# Create proforma invoice (all fields, no items)
 POST http://localhost:8000/api/proforma-invoices/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "customer_id": 1,
-    "proforma_number": "P-1001",
-    "date": "2025-08-24",
-    "due_date": "2025-09-24",
-    "amount": "1500.00",
-    "status": "draft",
-    "notes": "First proforma"
+  "customer_id": 1,
+  "invoice_number": "P-2025-001",
+  "reference_number": "REF-456",
+  "invoice_date": "2025-08-30",
+  "expiry_date": "2025-09-15",
+  "salesperson": "Bob Jones",
+  "project_name": "Project Y",
+  "subject": "Proforma Invoice for Project Y",
+  "customer_notes": "Please process this proforma invoice.",
+  "terms_and_conditions": "Payment within 15 days.",
+  "subtotal": "20000.00",
+  "discount": "10.00",
+  "tax_type": "TDS",
+  "tax_percentage": "12",
+  "adjustment": "-500.00",
+  "total_amount": "17500.00"
 }
 
 ####
-# Retrieve proforma invoice
+# Retrieve proforma invoice (with nested item details)
 GET http://localhost:8000/api/proforma-invoices/1/
 Authorization: Bearer <access_token>
 
 ####
-# Update proforma invoice
+# Update proforma invoice (partial or full)
 PUT http://localhost:8000/api/proforma-invoices/1/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "customer_id": 1,
-    "proforma_number": "P-1001",
-    "date": "2025-08-24",
-    "due_date": "2025-09-24",
-    "amount": "1600.00",
-    "status": "sent",
-    "notes": "Updated proforma"
+  "subject": "Updated subject",
+  "discount": "15.00"
 }
 
 ####
 # Delete proforma invoice
 DELETE http://localhost:8000/api/proforma-invoices/1/
 Authorization: Bearer <access_token>
+
+## Add item to proforma invoice (ProformaInvoiceItem; structure identical to QuoteItem)
+POST http://localhost:8000/api/proformainvoiceitems/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "proforma_invoice": 1,
+  "item_id": 1,
+  "quantity": 3,
+  "rate": "5000.00",
+  "amount": "15000.00"
+}
 
 ### DELIVERY CHALLANS CRUD
 
@@ -386,43 +458,84 @@ GET http://localhost:8000/api/delivery-challans/
 Authorization: Bearer <access_token>
 
 ####
-# Create delivery challan
+# Create delivery challan (all fields)
 POST http://localhost:8000/api/delivery-challans/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "customer_id": 1,
-    "challan_number": "DC-1001",
-    "date": "2025-08-24",
-    "delivery_date": "2025-08-25",
-    "status": "draft",
-    "notes": "First delivery challan"
+  "customer_id": 1,
+  "challan_number": "DC-2025-001",
+  "reference_number": "REF-789",
+  "date": "2025-08-30",
+  "challan_type": "liquid_gas",
+  "total_amount": "20000.00"
 }
 
 ####
-# Retrieve delivery challan
+# Retrieve delivery challan (with nested item details)
 GET http://localhost:8000/api/delivery-challans/1/
 Authorization: Bearer <access_token>
 
 ####
-# Update delivery challan
+# Update delivery challan (partial or full)
 PUT http://localhost:8000/api/delivery-challans/1/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "customer_id": 1,
-    "challan_number": "DC-1001",
-    "date": "2025-08-24",
-    "delivery_date": "2025-08-25",
-    "status": "delivered",
-    "notes": "Delivered"
+  "challan_type": "job_work",
+  "total_amount": "21000.00"
 }
 
 ####
 # Delete delivery challan
 DELETE http://localhost:8000/api/delivery-challans/1/
+Authorization: Bearer <access_token>
+
+
+### BILLS CRUD
+
+# List bills
+GET http://localhost:8000/api/bills/
+Authorization: Bearer <access_token>
+
+####
+# Create bill (basic fields)
+POST http://localhost:8000/api/bills/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "vendor_id": 1,
+  "bill_number": "BILL-2025-001",
+  "reference_number": "REF-123",
+  "status": "DRAFT",
+  "bill_date": "2025-09-01",
+  "due_date": "2025-09-15",
+  "notes": "First bill for vendor.",
+  "file_ids": [1]
+}
+
+####
+# Retrieve bill (with nested item details and files)
+GET http://localhost:8000/api/bills/1/
+Authorization: Bearer <access_token>
+
+####
+# Update bill (partial or full)
+PUT http://localhost:8000/api/bills/1/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "status": "PAID",
+  "notes": "Bill paid in full."
+}
+
+####
+# Delete bill
+DELETE http://localhost:8000/api/bills/1/
 Authorization: Bearer <access_token>
 
 ### INVENTORY ADJUSTMENTS CRUD

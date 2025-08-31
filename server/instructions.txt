@@ -187,12 +187,70 @@ Response:
 - Update:    PUT    /api/vendors/{id}/
 - Delete:    DELETE /api/vendors/{id}/
 
+
 ### Invoices
 - List:      GET    /api/invoices/
 - Create:    POST   /api/invoices/
 - Retrieve:  GET    /api/invoices/{id}/
 - Update:    PUT    /api/invoices/{id}/
 - Delete:    DELETE /api/invoices/{id}/
+
+#### Invoice Fields
+- customer: Customer object (from Customers endpoint)
+- invoice_number: string (required, unique)
+- order_number: string (optional)
+- invoice_date: date (YYYY-MM-DD)
+- item_details: array of InvoiceItem objects (see below)
+- customer_notes: string (optional)
+- terms_and_conditions: string (optional)
+- total_amount: decimal
+- files: array of CustomerDocument objects (uploaded files)
+- created_at: datetime
+
+#### InvoiceItem Fields
+- id: integer
+- item: Item object (from Items endpoint, read-only)
+- item_id: integer (write-only)
+- quantity: integer
+- rate: decimal
+- amount: decimal (read-only)
+
+#### Example: Create Invoice
+POST /api/invoices/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+    "customer_id": 1,
+    "invoice_number": "INV-2025-001",
+    "order_number": "ORD-123",
+    "invoice_date": "2025-08-30",
+    "customer_notes": "Thank you for your business.",
+    "terms_and_conditions": "Payment due in 30 days.",
+    "total_amount": "15000.00",
+    "file_ids": [1, 2]
+}
+
+#### Example: Retrieve Invoice (with nested item details and files)
+GET /api/invoices/1/
+Authorization: Bearer <access_token>
+
+Response:
+{
+    "id": 1,
+    "customer": { ... },
+    "invoice_number": "INV-2025-001",
+    "order_number": "ORD-123",
+    "invoice_date": "2025-08-30",
+    "item_details": [
+        {"id": 1, "item": { ... }, "quantity": 2, "rate": "5000.00", "amount": "10000.00"}
+    ],
+    "customer_notes": "Thank you for your business.",
+    "terms_and_conditions": "Payment due in 30 days.",
+    "total_amount": "15000.00",
+    "files": [ {"id": 1, "file": "...", "uploaded_at": "..."} ],
+    "created_at": "2025-08-30T10:00:00Z"
+}
 
 ### Items
 - List:      GET    /api/items/
@@ -224,7 +282,7 @@ Response:
 - salesperson: string (optional)
 - project_name: string (optional)
 - subject: string (optional)
-- item_details: array of QuoteItem objects (see below)
+- item_details: array of QuoteItem objects (see below; structure is identical to ProformaInvoiceItem)
 - customer_notes: string (optional)
 - terms_and_conditions: string (optional)
 - subtotal: decimal
@@ -236,7 +294,7 @@ Response:
 - status: "draft", "sent", "accepted", "rejected", "expired" (default: draft)
 - created_at: datetime
 
-#### QuoteItem Fields
+#### QuoteItem / ProformaInvoiceItem Fields (identical)
 - id: integer
 - item: Item object (from Items endpoint, read-only)
 - item_id: integer (write-only)
@@ -304,6 +362,83 @@ Response:
 - Retrieve:  GET    /api/proforma-invoices/{id}/
 - Update:    PUT    /api/proforma-invoices/{id}/
 - Delete:    DELETE /api/proforma-invoices/{id}/
+
+#### ProformaInvoice Fields
+- customer: Customer object (from Customers endpoint)
+- invoice_number: string (required, unique)
+- reference_number: string (optional)
+- invoice_date: date (YYYY-MM-DD)
+- expiry_date: date (YYYY-MM-DD)
+- salesperson: string (optional)
+- project_name: string (optional)
+- subject: string (optional)
+- item_details: array of ProformaInvoiceItem objects (see below; structure is identical to QuoteItem)
+- customer_notes: string (optional)
+- terms_and_conditions: string (optional)
+- subtotal: decimal
+- discount: decimal (percentage, e.g. 10.00 for 10%)
+- tax_type: "TDS" or "TCS" (default: TDS)
+- tax_percentage: "0", "5", "12", "18", "28" (default: "0")
+- adjustment: decimal
+- total_amount: decimal
+- status: "draft", "sent", "accepted", "cancelled" (default: draft)
+- created_at: datetime
+
+#### (See above: QuoteItem / ProformaInvoiceItem Fields)
+
+#### Example: Create Proforma Invoice
+POST /api/proforma-invoices/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+  "customer_id": 1,
+  "invoice_number": "P-2025-001",
+  "reference_number": "REF-456",
+  "invoice_date": "2025-08-30",
+  "expiry_date": "2025-09-15",
+  "salesperson": "Bob Jones",
+  "project_name": "Project Y",
+  "subject": "Proforma Invoice for Project Y",
+  "customer_notes": "Please process this proforma invoice.",
+  "terms_and_conditions": "Payment within 15 days.",
+  "subtotal": "20000.00",
+  "discount": "10.00",
+  "tax_type": "TDS",
+  "tax_percentage": "12",
+  "adjustment": "-500.00",
+  "total_amount": "17500.00"
+}
+
+#### Example: Retrieve Proforma Invoice (with nested item details)
+GET /api/proforma-invoices/1/
+Authorization: Bearer <access_token>
+
+Response:
+{
+  "id": 1,
+  "customer": { ... },
+  "invoice_number": "P-2025-001",
+  "reference_number": "REF-456",
+  "invoice_date": "2025-08-30",
+  "expiry_date": "2025-09-15",
+  "salesperson": "Bob Jones",
+  "project_name": "Project Y",
+  "subject": "Proforma Invoice for Project Y",
+  "item_details": [
+    {"id": 1, "item": { ... }, "quantity": 3, "rate": "5000.00", "amount": "15000.00"}
+  ],
+  "customer_notes": "Please process this proforma invoice.",
+  "terms_and_conditions": "Payment within 15 days.",
+  "subtotal": "20000.00",
+  "discount": "10.00",
+  "tax_type": "TDS",
+  "tax_percentage": "12",
+  "adjustment": "-500.00",
+  "total_amount": "17500.00",
+  "status": "draft",
+  "created_at": "2025-08-30T10:00:00Z"
+}
 
 ### Delivery Challans
 - List:      GET    /api/delivery-challans/
@@ -499,31 +634,64 @@ Response:
 - Delete:
     DELETE /api/proforma-invoices/1/
 
+
 ### Delivery Challans
-- Create:
-    POST /api/delivery-challans/
-    {
-        "customer_id": 1,
-        "challan_number": "DC-1001",
-        "date": "2025-08-24",
-        "delivery_date": "2025-08-25",
-        "status": "draft",
-        "notes": "First delivery challan"
-    }
-- Update:
-    PUT /api/delivery-challans/1/
-    {
-        "customer_id": 1,
-        "challan_number": "DC-1001",
-        "date": "2025-08-24",
-        "delivery_date": "2025-08-25",
-        "status": "delivered",
-        "notes": "Delivered"
-    }
-- Retrieve:
-    GET /api/delivery-challans/1/
-- Delete:
-    DELETE /api/delivery-challans/1/
+- List:      GET    /api/delivery-challans/
+- Create:    POST   /api/delivery-challans/
+- Retrieve:  GET    /api/delivery-challans/{id}/
+- Update:    PUT    /api/delivery-challans/{id}/
+- Delete:    DELETE /api/delivery-challans/{id}/
+
+#### DeliveryChallan Fields
+- customer: Customer object (from Customers endpoint)
+- challan_number: string (required, unique)
+- reference_number: string (optional)
+- date: date (YYYY-MM-DD)
+- challan_type: "liquid_gas", "job_work", "approval", "others" (enum)
+- item_details: array of DeliveryChallanItem objects (see below)
+- total_amount: decimal
+- created_at: datetime
+
+#### DeliveryChallanItem Fields
+- id: integer
+- item: Item object (from Items endpoint, read-only)
+- item_id: integer (write-only)
+- quantity: integer
+- rate: decimal
+- amount: decimal (read-only)
+
+#### Example: Create Delivery Challan
+POST /api/delivery-challans/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+    "customer_id": 1,
+    "challan_number": "DC-2025-001",
+    "reference_number": "REF-789",
+    "date": "2025-08-30",
+    "challan_type": "liquid_gas",
+    "total_amount": "20000.00"
+}
+
+#### Example: Retrieve Delivery Challan (with nested item details)
+GET /api/delivery-challans/1/
+Authorization: Bearer <access_token>
+
+Response:
+{
+    "id": 1,
+    "customer": { ... },
+    "challan_number": "DC-2025-001",
+    "reference_number": "REF-789",
+    "date": "2025-08-30",
+    "challan_type": "liquid_gas",
+    "item_details": [
+        {"id": 1, "item": { ... }, "quantity": 5, "rate": "4000.00", "amount": "20000.00"}
+    ],
+    "total_amount": "20000.00",
+    "created_at": "2025-08-30T10:00:00Z"
+}
 
 ### Inventory Adjustments
 - Create:
@@ -551,6 +719,177 @@ Response:
 - Delete:
     DELETE /api/inventory-adjustments/1/
 
+### Bills
+- List:      GET    /api/bills/
+- Create:    POST   /api/bills/
+- Retrieve:  GET    /api/bills/{id}/
+- Update:    PUT    /api/bills/{id}/
+- Delete:    DELETE /api/bills/{id}/
+
+#### Bill Fields
+- vendor: nested Vendor object (read-only)
+- vendor_id: integer (required, write-only)
+- bill_number: string (required, unique)
+- reference_number: string (optional)
+- status: "PAID", "UNPAID", "PARTIAL", "DRAFT" (default: DRAFT)
+- bill_date: date (required)
+- due_date: date (required)
+- notes: string (optional)
+- subtotal: decimal (auto, read-only)
+- tax: decimal (auto, read-only)
+- total_amount: decimal (auto, read-only)
+- item_details: array of BillItem objects (read-only)
+- files: array of CustomerDocument objects (read-only)
+- file_ids: array of integers (write-only, optional)
+- created_at: datetime (read-only)
+
+#### BillItem Fields
+- id: integer
+- item: nested Item object (read-only)
+- item_id: integer (required, write-only)
+- quantity: integer (required)
+- rate: decimal (required)
+- tax_percentage: decimal (optional, default 0)
+- amount: decimal (auto, read-only)
+
+#### Example: Create Bill
+POST /api/bills/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+    "vendor_id": 1,
+    "bill_number": "BILL-2025-001",
+    "reference_number": "REF-123",
+    "status": "DRAFT",
+    "bill_date": "2025-09-01",
+    "due_date": "2025-09-15",
+    "notes": "First bill for vendor.",
+    "file_ids": [1, 2]
+}
+
+#### Example: Retrieve Bill (with nested item details and files)
+GET /api/bills/1/
+Authorization: Bearer <access_token>
+
+Response:
+{
+    "id": 1,
+    "vendor": {"id": 1, "name": "Acme Supplies", ...},
+    "bill_number": "BILL-2025-001",
+    "reference_number": "REF-123",
+    "status": "DRAFT",
+    "bill_date": "2025-09-01",
+    "due_date": "2025-09-15",
+    "notes": "First bill for vendor.",
+    "subtotal": "1000.00",
+    "tax": "180.00",
+    "total_amount": "1180.00",
+    "item_details": [
+        {"id": 1, "item": {"id": 1, "name": "Widget", ...}, "quantity": 10, "rate": "100.00", "tax_percentage": "18.00", "amount": "1000.00"}
+    ],
+    "files": [
+        {"id": 1, "file": "/media/customer_documents/bill1.pdf", "uploaded_at": "2025-09-01T10:00:00Z"}
+    ],
+    "created_at": "2025-09-01T10:00:00Z"
+}
+
+#### Example: Add Bill Items (separate endpoint or nested creation not shown; use admin or custom endpoint if needed)
+
+#### Example: Upload Bill Files
+POST /api/customer-documents/
+Content-Type: multipart/form-data
+Authorization: Bearer <access_token>
+
+file: <file>
+
+
+### Files (Uploaded Documents)
+
+#### Endpoints
+- List:      GET    /api/files/
+- Upload:    POST   /api/files/ (multipart/form-data)
+- Retrieve:  GET    /api/files/{id}/
+- Update:    PUT    /api/files/{id}/ (multipart/form-data)
+- Delete:    DELETE /api/files/{id}/
+
+#### Description
+- Upload, update, download, and manage files (PDF, JPG, etc) for use with Customers, Invoices, Bills, etc.
+- Files are uploaded once and can be associated with multiple business objects by their ID.
+- Requires authentication (JWT access token).
+
+#### File Fields
+- id: integer (auto)
+- file: file (required for POST/PUT; PDF, JPG, PNG, DOC, XLS, etc)
+- uploaded_at: datetime (auto)
+
+
+#### Example: Upload a PDF File
+POST /api/files/
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+
+file: <attach a PDF file, e.g. invoice.pdf>
+
+Response:
+{
+    "id": 1,
+    "file": "/media/customer_documents/invoice.pdf",
+    "uploaded_at": "2025-08-30T12:00:00Z"
+}
+
+
+#### Example: Upload a JPG File
+POST /api/files/
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+
+file: <attach a JPG file, e.g. receipt.jpg>
+
+Response:
+{
+    "id": 2,
+    "file": "/media/customer_documents/receipt.jpg",
+    "uploaded_at": "2025-08-30T12:01:00Z"
+}
+
+
+#### Example: Update/Replace a File (PUT)
+PUT /api/files/1/
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+
+file: <attach a new PDF or JPG file>
+
+Response:
+{
+    "id": 1,
+    "file": "/media/customer_documents/new_invoice.pdf",
+    "uploaded_at": "2025-08-30T12:05:00Z"
+}
+
+#### Example: Download/View a File
+GET /api/files/1/
+Authorization: Bearer <access_token>
+
+Response: (file stream, e.g. PDF, JPG, etc)
+
+#### Example: Delete a File
+DELETE /api/files/1/
+Authorization: Bearer <access_token>
+
+#### Error Cases
+- 400: Invalid file type or size
+- 404: File not found
+- 401: Unauthorized
+
+#### Associating Files with Other Objects
+- When creating/updating Customers, Invoices, or Bills, use the `file_ids` field to associate uploaded files:
+
+    "file_ids": [1, 2]
+
+#### UI Notes
+- Always upload the file first, then use the returned ID to associate with other objects.
 ## 6. Notes
 - All endpoints require JWT authentication.
 - Only admin can create users via Django admin.
