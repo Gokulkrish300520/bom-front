@@ -13,6 +13,8 @@ from .views import (
     InventoryAdjustmentViewSet,
     BillViewSet,
     CustomerDocumentViewSet,
+    ProfitAndLossReportView,
+    BalanceSheetReportView,
 )
 
 
@@ -43,4 +45,6 @@ router.register(r"files", CustomerDocumentViewSet, basename="file")
 
 urlpatterns = [
     path("", include(router.urls)),
+    path("reports/profit-and-loss/", ProfitAndLossReportView.as_view(), name="profit-and-loss-report"),
+    path("reports/balance-sheet/", BalanceSheetReportView.as_view(), name="balance-sheet-report"),
 ]

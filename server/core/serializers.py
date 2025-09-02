@@ -20,6 +20,12 @@ from .models import (
 
 
 class CustomerDocumentSerializer(serializers.ModelSerializer):
+
+    def validate_file(self, value):
+        max_size = 10 * 1024 * 1024  # 10MB
+        if value.size > max_size:
+            raise serializers.ValidationError("File size must be under 10MB.")
+        return value
     """
     Serializer for CustomerDocument model, handles file upload and metadata.
     """

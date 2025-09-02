@@ -890,6 +890,136 @@ Authorization: Bearer <access_token>
 
 #### UI Notes
 - Always upload the file first, then use the returned ID to associate with other objects.
-## 6. Notes
-- All endpoints require JWT authentication.
-- Only admin can create users via Django admin.
+
+### Profit and Loss Report
+- GET /api/reports/profit-and-loss/?time=This%20Month|Last%20Month|This%20Year&basis=Accrual|Cash&compare_with=None|Last%20Month|Last%20Year
+- Returns a real-time Profit and Loss report for the specified period, basis, and optional comparison.
+- Requires authentication (JWT access token).
+
+#### Query Parameters
+- time: string (This Month, Last Month, This Year; default: This Month)
+- basis: string (Accrual or Cash; default: Accrual)
+- compare_with: string (None, Last Month, Last Year; default: None)
+- customer_id: integer (optional)
+- summary_only: boolean (optional, default: false). If true, omits invoice_breakdown and bill_breakdown for faster summary-only response.
+
+#### Output Fields (Updated)
+- operating_income: Total sales/invoice amount for the period
+- cost_of_goods_sold: Total bill amount (COGS) for the period
+- gross_profit: operating_income - cost_of_goods_sold
+- operating_expense: (currently 0, can be split from bills in future)
+- operating_profit: gross_profit - operating_expense
+- non_operating_income: (currently 0)
+- non_operating_expense: (currently 0)
+- net_profit_loss: operating_profit + non_operating_income - non_operating_expense
+- payments_received: Total payments received for the period
+- invoice_breakdown: List of invoices in the period
+- bill_breakdown: List of bills in the period
+
+#### Sample Output
+{
+  "period": "This Month",
+  "basis": "Accrual",
+  "start_date": "2025-08-01",
+  "end_date": "2025-08-31",
+  "report": {
+    "operating_income": 15000.0,
+    "cost_of_goods_sold": 8000.0,
+    "gross_profit": 7000.0,
+    "operating_expense": 0.0,
+    "operating_profit": 7000.0,
+    "non_operating_income": 0.0,
+    "non_operating_expense": 0.0,
+    "net_profit_loss": 7000.0,
+    "payments_received": 12000.0,
+    "invoice_breakdown": [ ... ],
+    "bill_breakdown": [ ... ]
+  },
+  "compare_with": "Last Month",
+  "compare_report": {
+    ...same structure as report...
+  }
+}
+
+#### Response
+{
+  "period": "This Month",
+  "basis": "Accrual",
+  "start_date": "2025-08-01",
+  "end_date": "2025-08-31",
+  "report": {
+    "income": 15000.0,
+    "payments_received": 12000.0,
+    "expenses": 8000.0,
+    "profit": 7000.0,
+    "loss": 0.0,
+    "invoice_breakdown": [ ... ],
+    "bill_breakdown": [ ... ]
+  },
+  "compare_with": "Last Month",
+  "compare_report": {
+    ...same structure as report...
+  }
+}
+
+#### Error Cases
+- 400: Invalid time parameter
+- 401: Unauthorized
+
+#### Notes
+- The report is always up to date with all CRUD changes to Invoices, Bills, and Payments.
+
+## 6. Background Pre-Aggregation (Performance Optimization)
+
+### DailySummary Table
+- The system maintains a `DailySummary` table with daily totals for invoices, bills, and payments.
+- This is updated automatically every 24 hours using a background task (django-background-tasks).
+- You can also trigger pre-aggregation manually from the Django admin (DailySummary > Actions > Run daily pre-aggregation now).
+
+### How it works
+- On Django startup, the background task is scheduled if not already present.
+- The task runs every 24 hours and updates/creates daily summary rows for all dates in the data.
+- You can also run the task manually from the admin or by calling `python3 manage.py process_tasks` in a terminal.
+
+### Monitoring
+- The `DailySummary` table is visible in the Django admin for review and manual triggering.
+- The background task queue can be monitored with `python3 manage.py process_tasks` (should be running in production).
+
+### Dependencies
+- Uses the `django-background-tasks` package for scheduling and running background jobs.
+
+## 7. Admin Integration
+- The Django admin interface is used for managing users, viewing reports, and triggering background tasks.
+- Admin URL: http://localhost:8000/admin/
+
+### DailySummary Admin
+- Accessible under "Reports" > "Daily Summaries".
+- View, search, and filter daily summary records.
+- Manually trigger pre-aggregation from the admin actions.
+
+### User Management
+- Admins can create, update, and delete users.
+- Passwords are hashed; use Django's password management commands for resets.
+
+### Permissions
+- Admins have full access; other users have limited access based on assigned permissions.
+- Customize permissions in the Django admin under "Users" and "Groups".
+
+### Custom Admin Actions
+- Custom actions can be added for bulk updates or other batch operations.
+- Example: Marking multiple invoices as sent.
+
+### Logging and Monitoring
+- Admins can view logs of background tasks, including any errors or retries.
+- Monitor system performance and task durations for optimization.
+
+### Security
+- Admin interface is protected by Django's authentication and permission system.
+- Use strong passwords and restrict admin access to trusted IPs or networks.
+
+### Customization
+- The admin interface can be customized with custom views, filters, and actions.
+- Example: A custom dashboard widget for quick stats.
+
+### Documentation
+- Refer to Django's admin documentation for detailed customization and usage instructions.

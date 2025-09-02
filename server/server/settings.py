@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "core.apps.CoreConfig",
     "rest_framework",
+    "background_task",
 ]
 
 MIDDLEWARE = [

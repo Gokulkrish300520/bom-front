@@ -2,6 +2,23 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 
+# ...existing code...
+
+# DailySummary model for pre-aggregated daily totals
+class DailySummary(models.Model):
+    date = models.DateField(db_index=True, unique=True)
+    invoices_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    bills_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    payments_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Summary for {self.date}"
+from django.db import models
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
+
 
 class BillItem(models.Model):
     """
@@ -67,7 +84,7 @@ class Bill(models.Model):
         choices=STATUS_CHOICES,
         default="DRAFT",
     )
-    bill_date = models.DateField()
+    bill_date = models.DateField(db_index=True)
     due_date = models.DateField()
     notes = models.TextField(
         blank=True,
@@ -363,7 +380,7 @@ class Payment(models.Model):
         "Invoice", related_name="payments", on_delete=models.CASCADE
     )
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    date = models.DateField()
+    date = models.DateField(db_index=True)
     method = models.CharField(max_length=50, blank=True)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -620,10 +637,11 @@ class Invoice(models.Model):
     )
     invoice_number = models.CharField(max_length=50, unique=True)
     order_number = models.CharField(max_length=50, blank=True)
-    invoice_date = models.DateField()
+    invoice_date = models.DateField(db_index=True)
     customer_notes = models.TextField(blank=True)
     terms_and_conditions = models.TextField(blank=True)
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2,
+                                       default=0)
     files = models.ManyToManyField(
         "CustomerDocument",
         blank=True,

@@ -583,3 +583,75 @@ Content-Type: application/json
 # Delete inventory adjustment
 DELETE http://localhost:8000/api/inventory-adjustments/1/
 Authorization: Bearer <access_token>
+
+### PROFIT AND LOSS REPORT (UPDATED)
+
+# Get Profit and Loss report for this month (compare with last month)
+GET http://localhost:8000/api/reports/profit-and-loss/?time=This%20Month&basis=Accrual&compare_with=Last%20Month
+Authorization: Bearer <access_token>
+
+####
+# Get Profit and Loss report for this year (no comparison)
+GET http://localhost:8000/api/reports/profit-and-loss/?time=This%20Year&basis=Cash&compare_with=None
+Authorization: Bearer <access_token>
+
+#### Sample Output
+{
+  "period": "This Month",
+  "basis": "Accrual",
+  "start_date": "2025-08-01",
+  "end_date": "2025-08-31",
+  "report": {
+    "operating_income": 15000.0,
+    "cost_of_goods_sold": 8000.0,
+    "gross_profit": 7000.0,
+    "operating_expense": 0.0,
+    "operating_profit": 7000.0,
+    "non_operating_income": 0.0,
+    "non_operating_expense": 0.0,
+    "net_profit_loss": 7000.0,
+    "payments_received": 12000.0,
+    "invoice_breakdown": [ ... ],
+    "bill_breakdown": [ ... ]
+  },
+  "compare_with": "Last Month",
+  "compare_report": {
+    ...same structure as report...
+  }
+}
+
+# Get Profit and Loss report for this month (summary only)
+GET http://localhost:8000/api/reports/profit-and-loss/?time=This%20Month&basis=Accrual&summary_only=true
+Authorization: Bearer <access_token>
+
+#### Sample Output (summary_only=true)
+{
+  "period": "This Month",
+  "basis": "Accrual",
+  "start_date": "2025-08-01",
+  "end_date": "2025-08-31",
+  "report": {
+    "operating_income": 15000.0,
+    "cost_of_goods_sold": 8000.0,
+    "gross_profit": 7000.0,
+    "operating_expense": 0.0,
+    "operating_profit": 7000.0,
+    "non_operating_income": 0.0,
+    "non_operating_expense": 0.0,
+    "net_profit_loss": 7000.0,
+    "payments_received": 12000.0,
+    "invoice_breakdown": null,
+    "bill_breakdown": null
+  }
+}
+
+### BALANCE SHEET REPORT
+
+# Get Balance Sheet for today (accrual basis)
+GET http://localhost:8000/api/reports/balance-sheet/?time=Today&basis=Accrual
+Authorization: Bearer <access_token>
+
+####
+# Get Balance Sheet for this month (cash basis)
+GET http://localhost:8000/api/reports/balance-sheet/?time=This%20Month&basis=Cash
+Authorization: Bearer <access_token>
