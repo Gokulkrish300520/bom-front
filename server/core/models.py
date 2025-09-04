@@ -2,8 +2,6 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 
-# ...existing code...
-
 # DailySummary model for pre-aggregated daily totals
 class DailySummary(models.Model):
     date = models.DateField(db_index=True, unique=True)

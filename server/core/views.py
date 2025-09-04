@@ -195,7 +195,7 @@ class BillViewSet(viewsets.ModelViewSet):
 class CustomerViewSet(viewsets.ModelViewSet):
     """ViewSet for managing Customers."""
 
-    queryset = Customer.objects.prefetch_related("customerdocument_set", "contactperson_set").order_by("-created_at")
+    queryset = Customer.objects.prefetch_related("documents", "contact_persons").order_by("-created_at")
     serializer_class = CustomerSerializer
     permission_classes = [permissions.IsAuthenticated]
 
