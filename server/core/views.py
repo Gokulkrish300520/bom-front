@@ -243,7 +243,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
 class ProformaInvoiceViewSet(viewsets.ModelViewSet):
     """ViewSet for managing Proforma Invoices."""
 
-    queryset = ProformaInvoice.objects.select_related("customer").prefetch_related("proformainvoiceitem_set").order_by("-created_at")
+    queryset = ProformaInvoice.objects.select_related("customer").prefetch_related("item_details", "proforma_invoice_files").order_by("-created_at")
     serializer_class = ProformaInvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
 

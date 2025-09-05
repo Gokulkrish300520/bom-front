@@ -483,6 +483,10 @@ class QuoteItem(DocumentItemBase):
 
 
 class ProformaInvoice(models.Model):
+    proforma_invoice_files = models.ManyToManyField(
+        "CustomerDocument",
+        blank=True,
+    )
     TAX_TYPE_CHOICES = [
         ("TDS", "TDS"),
         ("TCS", "TCS"),

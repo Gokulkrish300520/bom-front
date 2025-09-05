@@ -414,7 +414,8 @@ GET http://localhost:8000/api/proforma-invoices/
 Authorization: Bearer <access_token>
 
 ####
-# Create proforma invoice (all fields, no items)
+
+# Create proforma invoice with attached files
 POST http://localhost:8000/api/proforma-invoices/
 Authorization: Bearer <access_token>
 Content-Type: application/json
@@ -435,7 +436,8 @@ Content-Type: application/json
   "tax_type": "TDS",
   "tax_percentage": "12",
   "adjustment": "-500.00",
-  "total_amount": "17500.00"
+  "total_amount": "17500.00",
+  "proforma_invoice_file_ids": [1, 2, 3]
 }
 
 ####

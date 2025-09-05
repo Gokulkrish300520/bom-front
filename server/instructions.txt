@@ -1026,7 +1026,8 @@ Authorization: Bearer <access_token>
 
 ## Quotes Endpoint: File Attachment Support
 
-Quotes now support attaching files via the quote_file_ids field. This field accepts an array of file IDs from the file upload endpoint (/api/files/).
+
+Quotes and Proforma Invoices now support attaching files via the quote_file_ids and proforma_invoice_file_ids fields, respectively. These fields accept an array of file IDs from the file upload endpoint (/api/files/).
 
 ### Example: Create Quote with Files
 POST /api/quotes/
@@ -1034,13 +1035,27 @@ Content-Type: application/json
 Authorization: Bearer <access_token>
 
 {
-  "customer_id": 1,
-  "quote_number": "Q-2025-002",
-  "quote_date": "2025-09-04",
-  "expiry_date": "2025-09-10",
-  "item_details": [ ... ],
-  "quote_file_ids": [1, 2, 3]
+    "customer_id": 1,
+    "quote_number": "Q-2025-002",
+    "quote_date": "2025-09-04",
+    "expiry_date": "2025-09-10",
+    "item_details": [ ... ],
+    "quote_file_ids": [1, 2, 3]
+}
+
+### Example: Create Proforma Invoice with Files
+POST /api/proforma-invoices/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+    "customer_id": 1,
+    "invoice_number": "P-2025-001",
+    "invoice_date": "2025-08-30",
+    "expiry_date": "2025-09-15",
+    "item_details": [ ... ],
+    "proforma_invoice_file_ids": [1, 2, 3]
 }
 
 - The files must be uploaded first using the file upload endpoint.
-- Only the IDs are required; file objects are not returned in the quote response.
+- Only the IDs are required; file objects are not returned in the quote or proforma invoice response.

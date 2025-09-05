@@ -373,6 +373,12 @@ class ProformaInvoiceItemSerializer(serializers.ModelSerializer):
 
 
 class ProformaInvoiceSerializer(serializers.ModelSerializer):
+    proforma_invoice_file_ids = serializers.PrimaryKeyRelatedField(
+        queryset=CustomerDocument.objects.all(),
+        source="proforma_invoice_files",
+        many=True,
+        required=False,
+    )
     """
     Serializer for ProformaInvoice model, includes customer and item details.
     """
@@ -408,6 +414,7 @@ class ProformaInvoiceSerializer(serializers.ModelSerializer):
             "adjustment",
             "total_amount",
             "status",
+            "proforma_invoice_file_ids",
             "created_at",
         ]
         read_only_fields = ["id", "created_at", "customer", "item_details"]
