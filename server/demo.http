@@ -386,6 +386,27 @@ Content-Type: application/json
   "amount": "10000.00"
 }
 
+### QUOTES WITH FILES
+
+# Create a quote with attached files
+POST http://localhost:8000/api/quotes/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "customer_id": 1,
+  "quote_number": "Q-2025-002",
+  "quote_date": "2025-09-04",
+  "expiry_date": "2025-09-10",
+  "item_details": [ ... ],
+  "quote_file_ids": [1, 2, 3]
+}
+
+# Retrieve a quote and see attached file IDs
+GET http://localhost:8000/api/quotes/1/
+Authorization: Bearer <access_token>
+
+
 ### PROFORMA INVOICES CRUD
 
 # List proforma invoices

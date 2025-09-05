@@ -235,7 +235,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 class QuoteViewSet(viewsets.ModelViewSet):
     """ViewSet for managing Quotes."""
 
-    queryset = Quote.objects.select_related("customer").prefetch_related("quoteitem_set").order_by("-created_at")
+    queryset = Quote.objects.select_related("customer").prefetch_related("item_details", "quote_files").order_by("-created_at")
     serializer_class = QuoteSerializer
     permission_classes = [permissions.IsAuthenticated]
 

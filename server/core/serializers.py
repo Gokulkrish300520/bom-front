@@ -320,6 +320,12 @@ class QuoteSerializer(serializers.ModelSerializer):
         write_only=True,
     )
     item_details = QuoteItemSerializer(many=True, read_only=True)
+    quote_file_ids = serializers.PrimaryKeyRelatedField(
+        queryset=CustomerDocument.objects.all(),
+        source="quote_files",
+        many=True,
+        required=False,
+    )
 
     class Meta:
         model = Quote
@@ -344,6 +350,7 @@ class QuoteSerializer(serializers.ModelSerializer):
             "adjustment",
             "total_amount",
             "status",
+            "quote_file_ids",
             "created_at",
         ]
         read_only_fields = ["id", "created_at", "customer", "item_details"]
