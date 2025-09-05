@@ -251,7 +251,7 @@ class ProformaInvoiceViewSet(viewsets.ModelViewSet):
 class DeliveryChallanViewSet(viewsets.ModelViewSet):
     """ViewSet for managing Delivery Challans."""
 
-    queryset = DeliveryChallan.objects.select_related("customer").prefetch_related("deliverychallanitem_set").order_by("-created_at")
+    queryset = DeliveryChallan.objects.select_related("customer").prefetch_related("delivery_challan_files").order_by("-created_at")
     serializer_class = DeliveryChallanSerializer
     permission_classes = [permissions.IsAuthenticated]
 

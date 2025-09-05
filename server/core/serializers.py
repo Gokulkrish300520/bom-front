@@ -429,6 +429,14 @@ class ProformaInvoiceSerializer(serializers.ModelSerializer):
 
 
 class DeliveryChallanSerializer(serializers.ModelSerializer):
+    delivery_challan_file_ids = serializers.PrimaryKeyRelatedField(
+        queryset=CustomerDocument.objects.all(),
+        source="delivery_challan_files",
+        many=True,
+        required=False,
+    )
+    delivery_challan_files = CustomerDocumentSerializer(many=True, read_only=True)
+    # No need for a separate read method; PrimaryKeyRelatedField will handle both read and write
     customer = CustomerSerializer(read_only=True)
     customer_id = serializers.PrimaryKeyRelatedField(
         queryset=Customer.objects.all(),
@@ -448,10 +456,18 @@ class DeliveryChallanSerializer(serializers.ModelSerializer):
             "date",
             "challan_type",
             "item_details",
+            "delivery_challan_files",
+            "delivery_challan_file_ids",
             "total_amount",
             "created_at",
         ]
-        read_only_fields = ["id", "created_at", "customer", "item_details"]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "customer",
+            "item_details",
+            "delivery_challan_files",
+        ]
 
 
 class InventoryAdjustmentSerializer(serializers.ModelSerializer):

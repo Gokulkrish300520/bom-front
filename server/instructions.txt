@@ -645,6 +645,8 @@ Response:
 - date: date (YYYY-MM-DD)
 - challan_type: "liquid_gas", "job_work", "approval", "others" (enum)
 - item_details: array of DeliveryChallanItem objects (see below)
+- delivery_challan_file_ids: array of CustomerDocument IDs (for file attachment; read/write)
+- delivery_challan_files: array of CustomerDocument objects (read-only, see CustomerDocument Fields)
 - total_amount: decimal
 - created_at: datetime
 
@@ -667,6 +669,7 @@ Authorization: Bearer <access_token>
     "reference_number": "REF-789",
     "date": "2025-08-30",
     "challan_type": "liquid_gas",
+    "delivery_challan_file_ids": [10, 11],
     "total_amount": "20000.00"
 }
 
@@ -684,6 +687,11 @@ Response:
     "challan_type": "liquid_gas",
     "item_details": [
         {"id": 1, "item": { ... }, "quantity": 5, "rate": "4000.00", "amount": "20000.00"}
+    ],
+    "delivery_challan_file_ids": [10, 11],
+    "delivery_challan_files": [
+        {"id": 10, "file": "https://.../file10.pdf", "uploaded_at": "..."},
+        {"id": 11, "file": "https://.../file11.pdf", "uploaded_at": "..."}
     ],
     "total_amount": "20000.00",
     "created_at": "2025-08-30T10:00:00Z"

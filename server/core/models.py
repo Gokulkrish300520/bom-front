@@ -574,6 +574,11 @@ class DeliveryChallanItem(DocumentItemBase):
 
 
 class DeliveryChallan(models.Model):
+    delivery_challan_files = models.ManyToManyField(
+        "CustomerDocument",
+        related_name="deliverychallans_programmatic",
+        blank=True,
+    )
     CHALLAN_TYPE_CHOICES = [
         ("liquid_gas", "Supply of Liquid Gas"),
         ("job_work", "Job work"),

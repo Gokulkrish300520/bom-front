@@ -1,13 +1,70 @@
-from .models import Vendor, Item, Invoice, Bill, ContactPerson, DeliveryChallan, ProformaInvoice, InventoryAdjustment
-import io
-from django.core.files.uploadedfile import SimpleUploadedFile
+
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase, APIRequestFactory, force_authenticate
 from django.core.exceptions import ValidationError
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from django.contrib.auth import get_user_model
-from .models import Customer, CustomerDocument, Quote, DailySummary
+from .models import (
+    Vendor, Item, Invoice, Bill, ContactPerson, DeliveryChallan, ProformaInvoice, InventoryAdjustment,
+    Customer, CustomerDocument, Quote, DailySummary
+)
+import io
+from django.core.files.uploadedfile import SimpleUploadedFile
+
+
+class DeliveryChallanFileAttachmentTestCase(APITestCase):
+    """Test attaching files to DeliveryChallan via API and retrieving them."""
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="challanfileuser", password="challanfilepass"
+        )
+        self.client.force_authenticate(user=self.user)
+        self.customer = Customer.objects.create(
+            display_name="Test Customer Challan", email="testchallan@example.com"
+        )
+        # Create files
+        self.file1 = CustomerDocument.objects.create(file="file1.pdf")
+        self.file2 = CustomerDocument.objects.create(file="file2.pdf")
+        self.file3 = CustomerDocument.objects.create(file="file3.pdf")
+        self.challan_data = {
+            "customer_id": self.customer.id,
+            "challan_number": "DC-2025-TEST",
+            "date": "2025-09-04",
+            "challan_type": "others",
+            "item_details": [],
+            "delivery_challan_file_ids": [self.file1.id, self.file2.id, self.file3.id],
+        }
+
+    def test_create_challan_with_files(self):
+        url = reverse("deliverychallan-list")
+        response = self.client.post(url, self.challan_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("delivery_challan_file_ids", response.data)
+        self.assertEqual(set(response.data["delivery_challan_file_ids"]), {self.file1.id, self.file2.id, self.file3.id})
+
+    def test_retrieve_challan_with_files(self):
+        url = reverse("deliverychallan-list")
+        create_resp = self.client.post(url, self.challan_data, format="json")
+        challan_id = create_resp.data["id"]
+        get_url = reverse("deliverychallan-detail", args=[challan_id])
+        get_resp = self.client.get(get_url)
+        self.assertEqual(get_resp.status_code, status.HTTP_200_OK)
+        self.assertIn("delivery_challan_file_ids", get_resp.data)
+        self.assertEqual(set(get_resp.data["delivery_challan_file_ids"]), {self.file1.id, self.file2.id, self.file3.id})
+
+    def test_create_challan_invalid_customer(self):
+        url = reverse("deliverychallan-list")
+        data = {"customer_id": 9999, "challan_number": "DC-ERR", "date": "2025-09-04", "challan_type": "others"}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 400)
+
+    def test_create_challan_unauthenticated(self):
+        self.client.logout()
+        url = reverse("deliverychallan-list")
+        data = {"customer_id": self.customer.id, "challan_number": "DC-ERR2", "date": "2025-09-04", "challan_type": "others"}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 401)
 
 
 class InvoiceFileAttachmentTestCase(APITestCase):

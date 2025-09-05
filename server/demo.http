@@ -482,7 +482,7 @@ GET http://localhost:8000/api/delivery-challans/
 Authorization: Bearer <access_token>
 
 ####
-# Create delivery challan (all fields)
+# Create delivery challan (all fields, with file association)
 POST http://localhost:8000/api/delivery-challans/
 Authorization: Bearer <access_token>
 Content-Type: application/json
@@ -493,22 +493,28 @@ Content-Type: application/json
   "reference_number": "REF-789",
   "date": "2025-08-30",
   "challan_type": "liquid_gas",
+  "delivery_challan_file_ids": [10, 11],
   "total_amount": "20000.00"
 }
 
 ####
-# Retrieve delivery challan (with nested item details)
+
+# Retrieve delivery challan (with nested item details and file association)
 GET http://localhost:8000/api/delivery-challans/1/
 Authorization: Bearer <access_token>
+# Response will include:
+#   "delivery_challan_file_ids": [10, 11],
+#   "delivery_challan_files": [ {"id": 10, "file": "..."}, ... ]
 
 ####
-# Update delivery challan (partial or full)
+# Update delivery challan (partial or full, including file association)
 PUT http://localhost:8000/api/delivery-challans/1/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
   "challan_type": "job_work",
+  "delivery_challan_file_ids": [10],
   "total_amount": "21000.00"
 }
 
