@@ -7,7 +7,14 @@ import json
 from datetime import date, timedelta
 
 def get_periods_for_date(dt):
-    """Return all report periods (This Month, This Year, Today, Yesterday, Last Month, Last Year) that could include this date."""
+    """
+    Return all report periods (This Month, This Year, Today, Yesterday, Last Month, Last Year)
+    that could include this date.
+    Args:
+        dt (date): The date to check.
+    Returns:
+        list: List of tuples describing periods that include the date.
+    """
     periods = []
     today = date.today()
     if dt.year == today.year and dt.month == today.month:
@@ -28,29 +35,42 @@ def get_periods_for_date(dt):
     return periods
 
 def invalidate_report_cache_for_date(dt):
-    # Invalidate all cache keys that could include this date
-    # For simplicity, clear all report: keys (could be optimized)
-    # If using a cache backend that supports it, use cache.delete_pattern('report:*')
-    # Otherwise, just clear the whole cache (safe if only used for reports)
+    """
+    Invalidate all report cache keys that could include this date.
+    For simplicity, clears all 'report:*' keys (could be optimized).
+    If using a cache backend that supports it, uses cache.delete_pattern('report:*').
+    Otherwise, clears the whole cache (safe if only used for reports).
+    Args:
+        dt (date): The date for which to invalidate cache.
+    """
     try:
         cache.delete_pattern('report:*')
-    except Exception:
+    except AttributeError:
         cache.clear()
 
 @receiver(post_save, sender=Invoice)
 @receiver(post_delete, sender=Invoice)
 def invalidate_invoice_cache(sender, instance, **kwargs):
+    """
+    Signal handler to invalidate report cache when an Invoice is saved or deleted.
+    """
     if instance.invoice_date:
         invalidate_report_cache_for_date(instance.invoice_date)
 
 @receiver(post_save, sender=Bill)
 @receiver(post_delete, sender=Bill)
 def invalidate_bill_cache(sender, instance, **kwargs):
+    """
+    Signal handler to invalidate report cache when a Bill is saved or deleted.
+    """
     if instance.bill_date:
         invalidate_report_cache_for_date(instance.bill_date)
 
 @receiver(post_save, sender=Payment)
 @receiver(post_delete, sender=Payment)
 def invalidate_payment_cache(sender, instance, **kwargs):
+    """
+    Signal handler to invalidate report cache when a Payment is saved or deleted.
+    """
     if instance.date:
         invalidate_report_cache_for_date(instance.date)

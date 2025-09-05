@@ -1,16 +1,16 @@
-from django.core.cache import cache
-import hashlib
-import json
-
 from datetime import date, timedelta
+from django.core.cache import cache
+import calendar
+from django.db.models import Sum, Q
 from django.utils.timezone import now
+
 from rest_framework import viewsets, permissions, status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Sum, Q
 from rest_framework.decorators import api_view, permission_classes
+
 from .models import (
     CustomerDocument, Customer, Invoice, Vendor, Item, Payment, Quote,
     ProformaInvoice, DeliveryChallan, InventoryAdjustment, Bill,
@@ -203,7 +203,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 class InvoiceViewSet(viewsets.ModelViewSet):
     """ViewSet for managing Invoices."""
 
-    queryset = Invoice.objects.select_related("customer").prefetch_related("invoiceitem_set", "files").order_by("-created_at")
+    queryset = Invoice.objects.select_related("customer").prefetch_related("item_details", "files").order_by("-created_at")
     serializer_class = InvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -273,21 +273,14 @@ class ProfitAndLossReportView(APIView):
         Returns a Profit and Loss report for the given period, basis, and comparison.
         Query params:
           - time: "This Month", "Last Month", "This Year" (default: This Month)
-          - basis: "Accrual" or "Cash" (default: Accrual)
-          - compare_with: "None", "Last Month", "Last Year" (default: None)
-          - customer_id: optional
         """
-        from datetime import date, timedelta
-        import calendar
-
         today = date.today()
         time_param = request.query_params.get("time", "This Month")
         basis = request.query_params.get("basis", "Accrual")
         compare_with = request.query_params.get("compare_with", "None")
         customer_id = request.query_params.get("customer_id")
 
-        # Helper to get date range
-        def get_range(period):
+        def get_range(period, today):
             if period == "This Month":
                 start = today.replace(day=1)
                 end = today
@@ -305,47 +298,34 @@ class ProfitAndLossReportView(APIView):
                 return None, None
             return start, end
 
-        start_date, end_date = get_range(time_param)
+        start_date, end_date = get_range(time_param, today)
         if not start_date or not end_date:
             return Response({"error": "Invalid time parameter."}, status=400)
 
-        # Comparison range
         compare_data = None
         if compare_with and compare_with != "None":
-            compare_start, compare_end = get_range(compare_with)
+            compare_start, compare_end = get_range(compare_with, today)
         else:
             compare_start = compare_end = None
 
-        def get_report(start_date, end_date, summary_only=False):
+        def get_report(start_date, end_date, summary_only=False, customer_id=None):
             invoice_filter = Q(invoice_date__gte=start_date, invoice_date__lte=end_date)
             if customer_id:
                 invoice_filter &= Q(customer_id=customer_id)
             invoices = Invoice.objects.filter(invoice_filter)
             operating_income = invoices.aggregate(total=Sum("total_amount"))['total'] or 0
 
-            # Cost of Goods Sold (COGS): For now, treat all Bill total_amount as COGS
             bill_filter = Q(bill_date__gte=start_date, bill_date__lte=end_date)
             bills = Bill.objects.filter(bill_filter)
             cost_of_goods_sold = bills.aggregate(total=Sum("total_amount"))['total'] or 0
 
             gross_profit = operating_income - cost_of_goods_sold
-
-            # Operating Expense: Not tracked separately, set to 0 (can be split from bills if needed)
             operating_expense = 0
             operating_profit = gross_profit - operating_expense
-
-            # Non Operating Income/Expense: Not tracked, set to 0
             non_operating_income = 0
             non_operating_expense = 0
-
             net_profit_loss = operating_profit + non_operating_income - non_operating_expense
-
-            payments = Payment.objects.filter(
-                invoice__in=invoices,
-                date__gte=start_date,
-                date__lte=end_date,
-            )
-            payments_total = payments.aggregate(total=Sum("amount"))['total'] or 0
+            payments_total = Payment.objects.filter(date__gte=start_date, date__lte=end_date).aggregate(total=Sum("amount"))['total'] or 0
 
             if not summary_only:
                 invoice_breakdown = [
@@ -387,9 +367,9 @@ class ProfitAndLossReportView(APIView):
             }
 
         summary_only = request.query_params.get("summary_only", "false").lower() == "true"
-        main_data = get_report(start_date, end_date, summary_only=summary_only)
+        main_data = get_report(start_date, end_date, summary_only=summary_only, customer_id=customer_id)
         if compare_start and compare_end:
-            compare_data = get_report(compare_start, compare_end, summary_only=summary_only)
+            compare_data = get_report(compare_start, compare_end, summary_only=summary_only, customer_id=customer_id)
 
         response = {
             "period": time_param,

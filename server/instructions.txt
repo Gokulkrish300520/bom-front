@@ -357,34 +357,30 @@ Response:
 }
 
 ### Proforma Invoices
-- List:      GET    /api/proforma-invoices/
-- Create:    POST   /api/proforma-invoices/
-- Retrieve:  GET    /api/proforma-invoices/{id}/
-- Update:    PUT    /api/proforma-invoices/{id}/
-- Delete:    DELETE /api/proforma-invoices/{id}/
 
 #### ProformaInvoice Fields
-- customer: Customer object (from Customers endpoint)
-- invoice_number: string (required, unique)
-- reference_number: string (optional)
-- invoice_date: date (YYYY-MM-DD)
-- expiry_date: date (YYYY-MM-DD)
-- salesperson: string (optional)
-- project_name: string (optional)
-- subject: string (optional)
-- item_details: array of ProformaInvoiceItem objects (see below; structure is identical to QuoteItem)
-- customer_notes: string (optional)
-- terms_and_conditions: string (optional)
 - subtotal: decimal
 - discount: decimal (percentage, e.g. 10.00 for 10%)
-- tax_type: "TDS" or "TCS" (default: TDS)
-- tax_percentage: "0", "5", "12", "18", "28" (default: "0")
-- adjustment: decimal
-- total_amount: decimal
-- status: "draft", "sent", "accepted", "cancelled" (default: draft)
-- created_at: datetime
+### Invoice File Attachments
 
-#### (See above: QuoteItem / ProformaInvoiceItem Fields)
+There are two ways to attach files to an Invoice:
+
+1. **UI-uploaded files**: Use the `files` field (multipart/form-data) to upload new files directly when creating or updating an invoice.
+2. **Programmatic attachment**: Use the `invoice_file_ids` field to attach existing `CustomerDocument` files by their IDs. This does not upload new files, but links already-uploaded documents to the invoice.
+
+**Example: Attach files by ID (programmatic)**
+
+```
+POST /api/invoices/
+{
+    ...
+    "invoice_file_ids": [1, 2, 3]
+}
+```
+
+**Note:**
+- `files` and `invoice_file_ids` are distinct. `files` is for uploading new files; `invoice_file_ids` is for attaching existing files.
+- Both fields can be used independently or together as needed.
 
 #### Example: Create Proforma Invoice
 POST /api/proforma-invoices/

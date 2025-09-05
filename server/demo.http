@@ -198,20 +198,21 @@ GET http://localhost:8000/api/invoices/
 Authorization: Bearer <access_token>
 
 ####
-# Create invoice (all fields, with files)
+
+# Create invoice with attached files (programmatic, not UI-uploaded)
 POST http://localhost:8000/api/invoices/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
   "customer_id": 1,
-  "invoice_number": "INV-2025-001",
-  "order_number": "ORD-123",
-  "invoice_date": "2025-08-30",
+  "invoice_number": "INV-2025-002",
+  "order_number": "ORD-124",
+  "invoice_date": "2025-09-04",
   "customer_notes": "Thank you for your business.",
   "terms_and_conditions": "Payment due in 30 days.",
-  "total_amount": "15000.00",
-  "file_ids": [1, 2]
+  "total_amount": "15500.00",
+  "invoice_file_ids": [1, 2, 3]
 }
 
 ####

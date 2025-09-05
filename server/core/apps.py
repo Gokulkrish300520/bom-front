@@ -13,5 +13,5 @@ class CoreConfig(AppConfig):
             from background_task.models import Task
             if not Task.objects.filter(task_name="core.background_tasks.preaggregate_daily_summaries").exists():
                 preaggregate_daily_summaries(repeat=86400)  # every 24 hours
-        except Exception:
+        except (ImportError, AttributeError):
             pass

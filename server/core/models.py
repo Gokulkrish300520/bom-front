@@ -1,6 +1,8 @@
+
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
+
 
 # DailySummary model for pre-aggregated daily totals
 class DailySummary(models.Model):
@@ -13,9 +15,6 @@ class DailySummary(models.Model):
 
     def __str__(self):
         return f"Summary for {self.date}"
-from django.db import models
-from django.core.exceptions import ValidationError
-from django.core.validators import FileExtensionValidator
 
 
 class BillItem(models.Model):
@@ -636,6 +635,11 @@ class InvoiceItem(DocumentItemBase):
 
 
 class Invoice(models.Model):
+    invoice_files = models.ManyToManyField(
+        "CustomerDocument",
+        related_name="invoices_programmatic",
+        blank=True,
+    )
     customer = models.ForeignKey(
         Customer,
         related_name="invoices",
@@ -650,6 +654,12 @@ class Invoice(models.Model):
                                        default=0)
     files = models.ManyToManyField(
         "CustomerDocument",
+        related_name="invoices_ui",
+        blank=True,
+    )
+    invoice_files = models.ManyToManyField(
+        "CustomerDocument",
+        related_name="invoices_programmatic",
         blank=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)

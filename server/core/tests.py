@@ -8,9 +8,63 @@ from django.core.exceptions import ValidationError
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from django.contrib.auth import get_user_model
 from .models import Customer, CustomerDocument, Quote, DailySummary
+
+
+class InvoiceFileAttachmentTestCase(APITestCase):
+    """Test attaching files to Invoice via API and retrieving them."""
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="invoicefileuser", password="invoicefilepass"
+        )
+        self.client.force_authenticate(user=self.user)
+        self.customer = Customer.objects.create(
+            display_name="Test Customer Invoice", email="testinv@example.com"
+        )
+        # Create files
+        self.file1 = CustomerDocument.objects.create(file="file1.pdf")
+        self.file2 = CustomerDocument.objects.create(file="file2.pdf")
+        self.file3 = CustomerDocument.objects.create(file="file3.pdf")
+        self.inv_data = {
+            "customer_id": self.customer.id,
+            "invoice_number": "INV-2025-TEST",
+            "invoice_date": "2025-09-04",
+            "item_details": [],
+            "invoice_file_ids": [self.file1.id, self.file2.id, self.file3.id],
+        }
+
+    def test_create_invoice_with_files(self):
+        url = reverse("invoice-list")
+        response = self.client.post(url, self.inv_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("invoice_file_ids", response.data)
+        self.assertEqual(set(response.data["invoice_file_ids"]), {self.file1.id, self.file2.id, self.file3.id})
+
+    def test_retrieve_invoice_with_files(self):
+        url = reverse("invoice-list")
+        create_resp = self.client.post(url, self.inv_data, format="json")
+        inv_id = create_resp.data["id"]
+        get_url = reverse("invoice-detail", args=[inv_id])
+        get_resp = self.client.get(get_url)
+        self.assertEqual(get_resp.status_code, status.HTTP_200_OK)
+        self.assertIn("invoice_file_ids", get_resp.data)
+        self.assertEqual(set(get_resp.data["invoice_file_ids"]), {self.file1.id, self.file2.id, self.file3.id})
+
+    def test_create_invoice_invalid_customer(self):
+        url = reverse("invoice-list")
+        data = {"customer_id": 9999, "invoice_number": "INV-ERR", "invoice_date": "2025-09-04"}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 400)
+
+    def test_create_invoice_unauthenticated(self):
+        self.client.logout()
+        url = reverse("invoice-list")
+        data = {"customer_id": self.customer.id, "invoice_number": "INV-ERR2", "invoice_date": "2025-09-04"}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 401)
 from .serializers import CustomerDocumentSerializer
 
 class ReportAndFileViewCoverageTestCase(APITestCase):
+    """Test Balance Sheet report and file view coverage for API endpoints."""
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="testuser", password="testpass")
         self.client.force_authenticate(user=self.user)
@@ -29,6 +83,7 @@ class ReportAndFileViewCoverageTestCase(APITestCase):
         self.assertIn("assets", resp.data)
 
 class ModelStrCoverageTestCase(APITestCase):
+    """Test __str__ methods for all major models for coverage and correctness."""
     def setUp(self):
         self.vendor = Vendor.objects.create(name="Vendor1", email="v1@example.com")
         self.item = Item.objects.create(name="Item1", description="desc", price=10, sku="SKU1")
@@ -64,9 +119,9 @@ class ModelStrCoverageTestCase(APITestCase):
     def test_inventoryadjustment_str(self):
         self.assertIn("ADJ1", str(self.ia))
 
-# The following tests were previously misplaced or duplicated. They should be inside a dedicated test class for file upload/update:
 
 class CustomerDocumentFileTests(APITestCase):
+    """Test file upload, update, and validation for CustomerDocument API endpoints."""
     def setUp(self):
         import tempfile
         from django.core.files import File
@@ -84,7 +139,7 @@ class CustomerDocumentFileTests(APITestCase):
         import os
         try:
             os.unlink(self.tempfile.name)
-        except Exception:
+        except OSError:
             pass
 
     def test_customer_document_upload_too_large(self):
@@ -121,6 +176,7 @@ class CustomerDocumentFileTests(APITestCase):
         self.assertIn("Content-Disposition", resp)
 
 class QuoteFileAttachmentTestCase(APITestCase):
+    """Test attaching files to Quote via API and retrieving them."""
     def setUp(self):
         self.user = get_user_model().objects.create_user(
             username="quotefileuser", password="quotefilepass"
@@ -173,6 +229,7 @@ class QuoteFileAttachmentTestCase(APITestCase):
         self.assertEqual(response.status_code, 401)
 
 class CoverageBoostTestCase(APITestCase):
+    """Test additional model and serializer coverage for edge cases and validation."""
     def setUp(self):
         self.customer = Customer.objects.create(display_name="Coverage Customer", email="cov@example.com")
         self.file = CustomerDocument.objects.create(file="file.pdf")
@@ -203,6 +260,7 @@ class CoverageBoostTestCase(APITestCase):
         self.assertIn("2025-09-04", str(summary))
 
 class ProformaInvoiceFileAttachmentTestCase(APITestCase):
+    """Test attaching files to ProformaInvoice via API and retrieving them."""
     def setUp(self):
         self.user = get_user_model().objects.create_user(
             username="proformafileuser", password="proformafilepass"

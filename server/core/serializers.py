@@ -223,6 +223,13 @@ class CustomerSerializer(serializers.ModelSerializer):
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
+    invoice_file_ids = serializers.PrimaryKeyRelatedField(
+        queryset=CustomerDocument.objects.all(),
+        source="invoice_files",
+        many=True,
+        required=False,
+        write_only=False,
+    )
     """Serializer for Invoice model, includes customer, items, and files."""
 
     customer = CustomerSerializer(read_only=True)
@@ -254,12 +261,13 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "customer_notes",
             "terms_and_conditions",
             "total_amount",
-            "files",
-            "file_ids",
+            "files",  # files uploaded from the UI
+            "file_ids",  # legacy/optional
+            "invoice_file_ids",  # new field for programmatic file association
             "created_at",
         ]
         read_only_fields = [
-            "id", "created_at", "customer", "item_details", "files"
+            "id", "created_at", "customer", "item_details", "files", "invoice_file_ids"
         ]
 
 
@@ -448,4 +456,4 @@ class DeliveryChallanSerializer(serializers.ModelSerializer):
 
 class InventoryAdjustmentSerializer(serializers.ModelSerializer):
 
-    pass
+    """Serializer for InventoryAdjustment model."""
