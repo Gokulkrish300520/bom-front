@@ -109,13 +109,17 @@ WSGI_APPLICATION = "server.wsgi.application"
 
 
 # Use DATABASE_URL if set, else fallback to sqlite3
+# Database
+# Use DATABASE_URL if set, else fallback to sqlite3
 DATABASES = {
     "default": dj_database_url.config(
-        default=os.getenv("DATABASE_URL"),  # Use .env first
+        default=os.environ.get("DATABASE_URL"),  # System env var, not .env
         conn_max_age=600,
-        ssl_require=os.getenv("RAILWAY_ENV") == "production",
+        ssl_require=os.environ.get("RAILWAY_ENV") == "production",
     )
 }
+print("DATABASE_URL:", os.environ.get("DATABASE_URL"))
+
 
 
 # Password validation
