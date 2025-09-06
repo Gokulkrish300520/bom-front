@@ -1,4 +1,18 @@
 from django.apps import AppConfig
+from django.db.models.signals import post_migrate
+from django.dispatch import receiver
+
+
+def schedule_task(sender, **kwargs):
+    from core.background_tasks import preaggregate_daily_summaries
+    from background_task.models import Task
+    try:
+        if not Task.objects.filter(
+            task_name="core.background_tasks.preaggregate_daily_summaries"
+        ).exists():
+            preaggregate_daily_summaries(repeat=86400)  # every 24 hours
+    except Exception:
+        pass
 
 
 class CoreConfig(AppConfig):
@@ -7,11 +21,4 @@ class CoreConfig(AppConfig):
 
     def ready(self):
         import core.signals  # noqa
-        from core.background_tasks import preaggregate_daily_summaries
-        # Schedule the background task to run daily if not already scheduled
-        try:
-            from background_task.models import Task
-            if not Task.objects.filter(task_name="core.background_tasks.preaggregate_daily_summaries").exists():
-                preaggregate_daily_summaries(repeat=86400)  # every 24 hours
-        except (ImportError, AttributeError):
-            pass
+        post_migrate.connect(schedule_task, sender=self)
