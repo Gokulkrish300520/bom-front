@@ -41,7 +41,7 @@ ALLOWED_HOSTS = [
     'glonix-frontend-indol.vercel.app',
     'bom-front.vercel.app',
     'bpm-production.up.railway.app',
-
+    'bom-front-production.up.railway.app',
 ]
 
 
@@ -79,7 +79,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",
     "https://bpm-production.up.railway.app",
     "https://glonix-frontend-indol.vercel.app",
-    "https://bom-front.vercel.app"
+    "https://bom-front.vercel.app",
+    "https://bom-front-production.up.railway.app",
     # Add other addresses if needed
 ]
 
@@ -163,6 +164,7 @@ USE_TZ = True
 CSRF_TRUSTED_ORIGINS = [
     "https://bpm-production.up.railway.app",
     "https://glonix-frontend-indol.vercel.app",
+    "https://bom-front-production.up.railway.app",
 ]
 
 # Static files (CSS, JavaScript, Images)
