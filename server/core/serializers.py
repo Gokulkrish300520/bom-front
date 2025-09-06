@@ -175,7 +175,7 @@ class CustomerSerializer(serializers.ModelSerializer):
     """
 
     documents = CustomerDocumentSerializer(many=True, read_only=True)
-    contact_persons = ContactPersonSerializer(many=True, read_only=True)
+    contact_persons = ContactPersonSerializer(many=True,  required=False)
 
     class Meta:
         model = Customer
@@ -219,7 +219,25 @@ class CustomerSerializer(serializers.ModelSerializer):
             "remarks",
             "created_at",
         ]
-        read_only_fields = ["id", "created_at", "documents", "contact_persons"]
+        read_only_fields = ["id", "created_at", "documents"]
+
+    def create(self, validated_data):
+        contact_persons_data = validated_data.pop("contact_persons", [])
+        customer = super().create(validated_data)
+        for cp_data in contact_persons_data:
+            ContactPerson.objects.create(customer=customer, **cp_data)
+        return customer
+
+    def update(self, instance, validated_data):
+        contact_persons_data = validated_data.pop("contact_persons", None)
+        instance = super().update(instance, validated_data)
+        if contact_persons_data is not None:
+            # Remove existing contact persons
+            instance.contact_persons.all().delete()
+            # Add new contact persons
+            for cp_data in contact_persons_data:
+                ContactPerson.objects.create(customer=instance, **cp_data)
+        return instance
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
