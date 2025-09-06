@@ -10,33 +10,39 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-
+from pathlib import Path
 import os
+import dj_database_url
+from dotenv import load_dotenv
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-rg07c)&)br4t_34gpt4mp#dmt2_x@vrsi)69_^a&zj8!884&cp"  # fallback for dev only
-)
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "your-fallback-insecure-key")
+print(f"DJANGO SECRET KEY: {SECRET_KEY}")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 
 # Use comma-separated env var for allowed hosts, fallback to localhost/dev IPs
-ALLOWED_HOSTS = os.environ.get(
-    "DJANGO_ALLOWED_HOSTS",
-    "localhost,127.0.0.1,192.168.0.22,172.20.10.6"
-).split(",")
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'bpm-production.up.railway.app',
+    'glonix-frontend-indol.vercel.app',
+    'bom-front.vercel.app',
+    'bpm-production.up.railway.app',
+
+]
 
 
 # Application definition
@@ -55,19 +61,25 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "https://bpm-production.up.railway.app",
+    "https://glonix-frontend-indol.vercel.app",
+    "https://bom-front.vercel.app"
     # Add other addresses if needed
 ]
 
@@ -77,7 +89,7 @@ ROOT_URLCONF = "server.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -97,10 +109,11 @@ WSGI_APPLICATION = "server.wsgi.application"
 
 
 # Use DATABASE_URL if set, else fallback to sqlite3
-import dj_database_url
 DATABASES = {
     "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+        default=os.getenv("DATABASE_URL"),  # Use .env first
+        conn_max_age=600,
+        ssl_require=os.getenv("RAILWAY_ENV") == "production",
     )
 }
 
@@ -143,12 +156,20 @@ USE_I18N = True
 
 USE_TZ = True
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://bpm-production.up.railway.app",
+    "https://glonix-frontend-indol.vercel.app",
+]
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = "/static/"
-STATIC_ROOT = os.environ.get("DJANGO_STATIC_ROOT", str(BASE_DIR / "staticfiles"))
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'static'  # Collected static files location]
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
