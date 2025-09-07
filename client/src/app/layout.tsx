@@ -3,6 +3,8 @@ import '../styles/globals.css';
 
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { useIdleTokenRefresh } from "@/hooks/useIdleTokenRefresh"; // Adjust path as needed
+import React from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,12 +24,38 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const { promptVisible, refreshSession } = useIdleTokenRefresh();
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-br from-[#e6f4f1] to-[#d0ebe3] font-poppins`}
       >
         {children}
+        {promptVisible && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white p-6 rounded shadow max-w-sm w-full text-center">
+              <p className="mb-4">Your session is about to expire. Are you still here?</p>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={refreshSession}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  Yes, keep me logged in
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.clear();
+                    window.location.href = "/login";
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  No, log me out
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </body>
     </html>
   );

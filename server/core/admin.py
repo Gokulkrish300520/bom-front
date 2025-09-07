@@ -1,18 +1,8 @@
-from django.contrib import admin
-from core.models import DailySummary
-from core.background_tasks import preaggregate_daily_summaries
 
-@admin.register(DailySummary)
-class DailySummaryAdmin(admin.ModelAdmin):
-    list_display = ("date", "invoices_total", "bills_total", "payments_total", "created_at", "updated_at")
-    actions = ["run_preaggregation"]
-
-    def run_preaggregation(self, request, queryset):
-        preaggregate_daily_summaries()
-        self.message_user(request, "Pre-aggregation task has been scheduled.")
-    run_preaggregation.short_description = "Run daily pre-aggregation now"
+"""Admin configuration for the core Django app models and background tasks."""
 from django.contrib import admin
-from .models import (
+from core.models import (
+    DailySummary,
     Customer,
     CustomerDocument,
     ContactPerson,
@@ -23,13 +13,35 @@ from .models import (
     Invoice,
     InvoiceItem,
     DeliveryChallanItem,
+    Bill,
+    BillItem,
 )
-from .models import Bill, BillItem
+from core.background_tasks import preaggregate_daily_summaries
+
+@admin.register(DailySummary)
+class DailySummaryAdmin(admin.ModelAdmin):
+    """Admin interface for DailySummary model, with preaggregation action."""
+    list_display = (
+        "date",
+        "invoices_total",
+        "bills_total",
+        "payments_total",
+        "created_at",
+        "updated_at",
+    )
+    actions = ["run_preaggregation"]
+
+    def run_preaggregation(self, request, _):
+        """Run the preaggregation background task for daily summaries."""
+        # 'queryset' argument is unused, kept for admin action signature
+        preaggregate_daily_summaries()
+        self.message_user(request, "Pre-aggregation task has been scheduled.")
+    run_preaggregation.short_description = "Run daily pre-aggregation now"
+
 
 admin.site.register(DeliveryChallanItem)
 admin.site.register(Invoice)
 admin.site.register(InvoiceItem)
-
 admin.site.register(Customer)
 admin.site.register(CustomerDocument)
 admin.site.register(ContactPerson)

@@ -17,6 +17,7 @@
 - Add users via the Django admin interface (no public registration endpoint).
 
 ## 3. Authentication (JWT)
+
 - Obtain a JWT token:
 
     POST /api/auth/token/
@@ -35,7 +36,7 @@
 
     Authorization: Bearer <access_token>
 
-- Refresh the access token:
+- Refresh the access token (access token lifetime: 10 minutes, refresh token lifetime: 15 minutes):
 
     POST /api/auth/token/refresh/
     {
@@ -46,6 +47,15 @@
     {
         "access": "<new_access_token>"
     }
+
+- Logout (blacklist refresh token):
+
+    POST /api/auth/logout/
+    {
+        "refresh": "<refresh_token>"
+    }
+
+- After logout, the refresh token cannot be used again. The access token remains valid until it expires (10 minutes).
 
 ## 4. API Endpoints (CRUD)
 
@@ -72,84 +82,66 @@
 - billing_*: address fields (attention, country, street1, street2, city, state, pin_code, phone, fax)
 - shipping_*: address fields (same as billing)
 - contact_persons: array of ContactPerson objects (see below)
-- custom_fields: key-value pairs (JSON)
-- tags: array of strings
-- remarks: string (optional)
+ customer: Customer object (from Customers endpoint)
+ invoice_number: string (required, unique)
+ order_number: string (optional)
+ invoice_date: date (YYYY-MM-DD)
+ item_details: array of InvoiceItem objects (see below)
+ customer_notes: string (optional)
+ terms_and_conditions: string (optional)
+ total_amount: decimal
+ attached_file_ids: array of integers (write-only, for associating general files)
+ attached_files: array of CustomerDocument objects (read-only, attached via attached_file_ids)
+ invoice_file_ids: array of integers (write-only, for associating invoice-specific files)
+ invoice_files: array of CustomerDocument objects (read-only, attached via invoice_file_ids)
+ created_at: datetime
+- id: integer (read-only)
+- salutation: "dr", "mr", "ms", "mrs" (optional, writable)
+- first_name, last_name: string (writable)
+- email: string (writable)
+- work_phone, mobile: string (optional, writable)
 
-#### CustomerDocument Fields
-- id: integer
-- file: file URL
-- uploaded_at: datetime
-
-#### ContactPerson Fields
-- id: integer
-- salutation: "dr", "mr", "ms", "mrs" (optional)
-- first_name, last_name: string
-- email: string
-- work_phone, mobile: string (optional)
-
-#### Example: Create Customer
+#### Example: Create Customer (with contact persons)
 POST /api/customers/
 Content-Type: application/json
 Authorization: Bearer <access_token>
 
 {
-  "customer_type": "business",
-  "salutation": "mr",
-  "first_name": "John",
-  "last_name": "Doe",
-  "company_name": "Acme Corp",
-  "display_name": "Acme Corp (John Doe)",
-  "email": "john.doe@acme.com",
-  "work_phone": "1234567890",
-  "mobile": "9876543210",
-  "pan": "ABCDE1234F",
-  "currency": "INR",
-  "opening_balance": "1000.00",
-  "payment_terms": "net_30",
-  "billing_attention": "Accounts",
-  "billing_country": "India",
-  "billing_street1": "123 Main St",
-  "billing_street2": "Suite 100",
-  "billing_city": "Mumbai",
-  "billing_state": "MH",
-  "billing_pin_code": "400001",
-  "billing_phone": "0221234567",
-  "billing_fax": "0227654321",
-  "shipping_attention": "Warehouse",
-  "shipping_country": "India",
-  "shipping_street1": "456 Warehouse Rd",
-  "shipping_street2": "",
-  "shipping_city": "Mumbai",
-  "shipping_state": "MH",
-  "shipping_pin_code": "400002",
-  "shipping_phone": "0229876543",
-  "shipping_fax": "0223456789",
-  "custom_fields": {"GSTIN": "27ABCDE1234F1Z5"},
-  "tags": ["priority", "2025"],
-  "remarks": "Important customer"
-}
-
+    "customer_type": "business",
+    ...
+    "contact_persons": [
+        {
+            "salutation": "ms",
+            "first_name": "Jane",
+            "last_name": "Smith",
+            "email": "jane@acme.com",
+            "work_phone": "",
+            "mobile": ""
+        }
+    ],
+    ...
 #### Example: Retrieve Customer (with nested documents and contact persons)
-GET /api/customers/1/
-Authorization: Bearer <access_token>
-
-Response:
-{
-  "id": 1,
-  "customer_type": "business",
-  "salutation": "mr",
-  "first_name": "John",
-  "last_name": "Doe",
-  "company_name": "Acme Corp",
-  "display_name": "Acme Corp (John Doe)",
-  "email": "john.doe@acme.com",
-  "work_phone": "1234567890",
-  "mobile": "9876543210",
-  "pan": "ABCDE1234F",
-  "currency": "INR",
-  "opening_balance": "1000.00",
-  "payment_terms": "net_30",
+ customer: Customer object (from Customers endpoint)
+ quote_number: string (required, unique)
+ reference_number: string (optional)
+ quote_date: date (YYYY-MM-DD)
+ expiry_date: date (YYYY-MM-DD)
+ salesperson: string (optional)
+ project_name: string (optional)
+ subject: string (optional)
+ item_details: array of QuoteItem objects (see below; structure is identical to ProformaInvoiceItem)
+ customer_notes: string (optional)
+ terms_and_conditions: string (optional)
+ subtotal: decimal
+ discount: decimal (percentage, e.g. 10.00 for 10%)
+ tax_type: "TDS" or "TCS" (default: TDS)
+ tax_percentage: "0", "5", "12", "18", "28" (default: "0")
+ adjustment: decimal
+ total_amount: decimal
+ quote_file_ids: array of integers (write-only, for associating existing files)
+ files: array of CustomerDocument objects (read-only, uploaded files)
+ status: "draft", "sent", "accepted", "rejected", "expired" (default: draft)
+ created_at: datetime
   "documents": [
     {"id": 1, "file": "/media/customer_documents/doc1.pdf", "uploaded_at": "2025-08-27T10:00:00Z"}
   ],
@@ -174,8 +166,10 @@ Response:
   "contact_persons": [
     {"id": 1, "salutation": "ms", "first_name": "Jane", "last_name": "Smith", "email": "jane@acme.com", "work_phone": "", "mobile": ""}
   ],
-  "custom_fields": {"GSTIN": "27ABCDE1234F1Z5"},
-  "tags": ["priority", "2025"],
+ subtotal: decimal
+ discount: decimal (percentage, e.g. 10.00 for 10%)
+ proforma_invoice_file_ids: array of integers (write-only, for associating existing files)
+ files: array of CustomerDocument objects (read-only, uploaded files)
   "remarks": "Important customer",
   "created_at": "2025-08-27T10:00:00Z"
 }
@@ -200,16 +194,16 @@ Response:
 - invoice_number: string (required, unique)
 - order_number: string (optional)
 - invoice_date: date (YYYY-MM-DD)
-- item_details: array of InvoiceItem objects (see below)
-- customer_notes: string (optional)
-- terms_and_conditions: string (optional)
-- total_amount: decimal
-- files: array of CustomerDocument objects (uploaded files)
-- created_at: datetime
-
-#### InvoiceItem Fields
-- id: integer
-- item: Item object (from Items endpoint, read-only)
+ customer: Customer object (from Customers endpoint)
+ challan_number: string (required, unique)
+ reference_number: string (optional)
+ date: date (YYYY-MM-DD)
+ challan_type: "liquid_gas", "job_work", "approval", "others" (enum)
+ item_details: array of DeliveryChallanItem objects (see below)
+ delivery_challan_file_ids: array of CustomerDocument IDs (for file association; read/write)
+ delivery_challan_files: array of CustomerDocument objects (read-only, see CustomerDocument Fields)
+ total_amount: decimal
+ created_at: datetime
 - item_id: integer (write-only)
 - quantity: integer
 - rate: decimal
@@ -224,21 +218,21 @@ Authorization: Bearer <access_token>
     "customer_id": 1,
     "invoice_number": "INV-2025-001",
     "order_number": "ORD-123",
-    "invoice_date": "2025-08-30",
-    "customer_notes": "Thank you for your business.",
-    "terms_and_conditions": "Payment due in 30 days.",
-    "total_amount": "15000.00",
-    "file_ids": [1, 2]
-}
-
-#### Example: Retrieve Invoice (with nested item details and files)
-GET /api/invoices/1/
-Authorization: Bearer <access_token>
-
-Response:
-{
-    "id": 1,
-    "customer": { ... },
+ vendor: nested Vendor object (read-only)
+ vendor_id: integer (required, write-only)
+ bill_number: string (required, unique)
+ reference_number: string (optional)
+ status: "PAID", "UNPAID", "PARTIAL", "DRAFT" (default: DRAFT)
+ bill_date: date (required)
+ due_date: date (required)
+ notes: string (optional)
+ subtotal: decimal (auto, read-only)
+ tax: decimal (auto, read-only)
+ total_amount: decimal (auto, read-only)
+ item_details: array of BillItem objects (read-only)
+ files: array of CustomerDocument objects (read-only)
+ file_ids: array of integers (write-only, for associating existing files)
+ created_at: datetime (read-only)
     "invoice_number": "INV-2025-001",
     "order_number": "ORD-123",
     "invoice_date": "2025-08-30",
@@ -248,7 +242,8 @@ Response:
     "customer_notes": "Thank you for your business.",
     "terms_and_conditions": "Payment due in 30 days.",
     "total_amount": "15000.00",
-    "files": [ {"id": 1, "file": "...", "uploaded_at": "..."} ],
+    "attached_files": [ {"id": 4, "file": "/media/customer_documents/file4.pdf", "uploaded_at": "..."} ],
+    "invoice_files": [ {"id": 1, "file": "/media/customer_documents/file1.pdf", "uploaded_at": "..."}, {"id": 2, "file": "/media/customer_documents/file2.pdf", "uploaded_at": "..."} ],
     "created_at": "2025-08-30T10:00:00Z"
 }
 
@@ -365,8 +360,10 @@ Response:
 
 There are two ways to attach files to an Invoice:
 
-1. **UI-uploaded files**: Use the `files` field (multipart/form-data) to upload new files directly when creating or updating an invoice.
-2. **Programmatic attachment**: Use the `invoice_file_ids` field to attach existing `CustomerDocument` files by their IDs. This does not upload new files, but links already-uploaded documents to the invoice.
+1. **General attachments**: Use the `attached_file_ids` field to associate general files with the invoice (these may be uploaded via the UI or other means).
+2. **Invoice-specific attachments**: Use the `invoice_file_ids` field to associate files specifically as invoice documents.
+
+Both fields are write-only for input. The response will include `attached_files` and `invoice_files` arrays with file metadata.
 
 **Example: Attach files by ID (programmatic)**
 
@@ -374,6 +371,7 @@ There are two ways to attach files to an Invoice:
 POST /api/invoices/
 {
     ...
+    "attached_file_ids": [4, 5],
     "invoice_file_ids": [1, 2, 3]
 }
 ```
@@ -810,17 +808,25 @@ file: <file>
 
 ### Files (Uploaded Documents)
 
+
 #### Endpoints
 - List:      GET    /api/files/
 - Upload:    POST   /api/files/ (multipart/form-data)
-- Retrieve:  GET    /api/files/{id}/
+- Retrieve (metadata):  GET    /api/files/{id}/?meta=1
+- Retrieve (content):   GET    /api/files/{id}/
 - Update:    PUT    /api/files/{id}/ (multipart/form-data)
 - Delete:    DELETE /api/files/{id}/
+
 
 #### Description
 - Upload, update, download, and manage files (PDF, JPG, etc) for use with Customers, Invoices, Bills, etc.
 - Files are uploaded once and can be associated with multiple business objects by their ID.
 - Requires authentication (JWT access token).
+-
+- **To get file metadata only:**
+    - `GET /api/files/{id}/?meta=1` returns JSON with file info (id, file path, uploaded_at).
+- **To stream/download file content:**
+    - `GET /api/files/{id}/` returns the file as a binary stream (PDF, JPG, etc).
 
 #### File Fields
 - id: integer (auto)
@@ -872,7 +878,19 @@ Response:
     "uploaded_at": "2025-08-30T12:05:00Z"
 }
 
-#### Example: Download/View a File
+
+#### Example: Get File Metadata Only
+GET /api/files/1/?meta=1
+Authorization: Bearer <access_token>
+
+Response:
+{
+    "id": 1,
+    "file": "/media/customer_documents/invoice.pdf",
+    "uploaded_at": "2025-08-30T12:00:00Z"
+}
+
+#### Example: Download/View a File (Stream Content)
 GET /api/files/1/
 Authorization: Bearer <access_token>
 

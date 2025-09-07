@@ -1,11 +1,9 @@
-
+"""Django models for the core business logic and data structures."""
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
-
-
-# DailySummary model for pre-aggregated daily totals
 class DailySummary(models.Model):
+    """Model representing a daily summary of invoices, bills, and payments."""
     date = models.DateField(db_index=True, unique=True)
     invoices_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     bills_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -18,9 +16,8 @@ class DailySummary(models.Model):
 
 
 class BillItem(models.Model):
-    """
-    Represents an item entry in a Bill, including quantity, rate, and tax.
-    """
+    """Model representing an item entry in a Bill."""
+    # ...existing code...
 
     bill = models.ForeignKey(
         "Bill",
@@ -49,13 +46,14 @@ class BillItem(models.Model):
     def __str__(self) -> str:
         """String representation of BillItem."""
         return (
-            f"{self.item.name} x {self.quantity} for Bill "
-            f"{self.bill.bill_number}"
+            f"{self.item.name} x {self.quantity} for Bill "  # pylint: disable=no-member
+            f"{self.bill.bill_number}"  # pylint: disable=no-member
         )
 
 
 class Bill(models.Model):
-    """Represents a Bill issued by a Vendor, with status and related items."""
+    """Model representing a Bill issued by a Vendor."""
+    # ...existing code...
 
     STATUS_CHOICES = [
         ("PAID", "Paid"),
@@ -111,7 +109,7 @@ class Bill(models.Model):
 
     def __str__(self) -> str:
         """String representation of Bill."""
-        return f"Bill {self.bill_number} - {self.vendor.name}"
+        return f"Bill {self.bill_number} - {self.vendor.name}"  # pylint: disable=no-member
 
 
 class Customer(models.Model):
@@ -284,7 +282,7 @@ class Customer(models.Model):
 
     def __str__(self) -> str:
         """String representation of Customer."""
-        return self.display_name
+        return str(self.display_name)
 
 
 class CustomerDocument(models.Model):
@@ -311,7 +309,7 @@ class CustomerDocument(models.Model):
 
     def clean(self) -> None:
         """Validates file size for CustomerDocument."""
-        if self.file.size > 10 * 1024 * 1024:
+        if self.file.size > 10 * 1024 * 1024:  # pylint: disable=no-member
             raise ValidationError("File size must be under 10MB.")
 
 
@@ -353,7 +351,7 @@ class Vendor(models.Model):
 
     def __str__(self) -> str:
         """String representation of Vendor."""
-        return self.name
+        return str(self.name)
 
 
 class Item(models.Model):
@@ -367,7 +365,7 @@ class Item(models.Model):
 
     def __str__(self) -> str:
         """String representation of Item."""
-        return self.name
+        return str(self.name)
 
 
 class Payment(models.Model):
@@ -386,8 +384,8 @@ class Payment(models.Model):
         """String representation of Payment."""
         return (
             f"Payment {self.amount} for Invoice "
-            f"{self.invoice.invoice_number}"
-        )
+            f"{self.invoice.invoice_number}"  # pylint: disable=no-member
+        )  # pylint: disable=no-member
 
 
 class Quote(models.Model):
@@ -454,20 +452,23 @@ class Quote(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Quote {self.quote_number} - {self.customer.display_name}"
+        return f"Quote {self.quote_number} - {self.customer.display_name}"  # pylint: disable=no-member
 
 
 class DocumentItemBase(models.Model):
+    """Abstract base class for document item models."""
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
     rate = models.DecimalField(max_digits=12, decimal_places=2)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
 
-    class Meta:
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Meta options for DocumentItemBase (abstract base class)."""
         abstract = True
 
 
 class QuoteItem(DocumentItemBase):
+    """Model representing an item entry in a Quote."""
     quote = models.ForeignKey(
         Quote,
         related_name="item_details",
@@ -476,12 +477,13 @@ class QuoteItem(DocumentItemBase):
 
     def __str__(self):
         return (
-            f"{self.item.name} x {self.quantity} for Quote "
-            f"{self.quote.quote_number}"
+            f"{self.item.name} x {self.quantity} for Quote "  # pylint: disable=no-member
+            f"{self.quote.quote_number}"  # pylint: disable=no-member
         )
 
 
 class ProformaInvoice(models.Model):
+    """Model representing a Proforma Invoice."""
     proforma_invoice_files = models.ManyToManyField(
         "CustomerDocument",
         blank=True,
@@ -542,12 +544,13 @@ class ProformaInvoice(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Proforma {self.invoice_number} - {self.customer.display_name}"
+        return f"Proforma {self.invoice_number} - {self.customer.display_name}"  # pylint: disable=no-member
 
 
 class ProformaInvoiceItem(DocumentItemBase):
+    """Model representing an item entry in a Proforma Invoice."""
     proforma_invoice = models.ForeignKey(
-        ProformaInvoice,
+        ProformaInvoice,  # pylint: disable=no-member
         related_name="item_details",
         on_delete=models.CASCADE,
     )
@@ -555,13 +558,14 @@ class ProformaInvoiceItem(DocumentItemBase):
     def __str__(self):
         return (
             f"{self.item.name} x {self.quantity} for Proforma "
-            f"{self.proforma_invoice.invoice_number}"
+            f"{self.proforma_invoice.invoice_number}"  # pylint: disable=no-member
         )
 
 
 class DeliveryChallanItem(DocumentItemBase):
+    """Model representing an item entry in a Delivery Challan."""
     delivery_challan = models.ForeignKey(
-        "DeliveryChallan",
+        "DeliveryChallan",  # pylint: disable=no-member
         related_name="item_details",
         on_delete=models.CASCADE,
     )
@@ -569,11 +573,12 @@ class DeliveryChallanItem(DocumentItemBase):
     def __str__(self):
         return (
             f"{self.item.name} x {self.quantity} for Challan "
-            f"{self.delivery_challan.challan_number}"
+            f"{self.delivery_challan.challan_number}"  # pylint: disable=no-member
         )
 
 
 class DeliveryChallan(models.Model):
+    """Model representing a Delivery Challan document."""
     delivery_challan_files = models.ManyToManyField(
         "CustomerDocument",
         related_name="deliverychallans_programmatic",
@@ -602,12 +607,13 @@ class DeliveryChallan(models.Model):
 
     def __str__(self):
         return (
-            f"Challan {self.challan_number} - "
-            f"{self.customer.display_name}"
+            f"Challan {self.challan_number} - "  # pylint: disable=no-member
+            f"{self.customer.display_name}"  # pylint: disable=no-member
         )
 
 
 class InventoryAdjustment(models.Model):
+    """Model representing an inventory adjustment entry."""
     item = models.ForeignKey(
         Item, related_name="inventory_adjustments", on_delete=models.CASCADE
     )
@@ -626,6 +632,7 @@ class InventoryAdjustment(models.Model):
 
 
 class InvoiceItem(DocumentItemBase):
+    """Model representing an item entry in an Invoice."""
     invoice = models.ForeignKey(
         "Invoice",
         related_name="item_details",
@@ -634,12 +641,13 @@ class InvoiceItem(DocumentItemBase):
 
     def __str__(self):
         return (
-            f"{self.item.name} x {self.quantity} for Invoice "
-            f"{self.invoice.invoice_number}"
+            f"{self.item.name} x {self.quantity} for Invoice "  # pylint: disable=no-member
+            f"{self.invoice.invoice_number}"  # pylint: disable=no-member
         )
 
 
 class Invoice(models.Model):
+    """Model representing a sales Invoice."""
     invoice_files = models.ManyToManyField(
         "CustomerDocument",
         related_name="invoices_programmatic",
@@ -671,6 +679,6 @@ class Invoice(models.Model):
 
     def __str__(self):
         return (
-            f"Invoice {self.invoice_number} - "
-            f"{self.customer.display_name}"
+            f"Invoice {self.invoice_number} - "  # pylint: disable=no-member
+            f"{self.customer.display_name}"  # pylint: disable=no-member
         )
