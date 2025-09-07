@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState, useRef, useCallback } from "react";
 import { refreshAccessToken } from "@/auth/tokenservice";
 
@@ -15,16 +17,16 @@ export function useIdleTokenRefresh() {
     setPromptVisible(false);
     clearTimers();
 
-    // Schedule prompt 13 min from now (2 minutes before refresh token expiry of 15 min)
+    // Schedule prompt 28 minutes from now (2 minutes before refresh token expiry at 30 minutes)
     promptTimer.current = setTimeout(() => {
       setPromptVisible(true);
 
-      // If no response in 1 min, logout
+      // If no response in 1 minute, logout user
       logoutTimer.current = setTimeout(() => {
         localStorage.clear();
         window.location.href = "/login";
-      }, 60_000);
-    }, 28 * 60 * 1000); // 27 min
+      }, 60 * 1000);
+    }, 28 * 60 * 1000); // 28 minutes
   }, []);
 
   useEffect(() => {

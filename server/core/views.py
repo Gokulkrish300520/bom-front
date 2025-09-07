@@ -435,3 +435,39 @@ class ProfitAndLossReportView(APIView):
             "invoice_breakdown": invoice_breakdown,
             "bill_breakdown": bill_breakdown,
         }
+        
+from rest_framework.decorators import api_view, permission_classes
+from django.core.mail import EmailMessage
+import json
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_report_email(request):
+    """
+    Expects JSON body with:
+    - recipient_email: string
+    - subject: string (optional)
+    - report_data: JSON (summary + invoice + bill breakdowns)
+    """
+    
+    recipient = request.data.get('recipient_email')
+    subject = request.data.get('subject', 'Profit and Loss Report')
+    report_data = request.data.get('report_data')
+
+    if not recipient or not report_data:
+        return Response({'error': 'recipient_email and report_data are required'}, status=400)
+
+    body = f"Profit and Loss Report\n\n{json.dumps(report_data, indent=2)}"
+
+    email = EmailMessage(
+        subject=subject,
+        body=body,
+        from_email=None,
+        to=[recipient],
+    )
+
+    try:
+        email.send()
+        return Response({'message': 'Email sent successfully'})
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
