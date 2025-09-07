@@ -63,7 +63,7 @@ export default function NewQuote() {
   useEffect(() => {
     async function loadCustomers() {
       try {
-        const res = await fetchWithAuth("https://bpm-production.up.railway.app/api/customers/");
+        const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/customers/");
         if (!res.ok) throw new Error("Failed to fetch customers");
         const data = await res.json();
         setCustomers(data.results || []);
@@ -81,7 +81,7 @@ export default function NewQuote() {
   useEffect(() => {
     async function loadItems() {
       try {
-        const res = await fetchWithAuth("https://bpm-production.up.railway.app/api/items/");
+        const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/items/");
         if (!res.ok) throw new Error("Failed to fetch items");
         const data = await res.json();
         setItemsList(data.results || []);
@@ -93,6 +93,7 @@ export default function NewQuote() {
     }
     loadItems();
   }, []);
+console.log(itemsList);
 
   // Keep customerName synced with selectedCustomerId
   useEffect(() => {
@@ -168,7 +169,7 @@ export default function NewQuote() {
     };
 
     try {
-      const res = await fetchWithAuth("https://bpm-production.up.railway.app/api/quotes/", {
+      const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/quotes/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

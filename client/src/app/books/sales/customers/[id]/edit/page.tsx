@@ -25,6 +25,7 @@ type TabKey =
   | "Remarks";
 
 type ContactPerson = {
+  id?: number;
   salutation: string;
   firstName: string;
   lastName: string;
@@ -146,7 +147,7 @@ export default function EditCustomerPage() {
       setIsLoading(true);
       try {
         const res = await fetchWithAuth(
-          `https://bpm-production.up.railway.app/api/customers/${id}/`
+          `https://bom-front-production.up.railway.app/api/customers/${id}/`
         );
         if (res.ok) {
           const data = await res.json();
@@ -194,6 +195,7 @@ export default function EditCustomerPage() {
           setContactPersons(
             Array.isArray(data.contact_persons) && data.contact_persons.length > 0
               ? data.contact_persons.map((cp: any) => ({
+                  id:cp.id,
                   salutation: cp.salutation || "",
                   firstName: cp.first_name || "",
                   lastName: cp.last_name || "",
@@ -333,6 +335,16 @@ export default function EditCustomerPage() {
     const cleanBilling = cleanObject(billing);
     const cleanShipping = cleanObject(shipping);
 
+    const contactPersonsPayload = contactPersons.map((cp) => ({
+      id: cp.id,
+      salutation: cp.salutation,
+      first_name: cp.firstName,
+      last_name: cp.lastName,
+      email: cp.email,
+      work_phone: cp.workPhone,
+      mobile: cp.mobile,
+    }));
+
     const payload = {
       customer_type: customerType.toLowerCase(),
       salutation: salutation.toLowerCase() || null,
@@ -369,11 +381,12 @@ export default function EditCustomerPage() {
       custom_fields: customFieldsObj,
       tags: reportingTags,
       remarks,
+      contactPersons:contactPersonsPayload,
     };
 
     try {
       const res = await fetchWithAuth(
-        `https://bpm-production.up.railway.app/api/customers/${id}/`,
+        `https://bom-front-production.up.railway.app/api/customers/${id}/`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

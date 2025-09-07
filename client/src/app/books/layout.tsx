@@ -82,7 +82,7 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
       {/* Sidebar */}
       <div className="flex flex-col w-64 bg-white border-r border-gray-200">
         <div className="px-4 py-3 border-b border-gray-200">
-          <h1 className="text-lg font-semibold text-green-600">Zoho Books</h1>
+          <h1 className="text-lg font-semibold text-green-600">Books</h1>
         </div>
 
         {/* Menu */}

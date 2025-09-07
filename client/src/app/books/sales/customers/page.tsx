@@ -21,7 +21,7 @@ export default function CustomersPage() {
   useEffect(() => {
     async function loadCustomers() {
       try {
-        const res = await fetchWithAuth("https://bpm-production.up.railway.app/api/customers/");
+        const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/customers/");
         if (!res.ok) throw new Error("Failed to fetch customers");
         const data = await res.json();
         setCustomers(data.results);
@@ -90,9 +90,6 @@ export default function CustomersPage() {
                   <td className="px-4 py-2 border">{c.email}</td>
                   <td className="px-4 py-2 border">{c.work_phone}</td>
                   <td className="flex gap-3 px-4 py-2 border">
-                    <Link href={`/books/sales/customers/${c.id}/edit`} className="text-green-600 hover:text-green-800">
-                      <FaEdit />
-                    </Link>
                     <button
                       onClick={() => deleteCustomer(c.id)}
                       className="text-red-600 hover:text-red-800"

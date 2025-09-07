@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchWithAuth } from "@/auth/tokenservice";
-import { FaEnvelope, FaPhone, FaUser } from "react-icons/fa";
+import { FaEnvelope, FaPhone, FaUser,FaIdCard } from "react-icons/fa";
+import Link from "next/link";
 
 type ContactPerson = {
   salutation?: string;
@@ -21,6 +22,9 @@ type CustomerDetails = {
   email: string;
   customer_type: string;
   company_name: string;
+  work_phone:string,
+  mobile:string,
+  pan:string,
   currency: string;
   payment_terms: string;
   billing_attention?: string;
@@ -61,7 +65,7 @@ export default function CustomerDetailPage() {
     async function fetchCustomer() {
       try {
         const res = await fetchWithAuth(
-          `https://bpm-production.up.railway.app/api/customers/${id}/`
+          `https://bom-front-production.up.railway.app/api/customers/${id}/`
         );
         if (!res.ok) throw new Error("Failed to fetch customer data");
         const data = await res.json();
@@ -87,12 +91,20 @@ export default function CustomerDetailPage() {
             {customer.display_name}
           </h2>
         </div>
+        <div className="flex items-center space-x-2">
+        <Link
+          href={`/books/sales/customers/${customer.id}/edit`}
+          className="text-white bg-green-600 hover:bg-green-700 rounded px-4 py-1 font-semibold"
+        >
+          Edit
+        </Link>
         <button
-          className="text-green-700 border border-green-200 rounded px-4 py-1 hover:bg-green-50"
+          className="text-green-700 border border-green-700 rounded px-4 py-1"
           onClick={() => router.back()}
         >
           Back
         </button>
+      </div>
       </div>
       {/* Contact Info (icon row) */}
       <div className="flex gap-6 mb-6">
@@ -102,7 +114,16 @@ export default function CustomerDetailPage() {
         <div className="flex items-center gap-2 text-green-700">
           <FaEnvelope /> {customer.email}
         </div>
+        <div className="flex items-center gap-2 text-green-700">
+          <FaPhone /> Work-phone: {customer.work_phone}
+        </div>
+        <div className="flex items-center gap-2 text-green-700">
+          <FaPhone /> Mobile: {customer.mobile}
+        </div>
       </div>
+      <div className="flex items-center gap-2 text-green-700">
+          <FaIdCard /> Pan: {customer.pan}
+        </div>
       {/* "Address" section */}
       <div className="mt-6">
         <h3 className="font-semibold text-green-700 mb-1">ADDRESS</h3>
@@ -182,8 +203,8 @@ export default function CustomerDetailPage() {
       <div className="mt-8">
         <h3 className="font-semibold text-green-700 mb-2">CONTACT PERSONS</h3>
         {customer.contact_persons && customer.contact_persons.length > 0 ? (
-          <table className="w-full text-sm mb-3">
-            <thead>
+          <table className="w-full text-sm mb-3 border border-green-200 rounded-lg">
+            <thead className="bg-green-50">
               <tr className="text-green-800 bg-green-50">
                 <th className="py-1 font-medium">Name</th>
                 <th className="py-1 font-medium">Email</th>
@@ -193,11 +214,11 @@ export default function CustomerDetailPage() {
             </thead>
             <tbody>
               {customer.contact_persons.map((cp, idx) => (
-                <tr key={idx} className="border-b">
-                  <td>{[cp.salutation, cp.first_name, cp.last_name].filter(Boolean).join(" ")}</td>
-                  <td>{cp.email}</td>
-                  <td>{cp.work_phone}</td>
-                  <td>{cp.mobile}</td>
+                <tr key={idx} className="border-b border-green-200">
+                  <td className="py-2 px-4 text-center font-medium">{[cp.salutation, cp.first_name, cp.last_name].filter(Boolean).join(" ")}</td>
+                  <td className="py-2 px-4 text-center font-medium">{cp.email}</td>
+                  <td className="py-2 px-4 text-center font-medium">{cp.work_phone}</td>
+                  <td className="py-2 px-4 text-center font-medium">{cp.mobile}</td>
                 </tr>
               ))}
             </tbody>

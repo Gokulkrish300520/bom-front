@@ -381,4 +381,4 @@ class ProfitAndLossReportView(APIView):
         if compare_data:
             response["compare_with"] = compare_with
             response["compare_report"] = compare_data
-        return Response(response)
+        return Response(response) 

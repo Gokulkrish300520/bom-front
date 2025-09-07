@@ -4,7 +4,7 @@ export async function refreshAccessToken() {
   const refreshToken = localStorage.getItem("refreshToken");
   if (!refreshToken) throw new Error("No refresh token available");
 
-  const res = await fetch(`https://bpm-production.up.railway.app/api/auth/token/refresh/`, {
+  const res = await fetch(`https://bom-front-production.up.railway.app/api/auth/token/refresh/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh: refreshToken }),
@@ -14,6 +14,9 @@ export async function refreshAccessToken() {
 
   const data = await res.json();
   localStorage.setItem("accessToken", data.access);
+  if (data.refresh) {
+    localStorage.setItem("refreshToken", data.refresh);
+  }
   return data.access;
 }
 

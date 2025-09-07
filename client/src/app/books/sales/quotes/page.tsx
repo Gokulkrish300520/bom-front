@@ -41,7 +41,7 @@ export default function QuotesPage() {
   useEffect(() => {
     async function loadQuotes() {
       try {
-        const res = await fetchWithAuth("https://bpm-production.up.railway.app/api/quotes/");
+        const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/quotes/");
         if (!res.ok) throw new Error("Failed to fetch quotes");
         const data = await res.json();
         setQuotes(data.results);

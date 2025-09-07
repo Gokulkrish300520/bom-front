@@ -5,8 +5,8 @@ POST http://localhost:8000/api/auth/token/
 Content-Type: application/json
 
 {
-    "username": "your_username",
-    "password": "your_password"
+    "username": "Gokul",
+    "password": "Gokul@2005"
 }
 
 ####

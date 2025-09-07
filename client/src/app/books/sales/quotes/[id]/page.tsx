@@ -96,7 +96,7 @@ export default function QuoteDetailPage() {
     async function fetchQuote() {
       try {
         const res = await fetchWithAuth(
-          `https://bpm-production.up.railway.app/api/quotes/${id}/`
+          `https://bom-front-production.up.railway.app/api/quotes/${id}/`
         );
         if (!res.ok) throw new Error("Failed to fetch quote data");
         const data: Quote = await res.json();

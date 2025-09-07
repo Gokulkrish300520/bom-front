@@ -182,7 +182,7 @@ export default function NewCustomerPage() {
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await fetch("https://bpm-production.up.railway.app/api/files/", {
+    const res = await fetch("https://bom-front-production.up.railway.app/api/files/", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: formData,
@@ -331,7 +331,7 @@ export default function NewCustomerPage() {
       remarks: remarks.trim(),
     };
 
-      const res = await fetchWithAuth("https://bpm-production.up.railway.app/api/customers/", {
+      const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/customers/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
