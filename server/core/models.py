@@ -832,11 +832,6 @@ class Invoice(models.Model):
         related_name="invoices_ui",
         blank=True,
     )
-    invoice_files = models.ManyToManyField(
-        "CustomerDocument",
-        related_name="invoices_programmatic",
-        blank=True,
-    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

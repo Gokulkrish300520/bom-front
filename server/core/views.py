@@ -1,3 +1,4 @@
+import logging
 
 from .inventory_management_models import InventoryManagement
 from .serializers import InventoryManagementSerializer
@@ -224,6 +225,7 @@ class CustomerDocumentViewSet(viewsets.ModelViewSet):  # pylint: disable=too-man
         return Response(serializer.data)
 
 
+logger = logging.getLogger(__name__)
 class BillViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Bills."""
     queryset = (
@@ -233,6 +235,14 @@ class BillViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     )
     serializer_class = BillSerializer
     permission_classes = [permissions.IsAuthenticated]
+    
+    def list(self, request, *args, **kwargs):
+        try:
+            return super().list(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in BillViewSet list: {e}", exc_info=True)
+            # Return more info for debugging in Railway
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class CustomerViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors

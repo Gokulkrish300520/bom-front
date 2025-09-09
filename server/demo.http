@@ -59,8 +59,8 @@ POST http://localhost:8000/api/auth/token/
 Content-Type: application/json
 
 {
-    "username": "your_username",
-    "password": "your_password"
+    "username": "Gokul",
+    "password": "Gokul@2005"
 }
 
 ####
@@ -97,10 +97,8 @@ Content-Type: application/json
 
 # Upload a PDF file
 POST http://localhost:8000/api/files/
-Authorization: Bearer <access_token>
-Content-Type: multipart/form-data
-
-file: @./sample_invoice.pdf
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NDMyMjM3LCJpYXQiOjE3NTc0MzE2MzcsImp0aSI6IjY2OTUyNmE3YWZjZTRlNWE4MmZjMGNmZDQ0Yzc5MTZlIiwidXNlcl9pZCI6IjEifQ.tAG1DeqHxMJyHuBCA-juhYO8w1p17GsPqaWM8IigeC0
+file: @./Reinforcement_learning.pdf
 
 ####
 
@@ -132,13 +130,13 @@ file: @./updated_receipt.jpg
 ####
 # List all files
 GET http://localhost:8000/api/files/
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NDMxNjk4LCJpYXQiOjE3NTc0MzEwOTgsImp0aSI6ImVmMjA5NGM5YzQ1ODQ5Y2E5MjJjYmFmMzE2YTQ5YzljIiwidXNlcl9pZCI6IjEifQ.skNEuTvMyjo4mFmit_umnHuRzSh1ZvY6TdFOs_nTj00
 
 ####
 
 # Get file metadata only
 GET http://localhost:8000/api/files/1/?meta=1
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NDMxNjk4LCJpYXQiOjE3NTc0MzEwOTgsImp0aSI6ImVmMjA5NGM5YzQ1ODQ5Y2E5MjJjYmFmMzE2YTQ5YzljIiwidXNlcl9pZCI6IjEifQ.skNEuTvMyjo4mFmit_umnHuRzSh1ZvY6TdFOs_nTj00
 
 # Response:
 # {
@@ -151,7 +149,7 @@ Authorization: Bearer <access_token>
 
 # View/Download a file (PDF or JPG, stream content)
 GET http://localhost:8000/api/files/1/
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NDMxNjk4LCJpYXQiOjE3NTc0MzEwOTgsImp0aSI6ImVmMjA5NGM5YzQ1ODQ5Y2E5MjJjYmFmMzE2YTQ5YzljIiwidXNlcl9pZCI6IjEifQ.skNEuTvMyjo4mFmit_umnHuRzSh1ZvY6TdFOs_nTj00
 
 # Response: (file stream, e.g. PDF, JPG, etc)
 # If the file exists, the file will be returned as a download or inline view.
@@ -828,12 +826,12 @@ Authorization: Bearer <access_token>
 
 # List bills
 GET http://localhost:8000/api/bills/
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NDM1NTQ2LCJpYXQiOjE3NTc0MzQ5NDYsImp0aSI6IjY0NDI2ZGI5YzVmZDQzNWE4ZWI5YjY4MjhlZTJiY2Q5IiwidXNlcl9pZCI6IjEifQ.zKGP33AJXRQmlfQ232CNfqb0OrREr9YN9Zqw71ylUTw
 
 ####
 # Create bill (basic fields, with file association)
 POST http://localhost:8000/api/bills/
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NDM1NTQ2LCJpYXQiOjE3NTc0MzQ5NDYsImp0aSI6IjY0NDI2ZGI5YzVmZDQzNWE4ZWI5YjY4MjhlZTJiY2Q5IiwidXNlcl9pZCI6IjEifQ.zKGP33AJXRQmlfQ232CNfqb0OrREr9YN9Zqw71ylUTw
 Content-Type: application/json
 
 {
