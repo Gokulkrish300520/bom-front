@@ -751,7 +751,7 @@ class DeliveryChallan(models.Model):
         default="others",
     )
     total_amount = models.DecimalField(max_digits=12, decimal_places=2,
-                                    default=0)
+                                       default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -826,7 +826,7 @@ class Invoice(models.Model):
     customer_notes = models.TextField(blank=True)
     terms_and_conditions = models.TextField(blank=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2,
-                                    default=0)
+                                       default=0)
     files = models.ManyToManyField(
         "CustomerDocument",
         related_name="invoices_ui",

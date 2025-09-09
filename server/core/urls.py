@@ -24,6 +24,9 @@ from .views import (
 
 router = DefaultRouter()
 router.register(r"inventory-management", InventoryManagementViewSet, basename="inventorymanagement")
+
+
+router = DefaultRouter()
 router.register(r"customers", CustomerViewSet, basename="customer")
 router.register(r"vendors", VendorViewSet, basename="vendor")
 router.register(r"items", ItemViewSet, basename="item")
