@@ -179,53 +179,104 @@ class BalanceSheetReportView(APIView):
         }
 
 
-class CustomerDocumentViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
+# class CustomerDocumentViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
+#     """ViewSet for uploading, retrieving, and updating customer documents (files)."""
+#     queryset = CustomerDocument.objects.all().order_by("-uploaded_at")  # pylint: disable=no-member,too-many-ancestors
+#     serializer_class = CustomerDocumentSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+#     parser_classes = [MultiPartParser, FormParser]
+
+
+#     def retrieve(self, request, *args, **kwargs) -> Response:
+#         """Return file metadata as JSON if ?meta=1, else stream file content."""
+#         from django.http import FileResponse
+#         instance = self.get_object()
+#         if request.query_params.get("meta") == "1":
+#             serializer = self.get_serializer(instance)
+#             return Response(serializer.data)
+#         file_handle = instance.file.open("rb")
+#         response = FileResponse(file_handle, as_attachment=False)
+#         response["Content-Disposition"] = (
+#             f'inline; filename="{instance.file.name.split("/")[-1]}"'
+#         )
+#         return response
+
+#     def create(self, request, *args, **kwargs) -> Response:
+#         """Handle file upload."""
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         self.perform_create(serializer)
+#         headers = self.get_success_headers(serializer.data)
+#         return Response(
+#             serializer.data,
+#             status=status.HTTP_201_CREATED,
+#             headers=headers,
+#         )
+
+#     def update(self, request, *args, **kwargs) -> Response:
+#         """Handle file update (replace file)."""
+#         partial = kwargs.pop("partial", False)
+#         instance = self.get_object()
+#         serializer = self.get_serializer(
+#             instance, data=request.data, partial=partial
+#         )
+#         serializer.is_valid(raise_exception=True)
+#         self.perform_update(serializer)
+#         return Response(serializer.data)
+
+import logging
+from rest_framework import status
+from rest_framework.response import Response
+
+logger = logging.getLogger(__name__)
+
+class CustomerDocumentViewSet(viewsets.ModelViewSet):
     """ViewSet for uploading, retrieving, and updating customer documents (files)."""
-    queryset = CustomerDocument.objects.all().order_by("-uploaded_at")  # pylint: disable=no-member,too-many-ancestors
+    queryset = CustomerDocument.objects.all().order_by("-uploaded_at")
     serializer_class = CustomerDocumentSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
-
     def retrieve(self, request, *args, **kwargs) -> Response:
-        """Return file metadata as JSON if ?meta=1, else stream file content."""
-        from django.http import FileResponse
-        instance = self.get_object()
-        if request.query_params.get("meta") == "1":
-            serializer = self.get_serializer(instance)
-            return Response(serializer.data)
-        file_handle = instance.file.open("rb")
-        response = FileResponse(file_handle, as_attachment=False)
-        response["Content-Disposition"] = (
-            f'inline; filename="{instance.file.name.split("/")[-1]}"'
-        )
-        return response
+        try:
+            from django.http import FileResponse
+            instance = self.get_object()
+            if request.query_params.get("meta") == "1":
+                serializer = self.get_serializer(instance)
+                return Response(serializer.data)
+            file_handle = instance.file.open("rb")
+            response = FileResponse(file_handle, as_attachment=False)
+            response["Content-Disposition"] = (
+                f'inline; filename="{instance.file.name.split("/")[-1]}"'
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Error in CustomerDocument retrieve: {e}", exc_info=True)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def create(self, request, *args, **kwargs) -> Response:
-        """Handle file upload."""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(
-            serializer.data,
-            status=status.HTTP_201_CREATED,
-            headers=headers,
-        )
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except Exception as e:
+            logger.error(f"Error in CustomerDocument create: {e}", exc_info=True)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs) -> Response:
-        """Handle file update (replace file)."""
-        partial = kwargs.pop("partial", False)
-        instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=partial
-        )
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return Response(serializer.data)
+        try:
+            partial = kwargs.pop("partial", False)
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"Error in CustomerDocument update: {e}", exc_info=True)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-logger = logging.getLogger(__name__)
 class BillViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Bills."""
     queryset = (
@@ -235,14 +286,6 @@ class BillViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     )
     serializer_class = BillSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
-    def list(self, request, *args, **kwargs):
-        try:
-            return super().list(request, *args, **kwargs)
-        except Exception as e:
-            logger.error(f"Error in BillViewSet list: {e}", exc_info=True)
-            # Return more info for debugging in Railway
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class CustomerViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
