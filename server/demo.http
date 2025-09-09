@@ -1,3 +1,57 @@
+### INVENTORY MANAGEMENT CRUD
+
+# List inventory management records
+GET http://localhost:8000/api/inventory-management/
+Authorization: Bearer <access_token>
+
+####
+# Create inventory management record
+POST http://localhost:8000/api/inventory-management/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "item_name": "Test Item",
+  "unit": "Nos",
+  "type": "Goods",
+  "hsn_code": "1234",
+  "description": "Test description",
+  "selling_price": "100.00",
+  "purchase_price": "80.00",
+  "tax": "18%",
+  "item_details": [
+    {"description": "Batch 1", "quantity": "10.00", "adjustment": "0.00", "amount": "1000.00"},
+    {"description": "Batch 2", "quantity": "5.00", "adjustment": "1.00", "amount": "500.00"}
+  ]
+}
+
+####
+# Retrieve inventory management record
+GET http://localhost:8000/api/inventory-management/1/
+Authorization: Bearer <access_token>
+
+####
+# Update inventory management record
+PUT http://localhost:8000/api/inventory-management/1/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "item_name": "Updated Name",
+  "unit": "Nos",
+  "type": "Goods",
+  "hsn_code": "9999",
+  "description": "desc",
+  "selling_price": "300.00",
+  "purchase_price": "250.00",
+  "tax": "5%",
+  "item_details": []
+}
+
+####
+# Delete inventory management record
+DELETE http://localhost:8000/api/inventory-management/1/
+Authorization: Bearer <access_token>
 ### AUTHENTICATION
 
 # Obtain JWT token
@@ -174,15 +228,38 @@ GET http://localhost:8000/api/customers/1/
 Authorization: Bearer <access_token>
 
 ####
-# Update customer (partial or full)
+
+# Update customer (update, add, and remove contact persons)
 PUT http://localhost:8000/api/customers/1/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-  "display_name": "Acme Corp (John D.)",
-  "remarks": "Updated remarks"
+  "display_name": "Acme Corp (Updated)",
+  "email": "john.doe@acme.com",
+  "customer_type": "business",
+  "company_name": "Acme Corp",
+  "currency": "INR",
+  "payment_terms": "net_30",
+  "contact_persons": [
+    {"id": 1, "salutation": "ms", "first_name": "Jane", "last_name": "Smith", "email": "jane@acme.com", "work_phone": "", "mobile": ""},
+    {"first_name": "New", "last_name": "Person", "email": "new@acme.com", "work_phone": "", "mobile": "", "salutation": null}
+  ]
 }
+
+# Response:
+# {
+#   ...
+#   "contact_persons": [
+#     {"id": 1, "salutation": "ms", "first_name": "Jane", "last_name": "Smith", "email": "jane@acme.com", "work_phone": "", "mobile": ""},
+#     {"id": 2, "salutation": null, "first_name": "New", "last_name": "Person", "email": "new@acme.com", "work_phone": "", "mobile": ""}
+#   ]
+#   ...
+# }
+
+# - Contact person with id 1 is updated in place.
+# - New contact person is created for "New Person".
+# - Any other contact persons previously associated with the customer are deleted.
 
 ####
 # Delete customer
@@ -196,17 +273,57 @@ GET http://localhost:8000/api/vendors/
 Authorization: Bearer <access_token>
 
 ####
-# Create vendor
+
+# Create vendor (all fields)
 POST http://localhost:8000/api/vendors/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "name": "Vendor Inc",
-    "email": "vendor@example.com",
-    "company_name": "Vendor Incorporated",
-    "address": "456 Vendor St",
-    "phone": "9876543210"
+  "vendor_type": "business",
+  "salutation": "mr",
+  "first_name": "John",
+  "last_name": "Doe",
+  "company_name": "Acme Vendor",
+  "display_name": "Acme Vendor (John Doe)",
+  "email": "john.doe@vendor.com",
+  "work_phone": "1234567890",
+  "mobile": "9876543210",
+  "pan": "ABCDE1234F",
+  "currency": "INR",
+  "opening_balance": "1000.00",
+  "payment_terms": "net_30",
+  "billing_attention": "Accounts",
+  "billing_country": "India",
+  "billing_street1": "123 Main St",
+  "billing_street2": "Suite 100",
+  "billing_city": "Mumbai",
+  "billing_state": "MH",
+  "billing_pin_code": "400001",
+  "billing_phone": "0221234567",
+  "billing_fax": "0227654321",
+  "shipping_attention": "Warehouse",
+  "shipping_country": "India",
+  "shipping_street1": "456 Warehouse Rd",
+  "shipping_street2": "",
+  "shipping_city": "Mumbai",
+  "shipping_state": "MH",
+  "shipping_pin_code": "400002",
+  "shipping_phone": "0229876543",
+  "shipping_fax": "0223456789",
+  "contact_persons": [
+    {
+      "salutation": "ms",
+      "first_name": "Jane",
+      "last_name": "Smith",
+      "email": "jane@vendor.com",
+      "work_phone": "",
+      "mobile": ""
+    }
+  ],
+  "custom_fields": {"GSTIN": "27ABCDE1234F1Z5"},
+  "tags": ["priority", "2025"],
+  "remarks": "Important vendor"
 }
 
 ####
@@ -215,17 +332,23 @@ GET http://localhost:8000/api/vendors/1/
 Authorization: Bearer <access_token>
 
 ####
-# Update vendor
+
+# Update vendor (add/remove contact persons)
 PUT http://localhost:8000/api/vendors/1/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "name": "Vendor Inc Updated",
-    "email": "vendor@example.com",
-    "company_name": "Vendor Incorporated",
-    "address": "789 Vendor Ave",
-    "phone": "9876543210"
+  "display_name": "Acme Vendor (Updated)",
+  "email": "john.doe@vendor.com",
+  "vendor_type": "business",
+  "company_name": "Acme Vendor",
+  "currency": "INR",
+  "payment_terms": "net_30",
+  "contact_persons": [
+    {"id": 1, "salutation": "ms", "first_name": "Jane", "last_name": "Smith", "email": "jane@vendor.com", "work_phone": "", "mobile": ""},
+    {"first_name": "New", "last_name": "Person", "email": "new@vendor.com", "work_phone": "", "mobile": "", "salutation": null}
+  ]
 }
 
 ####
@@ -268,6 +391,10 @@ Authorization: Bearer <access_token>
 # {
 #   "id": 1,
 #   ...
+#   "item_details": [
+#     {"id": 1, "item": { ... }, "quantity": 2, "rate": "5000.00", "amount": "10000.00", "invoice_item_number": 1},
+#     {"id": 2, "item": { ... }, "quantity": 1, "rate": "1000.00", "amount": "1000.00", "invoice_item_number": 2}
+#   ],
 #   "attached_files": [
 #     {"id": 4, "file": "/media/customer_documents/file4.pdf", "uploaded_at": "..."},
 #     {"id": 5, "file": "/media/customer_documents/file5.pdf", "uploaded_at": "..."}
@@ -305,16 +432,100 @@ GET http://localhost:8000/api/items/
 Authorization: Bearer <access_token>
 
 ####
-# Create item
+
+# Create item (basic)
 POST http://localhost:8000/api/items/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-    "name": "Item 1",
-    "description": "A sample item",
-    "price": "10.00",
-    "sku": "SKU001"
+  "name": "Item 1",
+  "unit": "Nos",
+  "description": "A sample item",
+  "price": "10.00",
+  "sku": "SKU001"
+}
+
+# Create item (with sales info)
+POST http://localhost:8000/api/items/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "name": "Sales Item",
+  "unit": "Kgs",
+  "manage_sales_info": true,
+  "sales_selling_price": "100.00",
+  "sales_account": "Sales",
+  "sales_description": "Sales item description",
+  "description": "A sales item",
+  "price": "100.00",
+  "sku": "SKU_SALES"
+}
+
+# Create item (with purchase info)
+POST http://localhost:8000/api/items/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "name": "Purchase Item",
+  "unit": "Litres",
+  "manage_purchase_info": true,
+  "purchase_cost_price": "80.00",
+  "purchase_account": "Cost of Goods Sold",
+  "purchase_description": "Purchase item description",
+  "preferred_vendor": 1,
+  "description": "A purchase item",
+  "price": "80.00",
+  "sku": "SKU_PURCHASE"
+}
+
+# Create item (with inventory tracking)
+POST http://localhost:8000/api/items/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "name": "Inventory Item",
+  "unit": "Nos",
+  "track_inventory": true,
+  "inventory_account": "Inventory",
+  "inventory_valuation_method": "FIFO",
+  "opening_stock": "100.00",
+  "opening_stock_rate_per_unit": "10.00",
+  "reorder_point": "20.00",
+  "description": "An inventory item",
+  "price": "10.00",
+  "sku": "SKU_INV"
+}
+
+# Create item (all fields)
+POST http://localhost:8000/api/items/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "name": "Full Item",
+  "unit": "Kgs",
+  "manage_sales_info": true,
+  "sales_selling_price": "200.00",
+  "sales_account": "Sales",
+  "sales_description": "Full item sales",
+  "manage_purchase_info": true,
+  "purchase_cost_price": "150.00",
+  "purchase_account": "Cost of Goods Sold",
+  "purchase_description": "Full item purchase",
+  "preferred_vendor": 1,
+  "track_inventory": true,
+  "inventory_account": "Inventory",
+  "inventory_valuation_method": "FIFO",
+  "opening_stock": "50.00",
+  "opening_stock_rate_per_unit": "3.00",
+  "reorder_point": "10.00",
+  "description": "A full-featured item",
+  "price": "200.00",
+  "sku": "SKU_FULL"
 }
 
 ####
@@ -391,7 +602,7 @@ GET http://localhost:8000/api/quotes/
 Authorization: Bearer <access_token>
 
 ####
-# Create quote (all fields, no items)
+# Create quote (all fields, with items)
 POST http://localhost:8000/api/quotes/
 Authorization: Bearer <access_token>
 Content-Type: application/json
@@ -412,13 +623,28 @@ Content-Type: application/json
   "tax_type": "TDS",
   "tax_percentage": "5",
   "adjustment": "-100.00",
-  "total_amount": "9500.00"
+  "total_amount": "9500.00",
+  "item_details": [
+    {"quote_item_number": 1, "item_id": 1, "quantity": 2, "rate": "5000.00", "amount": "10000.00"},
+    {"quote_item_number": 2, "item_id": 2, "quantity": 1, "rate": "1000.00", "amount": "1000.00"}
+  ]
 }
 
 ####
+
 # Retrieve quote (with nested item details)
 GET http://localhost:8000/api/quotes/1/
 Authorization: Bearer <access_token>
+
+# Response:
+# {
+#   ...
+#   "item_details": [
+#     {"quote_item_number": 1, "item": { ... }, "quantity": 2, "rate": "5000.00", "amount": "10000.00"},
+#     {"quote_item_number": 2, "item": { ... }, "quantity": 1, "rate": "1000.00", "amount": "1000.00"}
+#   ]
+#   ...
+# }
 
 ####
 # Update quote (partial or full)
@@ -443,6 +669,7 @@ Content-Type: application/json
 
 {
   "quote": 1,
+  "quote_item_number": 3,
   "item_id": 1,
   "quantity": 2,
   "rate": "5000.00",
@@ -462,8 +689,8 @@ Content-Type: application/json
   "quote_date": "2025-09-04",
   "expiry_date": "2025-09-10",
   "item_details": [
-    {"item_id": 1, "quantity": 2, "rate": "100.00", "amount": "200.00"},
-    {"item_id": 2, "quantity": 1, "rate": "150.00", "amount": "150.00"}
+    {"quote_item_number": 1, "item_id": 1, "quantity": 2, "rate": "100.00", "amount": "200.00"},
+    {"quote_item_number": 2, "item_id": 2, "quantity": 1, "rate": "150.00", "amount": "150.00"}
   ],
   "quote_file_ids": [1, 2, 3]
 }

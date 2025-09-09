@@ -57,17 +57,17 @@
 
 - After logout, the refresh token cannot be used again. The access token remains valid until it expires (10 minutes).
 
-## 4. API Endpoints (CRUD)
 
-### Customers
-- List:      GET    /api/customers/
-- Create:    POST   /api/customers/
-- Retrieve:  GET    /api/customers/{id}/
-- Update:    PUT    /api/customers/{id}/
-- Delete:    DELETE /api/customers/{id}/
+### Vendors CRUD
 
-#### Customer Fields
-- customer_type: "business" or "individual" (default: business)
+- List:      GET    /api/vendors/
+- Create:    POST   /api/vendors/
+- Retrieve:  GET    /api/vendors/{id}/
+- Update:    PUT    /api/vendors/{id}/
+- Delete:    DELETE /api/vendors/{id}/
+
+#### Vendor Fields
+- vendor_type: "business" or "individual" (default: business)
 - salutation: "dr", "mr", "ms", "mrs" (optional)
 - first_name, last_name: string (optional)
 - company_name: string (optional)
@@ -78,28 +78,89 @@
 - currency: "AED", "AUD", "BND", "CAD", "CNY", "EUR", "GBP", "INR", "JPY", "SAR", "USD", "ZAR" (default: INR)
 - opening_balance: decimal (default: 0)
 - payment_terms: "due_on_receipt", "net_7", "net_15", "net_30", "net_45" (default: due_on_receipt)
-- documents: array of CustomerDocument objects (max 10, each ≤10MB)
 - billing_*: address fields (attention, country, street1, street2, city, state, pin_code, phone, fax)
 - shipping_*: address fields (same as billing)
 - contact_persons: array of ContactPerson objects (see below)
- customer: Customer object (from Customers endpoint)
- invoice_number: string (required, unique)
- order_number: string (optional)
- invoice_date: date (YYYY-MM-DD)
- item_details: array of InvoiceItem objects (see below)
- customer_notes: string (optional)
- terms_and_conditions: string (optional)
- total_amount: decimal
- attached_file_ids: array of integers (write-only, for associating general files)
- attached_files: array of CustomerDocument objects (read-only, attached via attached_file_ids)
- invoice_file_ids: array of integers (write-only, for associating invoice-specific files)
- invoice_files: array of CustomerDocument objects (read-only, attached via invoice_file_ids)
- created_at: datetime
+- custom_fields: object (optional)
+- tags: array (optional)
+- remarks: string (optional)
+- created_at: datetime (read-only)
 - id: integer (read-only)
-- salutation: "dr", "mr", "ms", "mrs" (optional, writable)
-- first_name, last_name: string (writable)
-- email: string (writable)
-- work_phone, mobile: string (optional, writable)
+
+#### Example: Create Vendor (with contact persons)
+POST /api/vendors/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+    "vendor_type": "business",
+    "salutation": "mr",
+    "first_name": "John",
+    "last_name": "Doe",
+    "company_name": "Acme Vendor",
+    "display_name": "Acme Vendor (John Doe)",
+    "email": "john.doe@vendor.com",
+    "work_phone": "1234567890",
+    "mobile": "9876543210",
+    "pan": "ABCDE1234F",
+    "currency": "INR",
+    "opening_balance": "1000.00",
+    "payment_terms": "net_30",
+    "billing_attention": "Accounts",
+    "billing_country": "India",
+    "billing_street1": "123 Main St",
+    "billing_street2": "Suite 100",
+    "billing_city": "Mumbai",
+    "billing_state": "MH",
+    "billing_pin_code": "400001",
+    "billing_phone": "0221234567",
+    "billing_fax": "0227654321",
+    "shipping_attention": "Warehouse",
+    "shipping_country": "India",
+    "shipping_street1": "456 Warehouse Rd",
+    "shipping_street2": "",
+    "shipping_city": "Mumbai",
+    "shipping_state": "MH",
+    "shipping_pin_code": "400002",
+    "shipping_phone": "0229876543",
+    "shipping_fax": "0223456789",
+    "contact_persons": [
+        {
+            "salutation": "ms",
+            "first_name": "Jane",
+            "last_name": "Smith",
+            "email": "jane@vendor.com",
+            "work_phone": "",
+            "mobile": ""
+        }
+    ],
+    "custom_fields": {"GSTIN": "27ABCDE1234F1Z5"},
+    "tags": ["priority", "2025"],
+    "remarks": "Important vendor"
+}
+
+#### Example: Update Vendor (add/remove contact persons)
+PUT /api/vendors/1/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+    "display_name": "Acme Vendor (Updated)",
+    "email": "john.doe@vendor.com",
+    "vendor_type": "business",
+    "company_name": "Acme Vendor",
+    "currency": "INR",
+    "payment_terms": "net_30",
+    "contact_persons": [
+        {"id": 1, "salutation": "ms", "first_name": "Jane", "last_name": "Smith", "email": "jane@vendor.com", "work_phone": "", "mobile": ""},
+        {"first_name": "New", "last_name": "Person", "email": "new@vendor.com", "work_phone": "", "mobile": "", "salutation": null}
+    ]
+}
+
+**Result:**
+- Contact person with `id: 1` is updated in place.
+- A new contact person is created for "New Person".
+- Any other contact persons previously associated with the vendor are deleted.
 
 #### Example: Create Customer (with contact persons)
 POST /api/customers/
@@ -120,6 +181,38 @@ Authorization: Bearer <access_token>
         }
     ],
     ...
+#### Example: Update Contact Persons (retain, add, remove)
+
+To update contact persons for a customer, make a PUT request to `/api/customers/{id}/` with the full customer data, including the `contact_persons` array. The update logic is as follows:
+
+- If a contact person in the array has an `id` matching an existing contact person, that contact person will be updated in place (ID retained).
+- If a contact person in the array does not have an `id`, a new contact person will be created.
+- Any existing contact person not included in the array will be deleted.
+
+**Example:**
+
+PUT /api/customers/1/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+    "display_name": "Acme Corp (Updated)",
+    "email": "john.doe@acme.com",
+    "customer_type": "business",
+    "company_name": "Acme Corp",
+    "currency": "INR",
+    "payment_terms": "net_30",
+    "contact_persons": [
+        {"id": 1, "salutation": "ms", "first_name": "Jane", "last_name": "Smith", "email": "jane@acme.com", "work_phone": "", "mobile": ""},
+        {"first_name": "New", "last_name": "Person", "email": "new@acme.com", "work_phone": "", "mobile": "", "salutation": null}
+    ]
+}
+
+**Result:**
+- Contact person with `id: 1` is updated in place.
+- A new contact person is created for "New Person".
+- Any other contact persons previously associated with the customer are deleted.
+
 #### Example: Retrieve Customer (with nested documents and contact persons)
  customer: Customer object (from Customers endpoint)
  quote_number: string (required, unique)
@@ -248,18 +341,70 @@ Authorization: Bearer <access_token>
 }
 
 ### Items
+
 - List:      GET    /api/items/
 - Create:    POST   /api/items/
 - Retrieve:  GET    /api/items/{id}/
 - Update:    PUT    /api/items/{id}/
 - Delete:    DELETE /api/items/{id}/
 
-### Payments
-- List:      GET    /api/payments/
-- Create:    POST   /api/payments/
-- Retrieve:  GET    /api/payments/{id}/
-- Update:    PUT    /api/payments/{id}/
-- Delete:    DELETE /api/payments/{id}/
+#### Item Fields (2025-09-08)
+- id: integer (read-only)
+- name: string (required)
+- unit: "Nos", "Kgs", "Litres" (default: "Nos")
+- description: string (optional)
+- price: decimal (required)
+- sku: string (required, unique)
+- created_at: datetime (read-only)
+
+**Sales Information**
+- manage_sales_info: boolean (default: false)
+- sales_selling_price: decimal (required if manage_sales_info is true)
+- sales_account: string (required if manage_sales_info is true, default: "Sales")
+- sales_description: string (optional)
+
+**Purchase Information**
+- manage_purchase_info: boolean (default: false)
+- purchase_cost_price: decimal (required if manage_purchase_info is true)
+- purchase_account: string (required if manage_purchase_info is true, default: "Cost of Goods Sold")
+- purchase_description: string (optional)
+- preferred_vendor: integer (optional, Vendor ID)
+
+**Inventory Tracking**
+- track_inventory: boolean (default: false)
+- inventory_account: string (required if track_inventory is true)
+- inventory_valuation_method: string (required if track_inventory is true)
+- opening_stock: decimal (required if track_inventory is true)
+- opening_stock_rate_per_unit: decimal (required if track_inventory is true)
+- reorder_point: decimal (required if track_inventory is true)
+
+#### Example: Create Item (all fields)
+POST /api/items/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+    "name": "Full Item",
+    "unit": "Kgs",
+    "manage_sales_info": true,
+    "sales_selling_price": "200.00",
+    "sales_account": "Sales",
+    "sales_description": "Full item sales",
+    "manage_purchase_info": true,
+    "purchase_cost_price": "150.00",
+    "purchase_account": "Cost of Goods Sold",
+    "purchase_description": "Full item purchase",
+    "preferred_vendor": 1,
+    "track_inventory": true,
+    "inventory_account": "Inventory",
+    "inventory_valuation_method": "FIFO",
+    "opening_stock": "50.00",
+    "opening_stock_rate_per_unit": "3.00",
+    "reorder_point": "10.00",
+    "description": "A full-featured item",
+    "price": "200.00",
+    "sku": "SKU_FULL"
+}
 
 ### Quotes
 - List:      GET    /api/quotes/
@@ -290,8 +435,7 @@ Authorization: Bearer <access_token>
 - created_at: datetime
 
 #### QuoteItem / ProformaInvoiceItem Fields (identical)
-- id: integer
-- item: Item object (from Items endpoint, read-only)
+- quote_item_number: integer (starts at 1 for each quote; used as the identifier in API requests and responses)
 - item_id: integer (write-only)
 - quantity: integer
 - rate: decimal
@@ -303,22 +447,26 @@ Content-Type: application/json
 Authorization: Bearer <access_token>
 
 {
-  "customer_id": 1,
-  "quote_number": "Q-2025-001",
-  "reference_number": "REF-123",
-  "quote_date": "2025-08-27",
-  "expiry_date": "2025-09-10",
-  "salesperson": "Alice Smith",
-  "project_name": "Project X",
-  "subject": "Quotation for Project X",
-  "customer_notes": "Please review and confirm.",
-  "terms_and_conditions": "Payment within 30 days.",
-  "subtotal": "10000.00",
-  "discount": "5.00",
-  "tax_type": "TDS",
-  "tax_percentage": "5",
-  "adjustment": "-100.00",
-  "total_amount": "9500.00"
+    "customer_id": 1,
+    "quote_number": "Q-2025-001",
+    "reference_number": "REF-123",
+    "quote_date": "2025-08-27",
+    "expiry_date": "2025-09-10",
+    "salesperson": "Alice Smith",
+    "project_name": "Project X",
+    "subject": "Quotation for Project X",
+    "customer_notes": "Please review and confirm.",
+    "terms_and_conditions": "Payment within 30 days.",
+    "subtotal": "10000.00",
+    "discount": "5.00",
+    "tax_type": "TDS",
+    "tax_percentage": "5",
+    "adjustment": "-100.00",
+    "total_amount": "9500.00",
+    "item_details": [
+        {"quote_item_number": 1, "item_id": 5, "quantity": 2, "rate": "5000.00"},
+        {"quote_item_number": 2, "item_id": 6, "quantity": 1, "rate": "1000.00"}
+    ]
 }
 
 #### Example: Retrieve Quote (with nested item details)
@@ -327,28 +475,29 @@ Authorization: Bearer <access_token>
 
 Response:
 {
-  "id": 1,
-  "customer": { ... },
-  "quote_number": "Q-2025-001",
-  "reference_number": "REF-123",
-  "quote_date": "2025-08-27",
-  "expiry_date": "2025-09-10",
-  "salesperson": "Alice Smith",
-  "project_name": "Project X",
-  "subject": "Quotation for Project X",
-  "item_details": [
-    {"id": 1, "item": { ... }, "quantity": 2, "rate": "5000.00", "amount": "10000.00"}
-  ],
-  "customer_notes": "Please review and confirm.",
-  "terms_and_conditions": "Payment within 30 days.",
-  "subtotal": "10000.00",
-  "discount": "5.00",
-  "tax_type": "TDS",
-  "tax_percentage": "5",
-  "adjustment": "-100.00",
-  "total_amount": "9500.00",
-  "status": "draft",
-  "created_at": "2025-08-27T10:00:00Z"
+    "id": 1,
+    "customer": { ... },
+    "quote_number": "Q-2025-001",
+    "reference_number": "REF-123",
+    "quote_date": "2025-08-27",
+    "expiry_date": "2025-09-10",
+    "salesperson": "Alice Smith",
+    "project_name": "Project X",
+    "subject": "Quotation for Project X",
+    "item_details": [
+        {"quote_item_number": 1, "item": { ... }, "quantity": 2, "rate": "5000.00", "amount": "10000.00"},
+        {"quote_item_number": 2, "item": { ... }, "quantity": 1, "rate": "1000.00", "amount": "1000.00"}
+    ],
+    "customer_notes": "Please review and confirm.",
+    "terms_and_conditions": "Payment within 30 days.",
+    "subtotal": "10000.00",
+    "discount": "5.00",
+    "tax_type": "TDS",
+    "tax_percentage": "5",
+    "adjustment": "-100.00",
+    "total_amount": "9500.00",
+    "status": "draft",
+    "created_at": "2025-08-27T10:00:00Z"
 }
 
 ### Proforma Invoices
@@ -655,6 +804,7 @@ Response:
 - quantity: integer
 - rate: decimal
 - amount: decimal (read-only)
+- delivery_challan_item_number: integer (starts at 1 for each challan; used as the identifier in API responses)
 
 #### Example: Create Delivery Challan
 POST /api/delivery-challans/
@@ -684,7 +834,7 @@ Response:
     "date": "2025-08-30",
     "challan_type": "liquid_gas",
     "item_details": [
-        {"id": 1, "item": { ... }, "quantity": 5, "rate": "4000.00", "amount": "20000.00"}
+        {"id": 1, "item": { ... }, "quantity": 5, "rate": "4000.00", "amount": "20000.00", "delivery_challan_item_number": 1}
     ],
     "delivery_challan_file_ids": [10, 11],
     "delivery_challan_files": [
@@ -988,8 +1138,84 @@ Authorization: Bearer <access_token>
 - 400: Invalid time parameter
 - 401: Unauthorized
 
+
+### Inventory Management CRUD
+
+#### Endpoints
+- List:      GET    /api/inventory-management/
+- Create:    POST   /api/inventory-management/
+- Retrieve:  GET    /api/inventory-management/{id}/
+- Update:    PUT    /api/inventory-management/{id}/
+- Delete:    DELETE /api/inventory-management/{id}/
+
+#### Fields
+- id: integer (auto)
+- item_name: string (required)
+- unit: string (choices: Nos, Kgs, Litres; required)
+- type: string (choices: Goods, Service; required)
+- hsn_code: string (optional)
+- description: string (optional)
+- selling_price: decimal (optional)
+- purchase_price: decimal (optional)
+- tax: string (choices: 18%, 12%, 5%, 0%; required)
+- item_details: list of InventoryItemDetail objects (optional)
+
+Each InventoryItemDetail:
+- id: integer (auto)
+- description: string (optional)
+- quantity: decimal (required)
+- adjustment: decimal (optional)
+- amount: decimal (required)
+
+#### Example: Create Inventory Management Record
+POST /api/inventory-management/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "item_name": "Test Item",
+    "unit": "Nos",
+    "type": "Goods",
+    "hsn_code": "1234",
+    "description": "Test description",
+    "selling_price": "100.00",
+    "purchase_price": "80.00",
+    "tax": "18%",
+    "item_details": [
+        {"description": "Batch 1", "quantity": "10.00", "adjustment": "0.00", "amount": "1000.00"},
+        {"description": "Batch 2", "quantity": "5.00", "adjustment": "1.00", "amount": "500.00"}
+    ]
+}
+
+#### Example: Retrieve Inventory Management Record
+GET /api/inventory-management/1/
+Authorization: Bearer <access_token>
+
+#### Example: Update Inventory Management Record
+PUT /api/inventory-management/1/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "item_name": "Updated Name",
+    "unit": "Nos",
+    "type": "Goods",
+    "hsn_code": "9999",
+    "description": "desc",
+    "selling_price": "300.00",
+    "purchase_price": "250.00",
+    "tax": "5%",
+    "item_details": []
+}
+
+#### Example: Delete Inventory Management Record
+DELETE /api/inventory-management/1/
+Authorization: Bearer <access_token>
+
 #### Notes
-- The report is always up to date with all CRUD changes to Invoices, Bills, and Payments.
+- All endpoints require authentication (JWT access token).
+- item_details can be omitted or empty for simple records.
+- All CRUD operations are supported.
 
 ## 6. Background Pre-Aggregation (Performance Optimization)
 

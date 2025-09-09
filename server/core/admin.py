@@ -42,6 +42,7 @@ class DailySummaryAdmin(admin.ModelAdmin):
 admin.site.register(DeliveryChallanItem)
 admin.site.register(Invoice)
 admin.site.register(InvoiceItem)
+
 admin.site.register(Customer)
 admin.site.register(CustomerDocument)
 admin.site.register(ContactPerson)

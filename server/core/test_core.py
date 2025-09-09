@@ -224,7 +224,7 @@ class ModelStrCoverageTestCase(APITestCase):
     """Test __str__ methods for all major models for coverage and correctness."""
     def setUp(self):
         """Set up test data for model __str__ method coverage tests."""
-        self.vendor = Vendor.objects.create(name="Vendor1", email="v1@example.com")
+        self.vendor = Vendor.objects.create(display_name="Vendor1", email="v1@example.com")
         self.item = Item.objects.create(name="Item1", description="desc", price=10, sku="SKU1")
         self.customer = Customer.objects.create(display_name="Cust1", email="c1@example.com")
         self.invoice = Invoice.objects.create(

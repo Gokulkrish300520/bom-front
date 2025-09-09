@@ -8,5 +8,6 @@ class CoreConfig(AppConfig):
     name = "core"
 
     def ready(self):
-        # Import post-migrate tasks to ensure signal registration; suppress unused-import warning
+        # Import signals and post-migrate tasks to ensure signal registration; suppress unused-import warning
+        import core.signals  # noqa: F401
         _ = __import__("core.post_migrate_tasks")

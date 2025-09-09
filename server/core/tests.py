@@ -6,6 +6,7 @@
 # pylint: disable=no-member,too-many-instance-attributes,too-few-public-methods
 import os
 import tempfile
+from decimal import Decimal
 
 # Third-party imports
 from django.core.files import File
@@ -21,7 +22,7 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 # Local imports
 from .models import (
     Vendor, Item, Invoice, Bill, ContactPerson, DeliveryChallan, ProformaInvoice,
-    InventoryAdjustment, Customer, CustomerDocument, Quote, DailySummary
+    InventoryAdjustment, Customer, CustomerDocument, Quote, DailySummary, BillItem, InvoiceItem
 )
 from .serializers import CustomerDocumentSerializer
 
@@ -57,7 +58,7 @@ class DeliveryChallanFileAttachmentTestCase(FileAttachmentTestBase):
         response = self.client.post(url, self.challan_data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("delivery_challan_files", response.data)
-    # file_ids variable was unused and removed for lint compliance
+    # file_ids variable was unused for lint compliance
 
     def test_create_challan_with_item_details(self):
         """Test creating a DeliveryChallan with item details."""
@@ -68,6 +69,9 @@ class DeliveryChallanFileAttachmentTestCase(FileAttachmentTestBase):
         self.assertEqual(len(response.data["item_details"]), 2)
         self.assertEqual(response.data["item_details"][0]["quantity"], 2)
         self.assertEqual(response.data["item_details"][1]["rate"], "150.00")
+        # Check delivery_challan_item_number is present and correct
+        self.assertEqual(response.data["item_details"][0]["delivery_challan_item_number"], 1)
+        self.assertEqual(response.data["item_details"][1]["delivery_challan_item_number"], 2)
 
     def test_update_challan_with_item_details(self):
         """Test updating a DeliveryChallan with new item details."""
@@ -140,6 +144,9 @@ class InvoiceFileAttachmentTestCase(FileAttachmentTestBase):
         self.assertIn("item_details", response.data)
         self.assertEqual(len(response.data["item_details"]), 2)
         self.assertEqual(response.data["item_details"][0]["quantity"], 2)
+        # Check invoice_item_number is present and correct
+        self.assertEqual(response.data["item_details"][0]["invoice_item_number"], 1)
+        self.assertEqual(response.data["item_details"][1]["invoice_item_number"], 2)
     # Removed unused 'invoice_file_ids'
 
     def test_update_invoice_with_item_details(self):
@@ -215,7 +222,7 @@ class ModelStrCoverageTestCase(APITestCase):  # pylint: disable=too-many-instanc
     """Test __str__ methods for all major models for coverage and correctness."""
     def setUp(self):
         """Set up test data for model __str__ method coverage tests."""
-        self.vendor = Vendor.objects.create(name="Vendor1", email="v1@example.com")  # pylint: disable=no-member
+        self.vendor = Vendor.objects.create(display_name="Vendor1", email="v1@example.com")  # pylint: disable=no-member
         self.item = Item.objects.create(name="Item1", description="desc", price=10, sku="SKU1")  # pylint: disable=no-member
         self.customer = Customer.objects.create(display_name="Cust1", email="c1@example.com")  # pylint: disable=no-member
         self.invoice = Invoice.objects.create(
@@ -376,6 +383,7 @@ class QuoteFileAttachmentTestCase(FileAttachmentTestBase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(len(resp.data["item_details"]), 1)
         self.assertEqual(resp.data["item_details"][0]["quantity"], 5)
+        self.assertEqual(resp.data["item_details"][0]["quote_item_number"], 1)
 
     def test_update_quote_with_files(self):
         """Test updating a Quote with attached files."""
@@ -523,7 +531,7 @@ class ProformaInvoiceFileAttachmentTestCase(FileAttachmentTestBase):
 
     def test_create_proforma_invoice_with_files(self):
         """Test creating a ProformaInvoice with attached files."""
-    # url variable was unused and removed for lint compliance
+    # url variable was unused for lint compliance
     # Removed line with undefined 'self' and 'url' for lint compliance
 
     def test_create_proforma_invoice_with_item_details(self):
@@ -570,3 +578,153 @@ class ProformaInvoiceFileAttachmentTestCase(FileAttachmentTestBase):
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 401)
+
+class CustomerContactPersonUpdateTests(APITestCase):
+    def setUp(self):
+        self.customer = Customer.objects.create(
+            display_name="Test Customer",
+            email="test@example.com",
+            customer_type="business",
+            company_name="Test Co",
+            currency="INR",
+            payment_terms="due_on_receipt"
+        )
+        self.cp1 = ContactPerson.objects.create(customer=self.customer, first_name="John", last_name="Doe", email="john@example.com")
+        self.cp2 = ContactPerson.objects.create(customer=self.customer, first_name="Jane", last_name="Smith", email="jane@example.com")
+        self.url = reverse("customer-detail", args=[self.customer.id])
+        self.client.force_authenticate(user=get_user_model().objects.create(username="u", password="p"))
+
+    def test_update_contact_person_retains_id(self):
+        data = {
+            "display_name": self.customer.display_name,
+            "email": self.customer.email,
+            "customer_type": self.customer.customer_type,
+            "company_name": self.customer.company_name,
+            "currency": self.customer.currency,
+            "payment_terms": self.customer.payment_terms,
+            "contact_persons": [
+                {"id": self.cp1.id, "first_name": "Johnny", "last_name": "Doe", "email": "john@example.com", "work_phone": "", "mobile": "", "salutation": None},
+                {"id": self.cp2.id, "first_name": "Jane", "last_name": "Smith", "email": "jane@example.com", "work_phone": "", "mobile": "", "salutation": None}
+            ]
+        }
+        resp = self.client.put(self.url, data, format="json")
+        self.assertEqual(resp.status_code, 200)
+        ids = [cp["id"] for cp in resp.data["contact_persons"]]
+        self.assertIn(self.cp1.id, ids)
+        self.assertIn(self.cp2.id, ids)
+        self.assertEqual(ContactPerson.objects.get(id=self.cp1.id).first_name, "Johnny")
+
+    def test_add_new_contact_person(self):
+        data = {
+            "display_name": self.customer.display_name,
+            "email": self.customer.email,
+            "customer_type": self.customer.customer_type,
+            "company_name": self.customer.company_name,
+            "currency": self.customer.currency,
+            "payment_terms": self.customer.payment_terms,
+            "contact_persons": [
+                {"id": self.cp1.id, "first_name": "John", "last_name": "Doe", "email": "john@example.com", "work_phone": "", "mobile": "", "salutation": None},
+                {"first_name": "New", "last_name": "Person", "email": "new@example.com", "work_phone": "", "mobile": "", "salutation": None}
+            ]
+        }
+        resp = self.client.put(self.url, data, format="json")
+        self.assertEqual(resp.status_code, 200)
+        emails = [cp["email"] for cp in resp.data["contact_persons"]]
+        self.assertIn("new@example.com", emails)
+        self.assertEqual(ContactPerson.objects.filter(customer=self.customer).count(), 2)
+
+    def test_remove_contact_person(self):
+        data = {
+            "display_name": self.customer.display_name,
+            "email": self.customer.email,
+            "customer_type": self.customer.customer_type,
+            "company_name": self.customer.company_name,
+            "currency": self.customer.currency,
+            "payment_terms": self.customer.payment_terms,
+            "contact_persons": [
+                {"id": self.cp2.id, "first_name": "Jane", "last_name": "Smith", "email": "jane@example.com", "work_phone": "", "mobile": "", "salutation": None}
+            ]
+        }
+        resp = self.client.put(self.url, data, format="json")
+        self.assertEqual(resp.status_code, 200)
+        ids = [cp["id"] for cp in resp.data["contact_persons"]]
+        self.assertIn(self.cp2.id, ids)
+        self.assertNotIn(self.cp1.id, ids)
+        self.assertEqual(ContactPerson.objects.filter(customer=self.customer).count(), 1)
+
+class InventoryTrackingOnBillInvoiceTestCase(APITestCase):
+    def setUp(self):
+        self.item = Item.objects.create(
+            name="Test Item",
+            unit="Nos",
+            price=Decimal("10.00"),
+            sku="TEST-ITEM-001",
+            track_inventory=True,
+            inventory_account="Inventory",
+            inventory_valuation_method="FIFO",
+            opening_stock=Decimal("100.00"),
+            opening_stock_rate_per_unit=Decimal("10.00"),
+            current_stock=Decimal("100.00"),
+        )
+        self.vendor = Vendor.objects.create(display_name="Test Vendor", email="vendor@example.com")
+        self.customer = Customer.objects.create(display_name="Test Customer", email="customer@example.com")
+        self.bill = Bill.objects.create(
+            vendor=self.vendor,
+            bill_number="BILL-001",
+            bill_date="2025-09-08",
+            due_date="2025-09-15",
+            subtotal=Decimal("100.00"),
+            tax=Decimal("0.00"),
+            total_amount=Decimal("100.00"),
+        )
+        self.invoice = Invoice.objects.create(
+            customer=self.customer,
+            invoice_number="INV-001",
+            invoice_date="2025-09-08",
+            total_amount=Decimal("100.00"),
+        )
+
+    def test_billitem_increases_stock(self):
+        BillItem.objects.create(bill=self.bill, item=self.item, quantity=10, rate=Decimal("10.00"), amount=Decimal("100.00"))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("110.00"))
+
+    def test_invoiceitem_decreases_stock(self):
+        InvoiceItem.objects.create(invoice=self.invoice, item=self.item, quantity=5, rate=Decimal("10.00"), amount=Decimal("50.00"))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("95.00"))
+
+    def test_billitem_update_adjusts_stock(self):
+        bill_item = BillItem.objects.create(bill=self.bill, item=self.item, quantity=10, rate=Decimal("10.00"), amount=Decimal("100.00"))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("110.00"))
+        bill_item.quantity = 5
+        bill_item.save()
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("105.00"))
+
+    def test_invoiceitem_update_adjusts_stock(self):
+        invoice_item = InvoiceItem.objects.create(invoice=self.invoice, item=self.item, quantity=5, rate=Decimal("10.00"), amount=Decimal("50.00"))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("95.00"))
+        invoice_item.quantity = 2
+        invoice_item.save()
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("98.00"))
+
+    def test_billitem_delete_reverts_stock(self):
+        bill_item = BillItem.objects.create(bill=self.bill, item=self.item, quantity=10, rate=Decimal("10.00"), amount=Decimal("100.00"))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("110.00"))
+        bill_item.delete()
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("100.00"))
+
+    def test_invoiceitem_delete_reverts_stock(self):
+        invoice_item = InvoiceItem.objects.create(invoice=self.invoice, item=self.item, quantity=5, rate=Decimal("10.00"), amount=Decimal("50.00"))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("95.00"))
+        invoice_item.delete()
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("100.00"))
+

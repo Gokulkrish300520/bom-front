@@ -1,3 +1,20 @@
+from .inventory_management_models import InventoryManagement
+from .serializers import InventoryManagementSerializer
+import io
+import json
+import xlsxwriter
+from django.core.mail import EmailMessage
+from django.http import JsonResponse
+
+# ...existing code...
+
+# Inventory Management CRUD endpoint
+from rest_framework import viewsets, permissions
+
+class InventoryManagementViewSet(viewsets.ModelViewSet):
+    queryset = InventoryManagement.objects.all()
+    serializer_class = InventoryManagementSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 # pylint: disable=no-member, import-outside-toplevel, import-self, redefined-outer-name
 """Views for core Django REST API endpoints."""
@@ -13,11 +30,6 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-import io
-import json
-import xlsxwriter
-from django.core.mail import EmailMessage
-from django.http import JsonResponse
 
 # Local imports
 from .models import (
@@ -175,14 +187,13 @@ class CustomerDocumentViewSet(viewsets.ModelViewSet):  # pylint: disable=too-man
 
     def retrieve(self, request, *args, **kwargs) -> Response:
         """Return file metadata as JSON if ?meta=1, else stream file content."""
+        from django.http import FileResponse
         instance = self.get_object()
         if request.query_params.get("meta") == "1":
             serializer = self.get_serializer(instance)
             return Response(serializer.data)
         file_handle = instance.file.open("rb")
-        response = Response(
-            file_handle.read(), content_type="application/octet-stream"
-        )
+        response = FileResponse(file_handle, as_attachment=False)
         response["Content-Disposition"] = (
             f'inline; filename="{instance.file.name.split("/")[-1]}"'
         )
@@ -440,7 +451,7 @@ class ProfitAndLossReportView(APIView):
             "invoice_breakdown": invoice_breakdown,
             "bill_breakdown": bill_breakdown,
         }
-        
+
 from rest_framework.decorators import api_view, permission_classes
 from django.core.mail import EmailMessage
 import json
