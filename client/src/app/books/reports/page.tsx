@@ -10,7 +10,7 @@ export default function ReportsPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-md p-4">
+      {/* <aside className="w-64 bg-white shadow-md p-4">
         <h2 className="text-lg font-semibold mb-4">Report Categories</h2>
         <ul className="space-y-2">
           <li className="font-semibold text-gray-700">Business Overview</li>
@@ -29,7 +29,7 @@ export default function ReportsPage() {
             </ul>
           </li>
         </ul>
-      </aside>
+      </aside> */}
 
       {/* Main Content */}
       <main className="flex-1 p-6">

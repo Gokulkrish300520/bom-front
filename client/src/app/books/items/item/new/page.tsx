@@ -1,37 +1,178 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { fetchWithAuth } from "@/auth/tokenservice";
+
+interface Vendor {
+  id: number;
+  display_name: string;
+}
 
 export default function NewItemPage() {
   const router = useRouter();
 
+  // Units fixed list
+  const units = ["Nos", "Kgs", "Litres"];
+
+  // Vendors from API
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+
+  // Checkbox states for managing included info
+  const [manageSalesInfo, setManageSalesInfo] = useState(false);
+  const [managePurchaseInfo, setManagePurchaseInfo] = useState(false);
+  const [trackInventory, setTrackInventory] = useState(false);
+
+  // Form state
   const [form, setForm] = useState({
     name: "",
-    purchaseDesc: "",
-    purchaseRate: "",
-    rate: "",
-    stock: "",
+    unit: "",
+    description: "",
+    price: "",
+    sku: "",
+    // sales info
+    sales_selling_price: "",
+    sales_account: "Sales",
+    sales_description: "",
+    // purchase info
+    purchase_cost_price: "",
+    purchase_account: "Cost of Goods Sold",
+    purchase_description: "",
+    preferred_vendor: "", // will hold vendor id as string
+    // inventory info
+    inventory_account: "",
+    inventory_valuation_method: "",
+    opening_stock: "",
+    opening_stock_rate_per_unit: "",
+    reorder_point: "",
+    // price:"",
+    // description:"",
+    // sku: "",
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function fetchVendors() {
+      try {
+        const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/vendors/");
+        if (!res.ok) throw new Error("Failed to load vendors");
+        const data = await res.json();
+        setVendors(data.results || []);
+      } catch (e) {
+        // optional: handle error or silently fail
+      }
+    }
+    fetchVendors();
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSave = () => {
-    const storedItems = JSON.parse(localStorage.getItem("items") || "[]");
-    storedItems.push(form);
-    localStorage.setItem("items", JSON.stringify(storedItems));
-    router.push("/books/items/item"); // redirect to ItemsPage
+  const handleCheckboxChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    if (field === "manageSalesInfo") setManageSalesInfo(checked);
+    else if (field === "managePurchaseInfo") setManagePurchaseInfo(checked);
+    else if (field === "trackInventory") setTrackInventory(checked);
+  };
+
+  const handleSave = async () => {
+    setError("");
+
+    if (!form.name.trim()) {
+      setError("Name is required");
+      return;
+    }
+    if (!form.unit.trim()) {
+      setError("Unit is required");
+      return;
+    }
+    if (!form.price.trim()) {
+      setError("Price is required");
+      return;
+    }
+    if (!form.sku.trim()) {
+      setError("SKU is required");
+      return;
+    }
+
+    // Compose payload conditionally based on checkboxes
+    const payload: any = {
+      name: form.name,
+      unit: form.unit,
+      description: form.description,
+      price: form.price,
+      sku: form.sku,
+    };
+
+    if (manageSalesInfo) {
+      if (!form.sales_selling_price) {
+        setError("Sales selling price is required when Sales Info enabled");
+        return;
+      }
+      payload.manage_sales_info = true;
+      payload.sales_selling_price = form.sales_selling_price;
+      payload.sales_account = form.sales_account || "Sales";
+      payload.sales_description = form.sales_description;
+    } else {
+      payload.manage_sales_info = false;
+    }
+
+    if (managePurchaseInfo) {
+      if (!form.purchase_cost_price) {
+        setError("Purchase cost price is required when Purchase Info enabled");
+        return;
+      }
+      payload.manage_purchase_info = true;
+      payload.purchase_cost_price = form.purchase_cost_price;
+      payload.purchase_account = form.purchase_account || "Cost of Goods Sold";
+      payload.purchase_description = form.purchase_description;
+      payload.preferred_vendor = form.preferred_vendor ? Number(form.preferred_vendor) : null;
+    } else {
+      payload.manage_purchase_info = false;
+    }
+
+    if (trackInventory) {
+      payload.track_inventory = true;
+      payload.inventory_account = form.inventory_account;
+      payload.inventory_valuation_method = form.inventory_valuation_method;
+      payload.opening_stock = form.opening_stock;
+      payload.opening_stock_rate_per_unit = form.opening_stock_rate_per_unit;
+      payload.reorder_point = form.reorder_point;
+      payload.price = "100";
+      payload.description = "",
+      payload.sku=""
+    } else {
+      payload.track_inventory = false;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/items/", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errBody = await res.json();
+        throw new Error(errBody.detail || "Failed to create item");
+      }
+      // Success
+      router.push("/books/items/item");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen p-6 bg-gray-50">
       <div className="w-full max-w-5xl p-8 bg-white shadow-lg rounded-2xl">
-        {/* Page Title */}
         <h1 className="mb-6 text-2xl font-semibold text-green-700">New Item</h1>
+
+        {error && <div className="mb-4 text-red-600 font-medium">{error}</div>}
 
         {/* Name & Unit */}
         <div className="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2">
@@ -48,151 +189,218 @@ export default function NewItemPage() {
             />
           </div>
           <div>
-            <label className="block font-medium text-gray-700">Unit</label>
+            <label className="block font-medium text-gray-700">
+              Unit<span className="text-red-500">*</span>
+            </label>
             <select
+              name="unit"
+              value={form.unit}
+              onChange={handleChange}
               className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
             >
-              <option value="">Select or type to add</option>
+              <option value="">Select unit</option>
+              {units.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
-        {/* Sales & Purchase Info */}
-        <div className="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2">
-          {/* Sales Information */}
-          <div className="p-4 border rounded-lg">
-            <label className="flex items-center gap-2 mb-4 font-semibold text-green-700">
-              <input type="checkbox" checked readOnly className="text-green-600" />
-              Sales Information
-            </label>
-            <div className="space-y-4">
+        {/* Manage Sales Info */}
+        <div className="mb-6">
+          <label className="flex items-center gap-2 mb-4 font-semibold text-green-700">
+            <input
+              type="checkbox"
+              checked={manageSalesInfo}
+              onChange={handleCheckboxChange("manageSalesInfo")}
+              className="text-green-600"
+            />
+            Sales Information
+          </label>
+          {manageSalesInfo && (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <label className="block font-medium text-gray-700">
-                  Selling Price<span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-gray-600">INR</span>
-                  <input
-                    type="number"
-                    name="rate"
-                    value={form.rate}
-                    onChange={handleChange}
-                    className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700">
-                  Account<span className="text-red-500">*</span>
-                </label>
-                <select className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500">
-                  <option>Sales</option>
-                </select>
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700">Description</label>
-                <textarea
-                  name="purchaseDesc"
-                  value={form.purchaseDesc}
+                <label className="block font-medium text-gray-700">Selling Price (INR)<span className="text-red-500">*</span></label>
+                <input
+                  type="number"
+                  name="sales_selling_price"
+                  value={form.sales_selling_price}
                   onChange={handleChange}
                   className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
-                ></textarea>
+                />
               </div>
-            </div>
-          </div>
 
-          {/* Purchase Information */}
-          <div className="p-4 border rounded-lg">
-            <label className="flex items-center gap-2 mb-4 font-semibold text-green-700">
-              <input type="checkbox" checked readOnly className="text-green-600" />
-              Purchase Information
-            </label>
-            <div className="space-y-4">
               <div>
-                <label className="block font-medium text-gray-700">
-                  Cost Price<span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-gray-600">INR</span>
-                  <input
-                    type="number"
-                    name="purchaseRate"
-                    value={form.purchaseRate}
-                    onChange={handleChange}
-                    className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700">
-                  Account<span className="text-red-500">*</span>
-                </label>
-                <select className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500">
-                  <option>Cost of Goods Sold</option>
+                <label className="block font-medium text-gray-700">Account</label>
+                <select
+                  name="sales_account"
+                  value={form.sales_account}
+                  onChange={handleChange}
+                  className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="Sales">Sales</option>
                 </select>
               </div>
-              <div>
+
+              <div className="md:col-span-2">
                 <label className="block font-medium text-gray-700">Description</label>
-                <textarea className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"></textarea>
+                <textarea
+                  name="sales_description"
+                  value={form.sales_description}
+                  onChange={handleChange}
+                  className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                />
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Manage Purchase Info */}
+        <div className="mb-6">
+          <label className="flex items-center gap-2 mb-4 font-semibold text-green-700">
+            <input
+              type="checkbox"
+              checked={managePurchaseInfo}
+              onChange={handleCheckboxChange("managePurchaseInfo")}
+              className="text-green-600"
+            />
+            Purchase Information
+          </label>
+          {managePurchaseInfo && (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div>
+                <label className="block font-medium text-gray-700">Cost Price (INR)<span className="text-red-500">*</span></label>
+                <input
+                  type="number"
+                  name="purchase_cost_price"
+                  value={form.purchase_cost_price}
+                  onChange={handleChange}
+                  className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium text-gray-700">Account</label>
+                <select
+                  name="purchase_account"
+                  value={form.purchase_account}
+                  onChange={handleChange}
+                  className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="Cost of Goods Sold">Cost of Goods Sold</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block font-medium text-gray-700">Description</label>
+                <textarea
+                  name="purchase_description"
+                  value={form.purchase_description}
+                  onChange={handleChange}
+                  className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
               <div>
                 <label className="block font-medium text-gray-700">Preferred Vendor</label>
-                <select className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500">
+                <select
+                  name="preferred_vendor"
+                  value={form.preferred_vendor}
+                  onChange={handleChange}
+                  className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                >
                   <option value="">Select Vendor</option>
+                  {vendors.map((v) => (
+                    <option key={v.id} value={v.id.toString()}>
+                      {v.display_name}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Track Inventory */}
-        <div className="p-4 mb-6 border rounded-lg">
+        <div className="mb-6">
           <label className="flex items-center gap-2 mb-4 font-semibold text-green-700">
-            <input type="checkbox" checked readOnly className="text-green-600" />
+            <input
+              type="checkbox"
+              checked={trackInventory}
+              onChange={handleCheckboxChange("trackInventory")}
+              className="text-green-600"
+            />
             Track Inventory for this item
           </label>
-          <p className="mb-4 text-sm text-gray-500">
-            You cannot enable/disable inventory tracking once you've created transactions for this item
-          </p>
+          {trackInventory && (
+            <>
+              <p className="mb-4 text-sm text-gray-500">
+                You cannot enable/disable inventory tracking once you've created transactions for this item
+              </p>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div>
-              <label className="block font-medium text-gray-700">Inventory Account</label>
-              <select className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500">
-                <option value="">Select an account</option>
-              </select>
-            </div>
-            <div>
-              <label className="block font-medium text-gray-700">Inventory Valuation Method</label>
-              <select className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500">
-                <option value="">Select the valuation method</option>
-              </select>
-            </div>
-            <div>
-              <label className="block font-medium text-gray-700">Opening Stock</label>
-              <input
-                type="number"
-                name="stock"
-                value={form.stock}
-                onChange={handleChange}
-                className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
-              />
-            </div>
-            <div>
-              <label className="block font-medium text-gray-700">Opening Stock Rate per Unit</label>
-              <input
-                type="number"
-                className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
-              />
-            </div>
-            <div>
-              <label className="block font-medium text-gray-700">Reorder Point</label>
-              <input
-                type="number"
-                className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
-              />
-            </div>
-          </div>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div>
+                  <label className="block font-medium text-gray-700">Inventory Account</label>
+                  <select
+                    name="inventory_account"
+                    value={form.inventory_account}
+                    onChange={handleChange}
+                    className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Select an account</option>
+                    <option value="Inventory">Inventory</option>
+                    {/* Add more accounts as you like */}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-medium text-gray-700">Inventory Valuation Method</label>
+                  <select
+                    name="inventory_valuation_method"
+                    value={form.inventory_valuation_method}
+                    onChange={handleChange}
+                    className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Select Method</option>
+                    <option value="FIFO">FIFO</option>
+                    <option value="LIFO">LIFO</option>
+                    {/* Add more methods if needed */}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-medium text-gray-700">Opening Stock</label>
+                  <input
+                    type="number"
+                    name="opening_stock"
+                    value={form.opening_stock}
+                    onChange={handleChange}
+                    className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-gray-700">Opening Stock Rate per Unit</label>
+                  <input
+                    type="number"
+                    name="opening_stock_rate_per_unit"
+                    value={form.opening_stock_rate_per_unit}
+                    onChange={handleChange}
+                    className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-gray-700">Reorder Point</label>
+                  <input
+                    type="number"
+                    name="reorder_point"
+                    value={form.reorder_point}
+                    onChange={handleChange}
+                    className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Action Buttons */}
@@ -204,10 +412,11 @@ export default function NewItemPage() {
             Cancel
           </button>
           <button
+            disabled={loading}
             onClick={handleSave}
-            className="px-6 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
+            className="px-6 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
           >
-            Save
+            {loading ? "Saving..." : "Save"}
           </button>
         </div>
       </div>

@@ -2,15 +2,55 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { fetchWithAuth } from "@/auth/tokenservice";
+import { Trash2 } from "lucide-react";
 
 export default function ItemsPage() {
   const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Load items from localStorage
+  async function fetchItems() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/items/");
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch items");
+      }
+      const data = await res.json();
+      setItems(data.results || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm("Are you sure you want to delete this item?")) return;
+
+    try {
+      const res = await fetchWithAuth(
+        `https://bom-front-production.up.railway.app/api/items/${id}/`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to delete item");
+      }
+
+      // Remove deleted item from local state
+      setItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
+
   useEffect(() => {
-    const storedItems = JSON.parse(localStorage.getItem("items") || "[]");
-    setItems(storedItems);
+    fetchItems();
   }, []);
 
   return (
@@ -19,41 +59,65 @@ export default function ItemsPage() {
         <h1 className="text-2xl font-bold text-green-900">All Items</h1>
         <button
           className="px-4 py-2 font-medium text-white bg-green-600 rounded-lg shadow hover:bg-green-700"
-          onClick={() => router.push("/books/items/item/new")} // Navigate to new item page
+          onClick={() => router.push("/books/items/item/new")}
         >
           + New
         </button>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full overflow-hidden text-left border-collapse rounded-lg shadow">
-          <thead>
-            <tr className="font-semibold text-green-900 bg-green-200">
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Purchase Description</th>
-              <th className="px-4 py-3">Purchase Rate</th>
-              <th className="px-4 py-3">Rate</th>
-              <th className="px-4 py-3">Stock on Hand</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item, idx) => (
-              <tr
-                key={idx}
-                className={`${
-                  idx % 2 === 0 ? "bg-green-50" : "bg-green-100"
-                } hover:bg-green-200`}
-              >
-                <td className="px-4 py-3 font-medium">{item.name}</td>
-                <td className="px-4 py-3">{item.purchaseDesc}</td>
-                <td className="px-4 py-3">₹{Number(item.purchaseRate).toFixed(2)}</td>
-                <td className="px-4 py-3">₹{Number(item.rate).toFixed(2)}</td>
-                <td className="px-4 py-3">{item.stock}</td>
+      {loading ? (
+        <div className="text-center py-10 text-green-700">Loading items...</div>
+      ) : error ? (
+        <div className="text-center py-10 text-red-600">Error: {error}</div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-10 text-green-700">No items found.</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse rounded-lg shadow">
+            <thead>
+              <tr className="font-semibold text-green-900 bg-green-200">
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Purchase Description</th>
+                <th className="px-4 py-3">Purchase Rate</th>
+                <th className="px-4 py-3">Rate</th>
+                <th className="px-4 py-3">Stock on Hand</th>
+                <th className="px-4 py-3">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr
+                  key={item.id}
+                  className={`${
+                    item.id % 2 === 0 ? "bg-green-50" : "bg-green-100"
+                  } hover:bg-green-200`}
+                >
+                  <td className="px-4 py-3 font-medium">{item.name}</td>
+                  <td className="px-4 py-3">{item.purchase_description || "-"}</td>
+                  <td className="px-4 py-3">
+                    {item.purchase_cost_price != null
+                      ? `₹${Number(item.purchase_cost_price).toFixed(2)}`
+                      : "-"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {item.price != null ? `₹${Number(item.price).toFixed(2)}` : "-"}
+                  </td>
+                  <td className="px-4 py-3">{item.opening_stock ?? "-"}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="p-2 text-red-600 rounded hover:bg-red-100"
+                      title="Delete item"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

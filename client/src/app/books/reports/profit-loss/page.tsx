@@ -1,17 +1,18 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import {
   ChevronDownIcon,
   FunnelIcon,
   ArrowUpTrayIcon,
-  ArrowsRightLeftIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { fetchWithAuth } from "@/auth/tokenservice";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import Link from "next/link";
 
-// --- TYPE DEFINITIONS ---
+// Types - as before
 type ReportDetails = {
   operating_income: number;
   cost_of_goods_sold: number;
@@ -22,8 +23,8 @@ type ReportDetails = {
   non_operating_expense: number;
   net_profit_loss: number;
   payments_received: number;
-  invoice_breakdown?: any;
-  bill_breakdown?: any;
+  invoice_breakdown?: any[];
+  bill_breakdown?: any[];
 };
 
 type ProfitLossReport = {
@@ -33,57 +34,43 @@ type ProfitLossReport = {
   end_date: string;
   report: ReportDetails;
   compare_with?: string;
-  compare_report?: any;
+  compare_report?: ReportDetails;
 };
 
-// --- PAGE STARTS ---
 export default function ProfitLossPage() {
-  // Filter controls state (changes immediately with UI)
-  const [dateRange, setDateRange] = useState<string>("This Month");
-  const [reportBasis, setReportBasis] = useState<string>("Accrual");
-  const [compareWith, setCompareWith] = useState<string>("None");
-  const [showZeroBalance, setShowZeroBalance] = useState<boolean>(true);
+  const [dateRange, setDateRange] = useState("This Month");
+  const [reportBasis, setReportBasis] = useState("Accrual");
+  const [compareWith, setCompareWith] = useState("None");
+  const [showZeroBalance, setShowZeroBalance] = useState(true);
 
-  // Filter state actually used to fetch report (changes only on Run Report)
-  const [runFilter, setRunFilter] = useState<{
-    time: string;
-    basis: string;
-    compare: string;
-  }>({
+  const [runFilter, setRunFilter] = useState({
     time: "This Month",
     basis: "Accrual",
     compare: "None",
   });
 
   const [report, setReport] = useState<ProfitLossReport | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Show/hide invoice & bill breakdowns together
-  const [showBreakdowns, setShowBreakdowns] = useState(false);
-
-  // Fetch report whenever runFilter changes (after Run Report clicked)
   useEffect(() => {
-    const fetchReport = async () => {
+    async function fetchReport() {
       setLoading(true);
       setError("");
       setReport(null);
-      // Hide breakdown on each new fetch
-      setShowBreakdowns(false);
       try {
-        const token = localStorage.getItem("access_token");
-        let params = new URLSearchParams({
-          time: runFilter.time,
-          basis: runFilter.basis,
-        });
-        if (runFilter.compare !== "None") params.append("compare_with", runFilter.compare);
+        const token = localStorage.getItem("access_token") ?? "";
+        const params = new URLSearchParams();
+        params.set("time", runFilter.time);
+        params.set("basis", runFilter.basis);
+        if (runFilter.compare !== "None") {
+          params.set("compare_with", runFilter.compare);
+        }
 
         const res = await fetchWithAuth(
           `https://bom-front-production.up.railway.app/api/reports/profit-and-loss/?${params.toString()}`,
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers: { Authorization: `Bearer ${token}` },
           }
         );
 
@@ -91,53 +78,52 @@ export default function ProfitLossPage() {
           let errMsg = "Failed to fetch report";
           try {
             const errBody = await res.json();
-            if (errBody && errBody.detail) errMsg = errBody.detail;
+            if (errBody?.detail) errMsg = errBody.detail;
           } catch {}
           throw new Error(errMsg);
         }
 
         const data: ProfitLossReport = await res.json();
         setReport(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not load report");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Unknown error");
       } finally {
         setLoading(false);
       }
-    };
+    }
     fetchReport();
   }, [runFilter]);
 
-  // Export as Excel including invoice and bill breakdown
-  function exportToExcel(report: ProfitLossReport) {
-    if (!report) return;
+  // Prepare rows for main report
+  const mainRows = report
+    ? [
+        { label: "Operating Income", total: report.report.operating_income },
+        { label: "Cost of Goods Sold", total: report.report.cost_of_goods_sold },
+        { label: "Gross Profit", total: report.report.gross_profit },
+        { label: "Operating Expense", total: report.report.operating_expense },
+        { label: "Operating Profit", total: report.report.operating_profit },
+        { label: "Non Operating Income", total: report.report.non_operating_income },
+        { label: "Non Operating Expense", total: report.report.non_operating_expense },
+        { label: "Net Profit/Loss", total: report.report.net_profit_loss },
+      ]
+    : [];
 
-    const summaryData = reportItems.map(({ account, total }) => ({
-      Account: account,
-      Total: total,
-    }));
-
-    const wb = XLSX.utils.book_new();
-
-    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
-
-    if (report.report.invoice_breakdown && report.report.invoice_breakdown.length > 0) {
-      const wsInvoice = XLSX.utils.json_to_sheet(report.report.invoice_breakdown);
-      XLSX.utils.book_append_sheet(wb, wsInvoice, "Invoice Breakdown");
-    }
-
-    if (report.report.bill_breakdown && report.report.bill_breakdown.length > 0) {
-      const wsBill = XLSX.utils.json_to_sheet(report.report.bill_breakdown);
-      XLSX.utils.book_append_sheet(wb, wsBill, "Bill Breakdown");
-    }
-
-    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([wbout], { type: "application/octet-stream" });
-    saveAs(blob, "profit_and_loss_report.xlsx");
-  }
+  // Prepare rows for compare report if exists
+  const compareRows =
+    report?.compare_report != null
+      ? [
+          { label: "Operating Income", total: report.compare_report.operating_income },
+          { label: "Cost of Goods Sold", total: report.compare_report.cost_of_goods_sold },
+          { label: "Gross Profit", total: report.compare_report.gross_profit },
+          { label: "Operating Expense", total: report.compare_report.operating_expense },
+          { label: "Operating Profit", total: report.compare_report.operating_profit },
+          { label: "Non Operating Income", total: report.compare_report.non_operating_income },
+          { label: "Non Operating Expense", total: report.compare_report.non_operating_expense },
+          { label: "Net Profit/Loss", total: report.compare_report.net_profit_loss },
+        ]
+      : [];
 
   const handleRunReport = () => {
-    setError("");
     setRunFilter({
       time: dateRange,
       basis: reportBasis,
@@ -162,92 +148,94 @@ export default function ProfitLossPage() {
       alert("No data to export");
       return;
     }
-    // Use Excel export - includes breakdowns
-    exportToExcel(report);
+    const wb = XLSX.utils.book_new();
+
+    const summarySheet = XLSX.utils.json_to_sheet(
+      mainRows.map(({ label, total }) => ({ Account: label, Total: total }))
+    );
+    XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
+
+    if (report.report.invoice_breakdown && report.report.invoice_breakdown.length > 0) {
+      const invSheet = XLSX.utils.json_to_sheet(report.report.invoice_breakdown);
+      XLSX.utils.book_append_sheet(wb, invSheet, "Invoice Breakdown");
+    }
+    if (report.report.bill_breakdown && report.report.bill_breakdown.length > 0) {
+      const billSheet = XLSX.utils.json_to_sheet(report.report.bill_breakdown);
+      XLSX.utils.book_append_sheet(wb, billSheet, "Bill Breakdown");
+    }
+
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    saveAs(new Blob([wbout], { type: "application/octet-stream" }), "profit_and_loss_report.xlsx");
   };
 
   const handleShare = async () => {
-  if (!report) {
-    alert("No data to share");
-    return;
-  }
-
-  const recipientEmail = window.prompt("Enter recipient email address to share the report:");
-  if (!recipientEmail) {
-    alert("Email address is required.");
-    return;
-  }
-
-  try {
-    const token = localStorage.getItem("access_token");
-
-    const reportData = {
-      Account: reportItems.map((item) => ({
-        Account: item.account,
-        Total: item.total,
-      })),
-      invoice_breakdown: report.report.invoice_breakdown ?? [],
-      bill_breakdown: report.report.bill_breakdown ?? [],
-      start_date: report.start_date,
-      end_date: report.end_date,
-      basis: report.basis,
-    };
-
-    const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/api/send-report-email/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        recipient_email: recipientEmail,
-        subject: "Profit and Loss Report",
-        report_data: reportData,
-      }),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.error || "Failed to send email.");
+    if (!report) {
+      alert("No data to share");
+      return;
+    }
+    const recipient = window.prompt("Enter recipient email address to share the report:");
+    if (!recipient) {
+      alert("Email is required");
+      return;
     }
 
-    alert("Report shared successfully via email.");
-  } catch (error) {
-    alert(`Error sharing report: ${error instanceof Error ? error.message : String(error)}`);
-  }
-};
-
-
-  // Prepare summary table rows and export data
-  const reportItems =
-    report && report.report
-      ? [
-          { account: "Operating Income", total: report.report.operating_income ?? 0 },
-          { account: "Cost of Goods Sold", total: report.report.cost_of_goods_sold ?? 0 },
-          { account: "Gross Profit", total: report.report.gross_profit ?? 0 },
-          { account: "Operating Expense", total: report.report.operating_expense ?? 0 },
-          { account: "Operating Profit", total: report.report.operating_profit ?? 0 },
-          { account: "Non Operating Income", total: report.report.non_operating_income ?? 0 },
-          { account: "Non Operating Expense", total: report.report.non_operating_expense ?? 0 },
-          { account: "Net Profit/Loss", total: report.report.net_profit_loss ?? 0 },
-        ]
-      : [];
+    try {
+      const token = localStorage.getItem("access_token") ?? "";
+      const reportData = {
+        Account: mainRows.map(({ label, total }) => ({
+          Account: label,
+          Total: total,
+        })),
+        invoice_breakdown: report.report.invoice_breakdown ?? [],
+        bill_breakdown: report.report.bill_breakdown ?? [],
+        start_date: report.start_date,
+        end_date: report.end_date,
+        basis: report.basis,
+      };
+      const res = await fetchWithAuth(
+        "https://bom-front-production.up.railway.app/api/api/send-report-email/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            recipient_email: recipient,
+            subject: "Profit and Loss Report",
+            report_data: reportData,
+          }),
+        }
+      );
+      if (!res.ok) {
+        const errBody = await res.json();
+        throw new Error(errBody.error || "Failed to send email");
+      }
+      alert("Report shared successfully via email.");
+    } catch (e) {
+      alert(`Failed to share report: ${e instanceof Error ? e.message : e}`);
+    }
+  };
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
-      {/* Title */}
-      <div className="mb-6">
-        <span className="text-gray-600">Business Overview &gt; Profit and Loss</span>
+      {/* Breadcrumb */}
+      <div className="mb-6 flex items-center">
+        <Link href="/books/reports" className="text-gray-600 hover:underline">
+          Business Overview
+        </Link>
+        <span className="mx-2 text-gray-400 font-bold">{">"}</span>
+        <span className="text-gray-600">Profit and Loss</span>
         {report && (
           <span className="ml-2 text-gray-500">
             • From {report.start_date} To {report.end_date}
           </span>
         )}
-        <h1 className="text-3xl font-bold mt-2">Profit and Loss</h1>
-        <div className="text-gray-600">Basis: {reportBasis}</div>
       </div>
+      <h1 className="text-3xl font-bold mt-2">Profit and Loss</h1>
+      <div className="text-gray-600 mb-4">Basis: {reportBasis}</div>
 
-      {/* Filters and Actions */}
+      {/* Filters & Actions */}
       <div className="flex flex-col md:flex-row md:justify-between gap-4 mb-4">
         <div className="flex gap-2 flex-wrap">
           <select
@@ -284,7 +272,6 @@ export default function ProfitLossPage() {
             <FunnelIcon className="w-4 h-4" />
           </button>
         </div>
-
         <div className="flex gap-2">
           <button
             onClick={handleRunReport}
@@ -313,49 +300,56 @@ export default function ProfitLossPage() {
         </div>
       </div>
 
-      {/* Error / Loading / Report Table */}
+      {/* Report Table and Comparison */}
       <div className="bg-white shadow rounded-lg overflow-auto">
         {loading ? (
           <div className="p-8 text-center">Loading...</div>
         ) : error ? (
           <div className="p-8 text-center text-red-600">{error}</div>
         ) : (
-          <>
-            <div className="flex justify-end gap-2 p-2 text-sm border-b border-gray-200">
-              <select className="border px-2 py-1 rounded">
-                <option>Accounts Without Zero Balance</option>
-              </select>
-              <select className="border px-2 py-1 rounded">
-                <option>Compare With: {compareWith}</option>
-              </select>
-              <button className="border px-2 py-1 rounded">Customize Report Columns</button>
-            </div>
+          <table className="min-w-full border-collapse">
+            <thead className="bg-gray-50 sticky top-0">
+              <tr>
+                <th className="text-left px-4 py-2 border-b">ACCOUNT</th>
+                <th className="text-right px-4 py-2 border-b">TOTAL</th>
+                {report && report.compare_with && report.compare_report && (
+                  <th className="text-right px-4 py-2 border-b">
+                    Compare With: {report.compare_with}
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {mainRows.map(({ label, total }, idx) => {
+                const compTotal = compareRows[idx]?.total ?? null;
 
-            <table className="min-w-full border-collapse">
-              <thead className="bg-gray-50 sticky top-0">
-                <tr>
-                  <th className="text-left px-4 py-2 border-b">ACCOUNT</th>
-                  <th className="text-right px-4 py-2 border-b">TOTAL</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportItems
-                  .filter((item) => showZeroBalance || item.total !== 0)
-                  .map((item) => (
-                    <tr key={item.account} className="hover:bg-gray-50">
-                      <td className="px-4 py-2">{item.account}</td>
+                // Filter zero balances if needed
+                if (
+                  !showZeroBalance &&
+                  (total === 0 || total === null) &&
+                  (compTotal === 0 || compTotal === null)
+                ) {
+                  return null;
+                }
+
+                return (
+                  <tr key={label} className="hover:bg-gray-50">
+                    <td className="px-4 py-2">{label}</td>
+                    <td className="px-4 py-2 text-right">
+                      {total?.toLocaleString(undefined, { minimumFractionDigits: 2 }) ??
+                        "0.00"}
+                    </td>
+                    {report && report.compare_with && report.compare_report && (
                       <td className="px-4 py-2 text-right">
-                        {item.total != null
-                          ? item.total.toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                            })
-                          : "0.00"}
+                        {compTotal?.toLocaleString(undefined, { minimumFractionDigits: 2 }) ??
+                          "0.00"}
                       </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
