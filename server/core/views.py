@@ -230,7 +230,7 @@ class BillViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Bills."""
     queryset = (
     Bill.objects.select_related("vendor")  # pylint: disable=no-member,too-many-ancestors
-        .prefetch_related("billitem_set")
+        .prefetch_related("item_details")
         .order_by("-created_at")
     )
     serializer_class = BillSerializer
