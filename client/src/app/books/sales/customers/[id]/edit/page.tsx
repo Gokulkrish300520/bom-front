@@ -885,7 +885,7 @@ export default function EditCustomerPage() {
                                   className="text-red-600 hover:underline"
                                   title="Remove"
                                 >
-                                  Ã—
+                                  x
                                 </button>
                               </td>
                             </tr>

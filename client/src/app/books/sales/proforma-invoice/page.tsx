@@ -38,7 +38,7 @@ export default function ProformaInvoicesPage() {
     useEffect(() => {
       async function loadp_invoices() {
         try {
-          const res = await fetchWithAuth("https://bpm-production.up.railway.app/api/proformainvoices/");
+          const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/proformainvoices/");
           if (!res.ok) throw new Error("Failed to fetch quotes");
           const data = await res.json();
           setProforma(data.results);

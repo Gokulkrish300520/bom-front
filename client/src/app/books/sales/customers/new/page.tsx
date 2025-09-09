@@ -856,7 +856,7 @@ export default function NewCustomerPage() {
                           className="text-red-600 hover:underline"
                           title="Remove"
                         >
-                          ×
+                          <FaTrash />
                         </button>
                       </td>
                     </tr>

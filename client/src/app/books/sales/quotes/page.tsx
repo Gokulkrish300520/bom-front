@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
+import { FaTrash } from "react-icons/fa";
+
 
 type CustomerType = {
   id: number;
@@ -63,6 +65,23 @@ export default function QuotesPage() {
     }
   };
 
+  const deleteQuote = async (id: number) => {
+  if (!confirm("Are you sure you want to delete this quote?")) return;
+
+  try {
+    const res = await fetchWithAuth(`https://bom-front-production.up.railway.app/api/quotes/${id}/`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete quote");
+    // Remove deleted quote from state
+    setQuotes((curr) => curr.filter((q) => q.id !== id));
+  } catch (err) {
+    alert("Failed to delete quote");
+    console.error(err);
+  }
+};
+
+
   if (loading) return <p>Loading quotes...</p>;
   if (error) return <p className="text-red-600">{error}</p>;
 
@@ -86,6 +105,7 @@ export default function QuotesPage() {
               <th className="p-3 text-left">Customer Name</th>
               <th className="p-3 text-left">Status</th>
               <th className="p-3 text-left">Amount</th>
+              <th className="p-3 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -122,6 +142,16 @@ export default function QuotesPage() {
                     </span>
                   </td>
                   <td className="p-3">₹{q.total_amount}</td>
+                  <td className="p-3">
+          <button
+            onClick={() => deleteQuote(q.id)}
+            className="text-red-600 hover:text-red-800"
+            aria-label="Delete quote"
+            title="Delete quote"
+          >
+            <FaTrash />
+          </button>
+        </td>
                 </tr>
               ))
             )}

@@ -142,7 +142,7 @@ export default function QuoteDetailPage() {
             <FaPhone /> {quote.customer.work_phone}
           </div>
         </div>
-        <div className="text-sm mt-2">
+        <div className="text-sm mt-4">
           Company: {quote.customer.company_name} <br />
           Type: {quote.customer.customer_type === "business" ? "Business" : "Individual"}
         </div>
@@ -251,7 +251,7 @@ export default function QuoteDetailPage() {
       <div className="mt-8">
         <h3 className="font-semibold text-green-700 mb-2">Item Details</h3>
         {quote.item_details && quote.item_details.length > 0 ? (
-          <table className="w-full text-sm mb-3">
+          <table className="w-full table-fixed text-sm mb-3">
             <thead>
               <tr className="text-green-800 bg-green-50">
                 <th className="py-1 font-medium">Item Name</th>
@@ -263,13 +263,13 @@ export default function QuoteDetailPage() {
             </thead>
             <tbody>
               {/* Assuming item_details structured with name, description, quantity, rate, amount */}
-              {quote.item_details.map((item: any, idx: number) => (
+              {quote.item_details.map((detail: any, idx: number) => (
                 <tr key={idx} className="border-b">
-                  <td>{item.name}</td>
-                  <td>{item.description}</td>
-                  <td>{item.quantity}</td>
-                  <td>{item.rate}</td>
-                  <td>{item.amount}</td>
+                  <td className="text-center align-middle">{detail.item.name}</td>
+                  <td className="text-center align-middle">{detail.item.description}</td>
+                  <td className="text-center align-middle">{detail.quantity}</td>
+                  <td className="text-center align-middle">{detail.rate}</td>
+                  <td className="text-center align-middle">₹{parseFloat(detail.amount)}</td>
                 </tr>
               ))}
             </tbody>

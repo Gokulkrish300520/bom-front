@@ -173,7 +173,6 @@ export default function ProfitLossPage() {
   }
 
   const recipientEmail = window.prompt("Enter recipient email address to share the report:");
-
   if (!recipientEmail) {
     alert("Email address is required.");
     return;
@@ -182,9 +181,11 @@ export default function ProfitLossPage() {
   try {
     const token = localStorage.getItem("access_token");
 
-    // Prepare report data to send
     const reportData = {
-      summary: reportItems,
+      Account: reportItems.map((item) => ({
+        Account: item.account,
+        Total: item.total,
+      })),
       invoice_breakdown: report.report.invoice_breakdown ?? [],
       bill_breakdown: report.report.bill_breakdown ?? [],
       start_date: report.start_date,
@@ -192,7 +193,7 @@ export default function ProfitLossPage() {
       basis: report.basis,
     };
 
-    const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/send-report-email/", {
+    const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/api/send-report-email/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -5,8 +5,8 @@ POST http://localhost:8000/api/auth/token/
 Content-Type: application/json
 
 {
-    "username": "your_username",
-    "password": "your_password"
+    "username":"Gokul",
+    "password":"Gokul@2005"
 }
 
 ####
@@ -758,3 +758,26 @@ Authorization: Bearer <access_token>
 # Get Balance Sheet for this month (cash basis)
 GET http://localhost:8000/api/reports/balance-sheet/?time=This%20Month&basis=Cash
 Authorization: Bearer <access_token>
+
+###
+#send mail
+POST http://127.0.0.1:8000/api/api/send-report-email/
+Authorization: Bearer <a_t>
+Content-Type: application/json
+
+{
+  "subject": "Profit and Loss Report",
+  "recipient_email": "gokulkrishc861@gmail.com",
+  "report_data": {
+    "Account": [
+      {"Account": "Operating Income", "Total": 15500},
+      {"Account": "Cost of Goods Sold", "Total": 0},
+      {"Account": "Gross Profit", "Total": 15500},
+      {"Account": "Operating Expense", "Total": 0},
+      {"Account": "Operating Profit", "Total": 15500},
+      {"Account": "Non Operating Income", "Total": 0},
+      {"Account": "Non Operating Expense", "Total": 0},
+      {"Account": "Net Profit/Loss", "Total": 15500}
+    ]
+  }
+}

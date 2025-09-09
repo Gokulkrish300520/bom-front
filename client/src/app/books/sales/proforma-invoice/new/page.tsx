@@ -61,7 +61,7 @@ export default function NewProformaInvoice() {
   useEffect(() => {
     async function loadCustomers() {
       try {
-        const res = await fetchWithAuth("https://bpm-production.up.railway.app/api/customers/");
+        const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/customers/");
         if (!res.ok) throw new Error("Failed to fetch customers");
         const data = await res.json();
         setCustomers(data.results || []);

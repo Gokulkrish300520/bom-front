@@ -13,6 +13,11 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+import io
+import json
+import xlsxwriter
+from django.core.mail import EmailMessage
+from django.http import JsonResponse
 
 # Local imports
 from .models import (
@@ -457,17 +462,34 @@ def send_report_email(request):
     if not recipient or not report_data:
         return Response({'error': 'recipient_email and report_data are required'}, status=400)
 
-    body = f"Profit and Loss Report\n\n{json.dumps(report_data, indent=2)}"
-
-    email = EmailMessage(
-        subject=subject,
-        body=body,
-        from_email=None,
-        to=[recipient],
-    )
-
     try:
+        # Generate Excel file in memory
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {"in_memory": True})
+        worksheet = workbook.add_worksheet("Report")
+
+        # Get headers from first row of Account
+        headers = list(report_data["Account"][0].keys())
+        for col, header in enumerate(headers):
+            worksheet.write(0, col, header)
+
+        # Write each row
+        for row, item in enumerate(report_data["Account"], start=1):
+            for col, header in enumerate(headers):
+                worksheet.write(row, col, item.get(header, ""))
+
+        workbook.close()
+        output.seek(0)
+
+        # Create email with attachment
+        email = EmailMessage(
+            subject,
+            "Please find attached your Profit and Loss report.",
+            to=[recipient],
+        )
+        email.attach("profit_and_loss_report.xlsx", output.read(), "application/vnd.ms-excel")
         email.send()
-        return Response({'message': 'Email sent successfully'})
+
+        return JsonResponse({"message": "Email sent successfully"})
     except Exception as e:
-        return Response({'error': str(e)}, status=500)
+        return JsonResponse({"error": str(e)}, status=500)

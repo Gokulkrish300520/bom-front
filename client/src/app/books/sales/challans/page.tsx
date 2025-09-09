@@ -37,7 +37,7 @@ export default function ChallanPage() {
     useEffect(() => {
       async function load_challans() {
         try {
-          const res = await fetchWithAuth("https://bpm-production.up.railway.app/api/deliverychallans/");
+          const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/deliverychallans/");
           if (!res.ok) throw new Error("Failed to fetch quotes");
           const data = await res.json();
           setChallan(data.results);

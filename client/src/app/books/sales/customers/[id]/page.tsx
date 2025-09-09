@@ -18,6 +18,7 @@ type ContactPerson = {
 
 type CustomerDetails = {
   id: number;
+  salutation:string,
   display_name: string;
   email: string;
   customer_type: string;
@@ -88,7 +89,10 @@ export default function CustomerDetailPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-semibold text-green-800">
-            {customer.display_name}
+            {[
+          customer.salutation.charAt(0).toUpperCase() + customer.salutation.slice(1),
+          customer.display_name
+          ].join(" ")}
           </h2>
         </div>
         <div className="flex items-center space-x-2">

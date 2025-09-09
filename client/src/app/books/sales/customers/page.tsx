@@ -7,6 +7,7 @@ import { fetchWithAuth } from "@/auth/tokenservice";
 
 type Customer = {
   id: number;
+  salutation:string,
   display_name: string;
   company_name: string;
   email: string;
@@ -82,7 +83,7 @@ export default function CustomersPage() {
           <tbody>
             {customers.length > 0 ? (
               customers.map((c) => (
-                <tr key={c.id} className="hover:bg-green-50">
+                <tr key={c.id} className={`${c.id % 2 ? "bg-green-100" : "bg-green-50"} border-b`}>
                   <td className="px-4 py-2 border">
                     <Link href={`/books/sales/customers/${c.id}`}>{c.display_name}</Link>
                   </td>
