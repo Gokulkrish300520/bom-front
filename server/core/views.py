@@ -486,7 +486,7 @@ class ProfitAndLossReportView(APIView):
                     "id": bill.id,
                     "bill_number": bill.bill_number,
                     "date": bill.bill_date,
-                    "vendor": bill.vendor.name,
+                    "vendor": bill.vendor.display_name,
                     "total_amount": float(bill.total_amount),
                 }
                 for bill in bills
