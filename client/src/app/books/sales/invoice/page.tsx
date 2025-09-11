@@ -4,6 +4,8 @@ import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
+import { FaTrash } from "react-icons/fa";
+
 
 type CustomerType = {
   id: number;
@@ -117,6 +119,23 @@ export default function InvoiceListPage() {
     }
   }
 
+  const deleteInvoice = async (id: string) => {
+  if (!confirm("Are you sure you want to delete this invoice?")) return;
+
+  try {
+    const res = await fetchWithAuth(`https://bom-front-production.up.railway.app/api/invoices/${id}/`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete invoice");
+    // Refresh the invoice list after deletion, or remove deleted invoice from state
+    setInvoices(curr => curr.filter(inv => inv.id !== id));
+  } catch (err) {
+    alert("Failed to delete invoice");
+    console.error(err);
+  }
+};
+
+
   useEffect(() => {
     loadInvoices(undefined, page);
   }, [statusFilter, page]);
@@ -170,6 +189,7 @@ export default function InvoiceListPage() {
               <th className="px-4 py-3 font-semibold text-left">Due Date</th>
               <th className="px-4 py-3 font-semibold text-right">Amount</th>
               <th className="px-4 py-3 font-semibold text-left">Status</th>
+              <th className="px-4 py-3 font-semibold text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -183,7 +203,12 @@ export default function InvoiceListPage() {
               invoices.map((inv) => (
                 <tr key={inv.id} className="transition border-b hover:bg-green-50">
                   <td className="px-4 py-3">{formatDate(inv.invoice_date)}</td>
-                  <td className="px-4 py-3 font-medium text-green-700">{inv.invoice_number}</td>
+                 <td className="px-4 py-3 font-medium text-green-700">
+                <Link href={`/books/sales/invoice/${inv.id}`} className="hover:underline">
+               {inv.invoice_number}
+              </Link>
+              </td>
+
                   <td className="px-4 py-3">{inv.customer.display_name}</td>
                   <td className="px-4 py-3">{formatDate(inv.due_date)}</td>
                   <td className="px-4 py-3 font-medium text-right">₹{Number(inv.total_amount).toLocaleString()}</td>
@@ -194,6 +219,16 @@ export default function InvoiceListPage() {
                       {inv.status}
                     </span>
                   </td>
+                  <td className="px-4 py-3">
+            <button
+              onClick={() => deleteInvoice(inv.id)}
+              className="text-red-600 hover:text-red-800"
+              aria-label="Delete invoice"
+              title="Delete invoice"
+            >
+              <FaTrash />
+            </button>
+          </td>
                 </tr>
               ))
             )}

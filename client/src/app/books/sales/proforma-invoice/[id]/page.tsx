@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchWithAuth } from "@/auth/tokenservice";
-import { FaEnvelope, FaPhone, FaUser,FaMobileAlt } from "react-icons/fa";
+import { FaEnvelope, FaPhone, FaUser, FaMobileAlt } from "react-icons/fa";
 
 type ContactPerson = {
   salutation?: string;
@@ -60,66 +60,73 @@ type Customer = {
   created_at?: string;
 };
 
-type InvoiceItemDetail = {
+type ProformaItemDetail = {
   id: number;
   item: Item;
   quantity: number;
   rate: string;
   amount: string;
-  invoice_item_number: number;
 };
 
-type Invoice = {
+type ProformaInvoice = {
   id: number;
   customer: Customer;
   invoice_number: string;
-  order_number: string;
+  reference_number: string;
   invoice_date: string;
-  due_date: string; // assuming a due_date exists, replace or remove if not
-  item_details: InvoiceItemDetail[];
+  expiry_date: string;
+  salesperson: string;
+  project_name: string;
+  subject: string;
+  item_details: ProformaItemDetail[];
   customer_notes?: string;
   terms_and_conditions?: string;
+  subtotal: string;
+  discount: string;
+  tax_type: string;
+  tax_percentage: string;
+  adjustment: string;
   total_amount: string;
-  attached_files?: { id: number; file: string; uploaded_at: string }[];
-  invoice_files?: { id: number; file: string; uploaded_at: string }[];
+  status: string;
+  proforma_invoice_files?: { id: number; file: string; uploaded_at: string }[];
   created_at: string;
 };
 
-export default function InvoiceDetailPage() {
+export default function ProformaInvoiceDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [proforma, setProforma] = useState<ProformaInvoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function fetchInvoice() {
+    async function fetchProforma() {
       try {
         const res = await fetchWithAuth(
-          `https://bom-front-production.up.railway.app/api/invoices/${id}/`
+          `https://bom-front-production.up.railway.app/api/proformainvoices/${id}/`
         );
-        if (!res.ok) throw new Error("Failed to fetch invoice data");
-        const data: Invoice = await res.json();
-        setInvoice(data);
+        if (!res.ok) throw new Error("Failed to fetch proforma invoice data");
+        const data: ProformaInvoice = await res.json();
+        setProforma(data);
       } catch (err) {
-        setError("Failed to load invoice data");
+        setError("Failed to load proforma invoice data");
         console.error(err);
       } finally {
         setLoading(false);
       }
     }
-    fetchInvoice();
+    fetchProforma();
   }, [id]);
 
-  if (loading) return <p>Loading invoice details...</p>;
-  if (error || !invoice)
-    return <p className="text-red-600">{error || "Invoice not found"}</p>;
+  if (loading) return <p>Loading proforma invoice details...</p>;
+  if (error || !proforma)
+    return <p className="text-red-600">{error || "Proforma invoice not found"}</p>;
 
   return (
     <div className="w-full max-w-5xl mx-auto bg-white rounded-xl shadow p-8 mt-8">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold text-green-800">
-          Invoice: {invoice.invoice_number}
+          Proforma Invoice: {proforma.invoice_number}
         </h2>
         <button
           className="text-green-700 border border-green-200 rounded px-4 py-1 hover:bg-green-50"
@@ -129,49 +136,60 @@ export default function InvoiceDetailPage() {
         </button>
       </div>
 
-      {/* Associated Customer Info */}
+      {/* Customer Info */}
       <div className="mb-6">
         <h3 className="font-semibold text-green-700 mb-2">Customer Info</h3>
-        <div className="flex gap-6">
+        <div className="flex gap-6 flex-wrap">
           <div className="flex items-center gap-2 text-green-700">
-            <FaUser /> {invoice.customer.display_name || ""}
+            <FaUser /> {proforma.customer.display_name || ""}
           </div>
           <div className="flex items-center gap-2 text-green-700">
-            <FaEnvelope /> {invoice.customer.email || ""}
+            <FaEnvelope /> {proforma.customer.email || ""}
           </div>
           <div className="flex items-center gap-2 text-green-700">
-            <FaPhone /> {invoice.customer.work_phone || ""}
+            <FaPhone /> {proforma.customer.work_phone || ""}
           </div>
           <div className="flex items-center gap-2 text-green-700">
-            <FaMobileAlt /> {invoice.customer.mobile || ""}
+            <FaMobileAlt /> {proforma.customer.mobile || ""}
           </div>
         </div>
         <div className="text-sm mt-4">
-          Company: {invoice.customer.company_name || ""} <br />
-          Type: {invoice.customer.customer_type === "business" ? "Business" : "Individual"}
+          Company: {proforma.customer.company_name || ""} <br />
+          Type: {proforma.customer.customer_type === "business" ? "Business" : "Individual"}
         </div>
       </div>
 
-      {/* Invoice Details */}
+      {/* Proforma Invoice Details */}
       <div className="mt-6">
-        <h3 className="font-semibold text-green-700 mb-2">Invoice Details</h3>
+        <h3 className="font-semibold text-green-700 mb-2">Proforma Invoice Details</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
           <div>
-            <span className="text-gray-700">Order Number:</span>{" "}
-            <span className="text-gray-900">{invoice.order_number}</span>
+            <span className="text-gray-700">Reference Number:</span>{" "}
+            <span className="text-gray-900">{proforma.reference_number}</span>
           </div>
           <div>
             <span className="text-gray-700">Invoice Date:</span>{" "}
-            <span className="text-gray-900">{invoice.invoice_date}</span>
+            <span className="text-gray-900">{proforma.invoice_date}</span>
           </div>
-          {/* Include Due Date if applicable */}
-          {/* <div>
-            <span className="text-gray-700">Due Date:</span>{" "}
-            <span className="text-gray-900">{invoice.due_date}</span>
-          </div> */}
+          <div>
+            <span className="text-gray-700">Expiry Date:</span>{" "}
+            <span className="text-gray-900">{proforma.expiry_date}</span>
+          </div>
+          <div>
+            <span className="text-gray-700">Salesperson:</span>{" "}
+            <span className="text-gray-900">{proforma.salesperson}</span>
+          </div>
+          <div>
+            <span className="text-gray-700">Project Name:</span>{" "}
+            <span className="text-gray-900">{proforma.project_name}</span>
+          </div>
+          <div>
+            <span className="text-gray-700">Subject:</span>{" "}
+            <span className="text-gray-900">{proforma.subject}</span>
+          </div>
           <div>
             <span className="text-gray-700">Status:</span>{" "}
-            <span className="text-gray-900">{/* You may add invoice.status or similar */}</span>
+            <span className="text-gray-900">{proforma.status}</span>
           </div>
         </div>
       </div>
@@ -181,33 +199,49 @@ export default function InvoiceDetailPage() {
         <h3 className="font-semibold text-green-700 mb-2">Amount Details</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
           <div>
+            <span className="text-gray-700">Subtotal:</span>{" "}
+            <span className="text-gray-900">₹{parseFloat(proforma.subtotal).toFixed(2)}</span>
+          </div>
+          <div>
+            <span className="text-gray-700">Discount:</span>{" "}
+            <span className="text-gray-900">{proforma.discount}%</span>
+          </div>
+          <div>
+            <span className="text-gray-700">Tax Type:</span>{" "}
+            <span className="text-gray-900">{proforma.tax_type} ({proforma.tax_percentage}%)</span>
+          </div>
+          <div>
+            <span className="text-gray-700">Adjustment:</span>{" "}
+            <span className="text-gray-900">₹{parseFloat(proforma.adjustment).toFixed(2)}</span>
+          </div>
+          <div>
             <span className="text-gray-700">Total Amount:</span>{" "}
-            <span className="text-gray-900 font-bold">₹{parseFloat(invoice.total_amount).toFixed(2)}</span>
+            <span className="text-gray-900 font-bold">₹{parseFloat(proforma.total_amount).toFixed(2)}</span>
           </div>
         </div>
       </div>
 
       {/* Notes and Terms */}
-      {invoice.customer_notes && (
+      {proforma.customer_notes && (
         <div className="mt-8">
           <h3 className="font-semibold text-green-700 mb-2">Customer Notes</h3>
-          <div className="text-gray-800">{invoice.customer_notes}</div>
+          <div className="text-gray-800">{proforma.customer_notes}</div>
         </div>
       )}
 
-      {invoice.terms_and_conditions && (
+      {proforma.terms_and_conditions && (
         <div className="mt-8">
           <h3 className="font-semibold text-green-700 mb-2">Terms & Conditions</h3>
-          <div className="text-gray-800">{invoice.terms_and_conditions}</div>
+          <div className="text-gray-800">{proforma.terms_and_conditions}</div>
         </div>
       )}
 
       {/* Tags */}
-      {invoice.customer.tags && invoice.customer.tags.length > 0 && (
+      {proforma.customer.tags && proforma.customer.tags.length > 0 && (
         <div className="mt-8">
           <h3 className="font-semibold text-green-700 mb-2">Tags</h3>
           <div className="flex flex-wrap gap-2">
-            {invoice.customer.tags.map((tag, idx) => (
+            {proforma.customer.tags.map((tag, idx) => (
               <span key={idx} className="border px-2 py-1 rounded-full text-xs bg-green-50 text-green-800">
                 {tag}
               </span>
@@ -217,17 +251,17 @@ export default function InvoiceDetailPage() {
       )}
 
       {/* Remarks */}
-      {invoice.customer.remarks && (
+      {proforma.customer.remarks && (
         <div className="mt-8">
           <h3 className="font-semibold text-green-700 mb-2">Customer Remarks</h3>
-          <div className="text-gray-800">{invoice.customer.remarks}</div>
+          <div className="text-gray-800">{proforma.customer.remarks}</div>
         </div>
       )}
 
       {/* Item Details */}
       <div className="mt-8">
         <h3 className="font-semibold text-green-700 mb-2">Item Details</h3>
-        {invoice.item_details && invoice.item_details.length > 0 ? (
+        {proforma.item_details && proforma.item_details.length > 0 ? (
           <table className="w-full table-fixed text-sm mb-3">
             <thead>
               <tr className="text-green-800 bg-green-50">
@@ -239,7 +273,7 @@ export default function InvoiceDetailPage() {
               </tr>
             </thead>
             <tbody>
-              {invoice.item_details.map((detail, idx) => (
+              {proforma.item_details.map((detail, idx) => (
                 <tr key={detail.id} className="border-b">
                   <td className="text-center align-middle">{detail.item?.name || "N/A"}</td>
                   <td className="text-center align-middle">{detail.item?.description || "N/A"}</td>

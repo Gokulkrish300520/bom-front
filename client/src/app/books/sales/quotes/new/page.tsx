@@ -3,11 +3,30 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
+import { generatePDF } from "@/lib/pdf/pdfgenerator";
+
 
 type Customer = {
   id: number;
   display_name: string;
+  billing_attention: string;
+  billing_street1: string;
+  billing_street2: string;
+  billing_city: string;
+  billing_state: string;
+  billing_pin_code: string;
+  billing_country: string;
+  billing_phone: string;
+  shipping_attention: string;
+  shipping_street1: string;
+  shipping_street2: string;
+  shipping_city: string;
+  shipping_state: string;
+  shipping_pin_code: string;
+  shipping_country: string;
+  shipping_phone: string;
 };
+
 
 type Item = {
   id: number;
@@ -29,6 +48,7 @@ export default function NewQuote() {
   const router = useRouter();
 
   // Customers fetched from API
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [customerFetchError, setCustomerFetchError] = useState("");
@@ -58,6 +78,59 @@ export default function NewQuote() {
   const [taxPct, setTaxPct] = useState(0);
   const [taxType, setTaxType] = useState<"TDS" | "TCS">("TDS");
   const [adjustment, setAdjustment] = useState(0);
+  
+  function formatAddress(cust: Customer, type: "billing" | "shipping") {
+  return [
+    cust[`${type}_attention`],
+    cust[`${type}_street1`],
+    cust[`${type}_street2`],
+    `${cust[`${type}_city`]}, ${cust[`${type}_state`]} ${cust[`${type}_pin_code`]}`,
+    cust[`${type}_country`],
+    cust[`${type}_phone`] ? `Phone: ${cust[`${type}_phone`]}` : null,
+  ].filter(Boolean).join("\n");
+}
+
+  const downloadQuote = () => {
+    if (!customer) return;
+
+  const billingAddress = formatAddress(customer, "billing");
+  const shippingAddress = formatAddress(customer, "shipping");
+  // Prepare data, map from your state variables accordingly.
+  const pdfData = {
+    title: "Quote",
+    documentNumber: quoteNumber,
+    documentDate: quoteDate,
+    expiryDate: expiryDate ?? "-",
+    customerName: customer.display_name,
+    billTo: billingAddress,         // Adjust as needed
+    shipTo: shippingAddress,         // Adjust as needed
+    placeOfSupply: "Chennai",     // Example, bind dynamically if available
+    items: quoteItems
+      .filter(item => item.itemId !== null)
+      .map(item => ({
+        name: item.name,
+        hsn: "-", // Add HSN if applicable
+        qty: item.qty,
+        rate: item.rate,
+      })),
+    subTotal,
+    taxBreakup: [
+      {
+        label: taxType,
+        pct: taxPct,
+        amount: taxAmount,
+      }
+    ],
+    total,
+    totalInWords: "", // You can integrate a number-to-words utility if needed
+    notes,
+    terms,
+    logo: undefined, // Pass base64 string if you want a logo
+  };
+
+  generatePDF(pdfData);
+};
+
 
   // Load customers
   useEffect(() => {
@@ -94,6 +167,27 @@ export default function NewQuote() {
     loadItems();
   }, []);
 console.log(itemsList);
+
+    useEffect(() => {
+  if (!selectedCustomerId) {
+    setCustomer(null);
+    setCustomerName("");
+    return;
+  }
+  async function fetchCustomerDetails() {
+    try {
+      const res = await fetchWithAuth(`https://bom-front-production.up.railway.app/api/customers/${selectedCustomerId}/`);
+      if (!res.ok) throw new Error("Failed to fetch customer details");
+      const data = await res.json();
+      setCustomer(data);
+      setCustomerName(data.display_name);
+    } catch (e) {
+      console.error("Error loading customer details", e);
+      setCustomer(null);
+    }
+  }
+  fetchCustomerDetails();
+}, [selectedCustomerId]);
 
   // Keep customerName synced with selectedCustomerId
   useEffect(() => {
@@ -179,6 +273,9 @@ console.log(itemsList);
         alert(`Failed to save quote: ${JSON.stringify(err)}`);
         return;
       }
+       if (status === "sent") {
+      downloadQuote();  // Trigger PDF download here
+    }
       router.push("/books/sales/quotes");
     } catch (err) {
       alert("Error saving quote.");
@@ -408,10 +505,12 @@ console.log(itemsList);
           </button>
           <button
             onClick={() => saveQuote("sent")}
+            
             className="px-4 py-2 text-white bg-green-600 rounded-lg shadow hover:bg-green-700"
           >
             Save and Send
           </button>
+
           <button onClick={() => router.push("/books/sales/quotes")} className="px-4 py-2 border rounded-lg hover:bg-red-100">
             Cancel
           </button>

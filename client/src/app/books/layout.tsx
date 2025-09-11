@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import {
   Package,
   Banknote,
@@ -16,14 +17,42 @@ import { useState, useEffect } from "react";
 
 export default function BooksLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  const handleLogout = async () => {
+    try {
+      const refresh = localStorage.getItem("refresh"); // stored refresh token
+      if (!refresh) {
+        router.push("/login");
+        return;
+      }
+
+      await fetch("http://localhost:8000/api/auth/logout/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refresh }),
+      });
+
+      // Clear tokens from storage
+      localStorage.removeItem("access");
+      localStorage.removeItem("refresh");
+
+      router.push("/login"); // redirect after logout
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   const menuItems = [
     {
       name: "Items",
       icon: <Package size={18} />,
-      subItems: [{ name: "Items", href: "/books/items/item" },
-                {name: "investory management", href: "/books/items/inventory" },
+      subItems: [
+        { name: "Items", href: "/books/items/item" },
+        { name: "Inventory Management", href: "/books/items/inventory" },
       ],
     },
     {
@@ -148,6 +177,17 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
             );
           })}
         </nav>
+
+        {/* Logout Button */}
+        <div className="p-4 border-t border-gray-200">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full px-4 py-2 mb-7 text-sm font-medium text-red-600 hover:bg-red-100 rounded-lg"
+          >
+            <LogOut size={18} />
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Main content */}

@@ -265,7 +265,10 @@ export default function InvoiceFormPage() {
   };
 
   return (
-    <div className="min-h-screen p-6 bg-gray-50">
+    <div className="min-h-screen p-6 bg-green-50">
+      <h1 className="text-3xl mb-6 text-green-800 font-semibold">
+        New Invoice
+      </h1>
       <div className="p-6 bg-white border rounded-lg shadow-sm space-y-6">
         {/* Customer and Invoice Header */}
         <div className="grid grid-cols-2 gap-6">
