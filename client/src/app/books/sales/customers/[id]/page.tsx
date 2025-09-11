@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchWithAuth } from "@/auth/tokenservice";
-import { FaEnvelope, FaPhone, FaUser,FaIdCard } from "react-icons/fa";
+import { FaEnvelope, FaPhone, FaUser,FaIdCard ,FaMobileAlt} from "react-icons/fa";
 import Link from "next/link";
 
 type ContactPerson = {
@@ -122,7 +122,7 @@ export default function CustomerDetailPage() {
           <FaPhone /> Work-phone: {customer.work_phone}
         </div>
         <div className="flex items-center gap-2 text-green-700">
-          <FaPhone /> Mobile: {customer.mobile}
+          <FaMobileAlt /> Mobile: {customer.mobile}
         </div>
       </div>
       <div className="flex items-center gap-2 text-green-700">

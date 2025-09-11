@@ -1,31 +1,62 @@
-export type Vendor = {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-};
+// bills/component/types.ts
+export type BillStatus = "PAID" | "UNPAID" | "PARTIAL" | "DRAFT" | string;
 
-export type BillItem = {
-  id: string;
-  name: string;
-  qty: number;
-  rate: number;
-};
+export interface VendorSnapshot {
+  id?: string;
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  // allow extra
+  [key: string]: any;
+}
 
-export type Bill = {
+export interface BillMeta {
+  itemsExtended?: any[];
+  files?: { id?: string; name?: string }[];
+  [k: string]: any;
+}
+
+export interface Bill {
   id: string;
-  billNo: string;
-  date: string;
-  dueDate?: string;
-  vendorId: string;
-  vendorSnapshot: Vendor; // snapshot at creation
+
+  // date / identifiers (support both snake_case and camelCase)
+  billDate?: string;
+  bill_date?: string;
+  billNumber?: string;
+  bill_number?: string;
+  billNo?: string;
+  date?: string;
+
   referenceNumber?: string;
-  status: "DRAFT" | "PAID" | "UNPAID" | "PARTIAL";
+  reference_number?: string;
+
+  dueDate?: string;
+  due_date?: string;
+
+  // vendor: sometimes API returns vendorId, sometimes a vendor object or snapshot
+  vendorId?: string;
+  vendor?: VendorSnapshot | string | null;
+  vendorSnapshot?: VendorSnapshot | null;
+
+  // amounts (both naming styles)
+  totalAmount?: number;
+  total_amount?: number;
+  subtotal?: number;
+  amount?: number;
+  tax?: number;
+  total?: number;
+  balanceDue?: number;
+  balance_due?: number;
+
+  // status
+  status?: BillStatus;
+
+  // items / meta
+  items?: any[];
+  meta?: BillMeta;
+
   notes?: string;
-  items: BillItem[];
-  amount: number;     // subtotal
-  tax?: number;       // optional tax total
-  total: number;      // amount + tax
-  balanceDue: number; // computed from total - payments (payments omitted here)
-};
+
+  // allow other fields
+  [key: string]: any;
+}

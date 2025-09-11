@@ -14,6 +14,12 @@ type ContactPerson = {
   mobile?: string;
 };
 
+type Item = {
+  id: number;
+  name: string;
+  description?: string;
+};
+
 type Customer = {
   id: number;
   customer_type: string;
@@ -89,6 +95,7 @@ export default function QuoteDetailPage() {
   const { id } = useParams(); // id here could be the quote id, adjust if needed
   const router = useRouter();
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [itemsMap, setItemsMap] = useState<Record<number, Item>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -101,6 +108,24 @@ export default function QuoteDetailPage() {
         if (!res.ok) throw new Error("Failed to fetch quote data");
         const data: Quote = await res.json();
         setQuote(data);
+
+        const itemIds = Array.from(new Set(data.item_details.map((d: any) => d.item_id)));
+
+        const itemPromises = itemIds.map(async (itemId) => {
+          const resItem = await fetchWithAuth(`https://bom-front-production.up.railway.app/api/items/${itemId}/`);
+          if (!resItem.ok) throw new Error(`Failed to fetch item ${itemId}`);
+          return await resItem.json();
+        });
+
+        const items = await Promise.all(itemPromises);
+
+        // Mapping item_id => item object for easy lookup in rendering
+        const itemsObj: Record<number, Item> = {};
+        items.forEach((item) => {
+          itemsObj[item.id] = item;
+        });
+        setItemsMap(itemsObj);
+        
       } catch (err) {
         setError("Failed to load quote data");
       } finally {
@@ -263,15 +288,18 @@ export default function QuoteDetailPage() {
             </thead>
             <tbody>
               {/* Assuming item_details structured with name, description, quantity, rate, amount */}
-              {quote.item_details.map((detail: any, idx: number) => (
-                <tr key={idx} className="border-b">
-                  <td className="text-center align-middle">{detail.item.name}</td>
-                  <td className="text-center align-middle">{detail.item.description}</td>
-                  <td className="text-center align-middle">{detail.quantity}</td>
-                  <td className="text-center align-middle">{detail.rate}</td>
-                  <td className="text-center align-middle">₹{parseFloat(detail.amount)}</td>
-                </tr>
-              ))}
+              {quote.item_details.map((detail: any, idx: number) => {
+              const item = itemsMap[detail.item_id];
+              return (
+              <tr key={idx} className="border-b">
+              <td className="text-center align-middle">{item?.name || "..."}</td>
+              <td className="text-center align-middle">{item?.description || "N/A"}</td>
+              <td className="text-center align-middle">{detail.quantity}</td>
+              <td className="text-center align-middle">{detail.rate}</td>
+              <td className="text-center align-middle">₹{parseFloat(detail.amount).toFixed(2)}</td>
+              </tr>
+              );
+              })}
             </tbody>
           </table>
         ) : (

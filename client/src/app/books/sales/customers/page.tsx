@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FaPlus, FaEdit, FaTrash } from "react-icons/fa";
+import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { FaTrash } from "react-icons/fa";
 import { fetchWithAuth } from "@/auth/tokenservice";
 
 type Customer = {
   id: number;
-  salutation:string,
+  salutation: string;
   display_name: string;
   company_name: string;
   email: string;
@@ -16,39 +17,65 @@ type Customer = {
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
+  const [prevPageUrl, setPrevPageUrl] = useState<string | null>(null);
+
+  const baseApiUrl =
+    "https://bom-front-production.up.railway.app/api/customers/";
+
+  async function loadCustomers(url?: string, pageNumber = 1) {
+    setLoading(true);
+    setError("");
+    try {
+      const apiUrl = url || `${baseApiUrl}?page=${pageNumber}`;
+      const res = await fetchWithAuth(apiUrl);
+      if (!res.ok) throw new Error("Failed to fetch customers");
+      const data = await res.json();
+      setCustomers(data.results || []);
+      setNextPageUrl(data.next);
+      setPrevPageUrl(data.previous);
+      if (!url) setPage(pageNumber);
+    } catch (err) {
+      setError("Failed to load customers");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function loadCustomers() {
-      try {
-        const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/customers/");
-        if (!res.ok) throw new Error("Failed to fetch customers");
-        const data = await res.json();
-        setCustomers(data.results);
-      } catch (err) {
-        setError("Failed to load customers");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadCustomers();
-  }, []);
+    loadCustomers(undefined, page);
+  }, [page]);
 
   const deleteCustomer = async (id: number) => {
     if (!confirm("Are you sure you want to delete this customer?")) return;
 
     try {
-      const res = await fetchWithAuth(
-        `https://bpm-production.up.railway.app/api/customers/${id}/`,
-        { method: "DELETE" }
-      );
+      const res = await fetchWithAuth(`${baseApiUrl}${id}/`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error("Delete failed");
-      setCustomers(customers.filter((c) => c.id !== id));
+      setCustomers((curr) => curr.filter((c) => c.id !== id));
     } catch (err) {
       alert("Failed to delete customer");
       console.error(err);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (prevPageUrl) {
+      loadCustomers(prevPageUrl);
+      setPage((p) => Math.max(1, p - 1));
+    }
+  };
+
+  const handleNextPage = () => {
+    if (nextPageUrl) {
+      loadCustomers(nextPageUrl);
+      setPage((p) => p + 1);
     }
   };
 
@@ -56,62 +83,100 @@ export default function CustomersPage() {
   if (error) return <p className="text-red-600">{error}</p>;
 
   return (
-    <div className="min-h-screen p-6 bg-green-50">
+    <div className="min-h-screen p-6 bg-[#f3fdf5]">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-green-900">
-          Active Customers
-        </h1>
+        <h1 className="text-2xl font-bold text-green-900">Active Customers</h1>
         <Link
           href="/books/sales/customers/new"
-          className="flex items-center gap-2 px-4 py-2 text-white transition bg-green-600 rounded-lg shadow hover:bg-green-700"
+          className="flex items-center gap-2 px-5 py-2 font-medium text-white bg-green-600 rounded-lg shadow-sm hover:bg-green-700"
         >
-          <FaPlus /> New
+          <Plus size={16} /> New
         </Link>
       </div>
 
-      <div className="overflow-hidden bg-white rounded-lg shadow-md">
-        <table className="w-full text-left border-collapse">
-          <thead className="text-sm text-green-800 uppercase bg-green-100">
+      {/* Table */}
+      <div className="overflow-hidden bg-white border border-green-100 shadow-sm rounded-xl">
+        <table className="w-full text-sm">
+          <thead className="bg-green-200 text-green-900">
             <tr>
-              <th className="px-4 py-2 border">Name</th>
-              <th className="px-4 py-2 border">Company Name</th>
-              <th className="px-4 py-2 border">Email</th>
-              <th className="px-4 py-2 border">Work Phone</th>
-              <th className="px-4 py-2 border">Actions</th>
+              <th className="px-4 py-3 font-semibold text-left">Name</th>
+              <th className="px-4 py-3 font-semibold text-left">Company</th>
+              <th className="px-4 py-3 font-semibold text-left">Email</th>
+              <th className="px-4 py-3 font-semibold text-left">Work Phone</th>
+              <th className="px-4 py-3 font-semibold text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {customers.length > 0 ? (
+            {customers.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="p-4 text-center text-gray-500 bg-white"
+                >
+                  No customers found
+                </td>
+              </tr>
+            ) : (
               customers.map((c) => (
-                <tr key={c.id} className={`${c.id % 2 ? "bg-green-100" : "bg-green-50"} border-b`}>
-                  <td className="px-4 py-2 border">
-                    <Link href={`/books/sales/customers/${c.id}`}>{c.display_name}</Link>
+                <tr
+                  key={c.id}
+                  className="transition border-b hover:bg-green-50"
+                >
+                  <td className="px-4 py-3 font-medium text-green-700">
+                    <Link href={`/books/sales/customers/${c.id}`}>
+                      {c.display_name}
+                    </Link>
                   </td>
-                  <td className="px-4 py-2 border">{c.company_name}</td>
-                  <td className="px-4 py-2 border">{c.email}</td>
-                  <td className="px-4 py-2 border">{c.work_phone}</td>
-                  <td className="flex gap-3 px-4 py-2 border">
+                  <td className="px-4 py-3">{c.company_name}</td>
+                  <td className="px-4 py-3">{c.email}</td>
+                  <td className="px-4 py-3">{c.work_phone}</td>
+                  <td className="px-4 py-3">
                     <button
                       onClick={() => deleteCustomer(c.id)}
                       className="text-red-600 hover:text-red-800"
+                      aria-label="Delete customer"
+                      title="Delete customer"
                     >
                       <FaTrash />
                     </button>
                   </td>
                 </tr>
               ))
-            ) : (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="py-4 italic text-center text-gray-500"
-                >
-                  No customers added yet.
-                </td>
-              </tr>
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between mt-6 text-sm text-gray-600">
+        <span>
+          Showing {customers.length} customer
+          {customers.length !== 1 ? "s" : ""}
+        </span>
+        <div className="flex gap-1">
+          <button
+            disabled={!prevPageUrl}
+            onClick={handlePrevPage}
+            className={`flex items-center gap-1 border px-3 py-1.5 rounded-lg hover:bg-green-50 transition ${
+              !prevPageUrl ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            <ChevronLeft size={14} /> Prev
+          </button>
+          <button className="border px-3 py-1.5 rounded-lg bg-green-600 text-white shadow-sm">
+            {page}
+          </button>
+          <button
+            disabled={!nextPageUrl}
+            onClick={handleNextPage}
+            className={`flex items-center gap-1 border px-3 py-1.5 rounded-lg hover:bg-green-50 transition ${
+              !nextPageUrl ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            Next <ChevronRight size={14} />
+          </button>
+        </div>
       </div>
     </div>
   );

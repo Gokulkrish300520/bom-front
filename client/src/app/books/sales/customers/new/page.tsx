@@ -84,6 +84,13 @@ const COUNTRIES = [
 
 const PAYMENT_TERMS = ["Due on Receipt", "Net 7", "Net 15", "Net 30", "Net 45"];
 
+const SALUTATION_MAP: Record<string, string> = {
+  Dr: "dr",
+  Mr: "mr",
+  Ms: "ms",
+  Mrs: "mrs",
+};
+
 export default function NewCustomerPage() {
   const router = useRouter();
 
@@ -280,10 +287,19 @@ export default function NewCustomerPage() {
 
     if (!validate()) return;
 
+    const mappedContactPersons = contactPersons.map((cp) => ({
+        salutation: SALUTATION_MAP[cp.salutation.trim()] || "",
+        first_name: cp.first_name.trim(),
+        last_name: cp.last_name.trim(),
+        email: cp.email.trim(),
+        work_phone: cp.work_phone.trim(),
+        mobile: cp.mobile.trim(),
+      }));
+
     // payload matching backend API fields exactly
     const payload = {
       customer_type: customerType.toLowerCase(), // "business" or "individual"
-      salutation: salutation.trim().toLowerCase(),
+      salutation: SALUTATION_MAP[salutation.trim()] || "",
       first_name: firstName.trim(),
       last_name: lastName.trim(),
       company_name: companyName.trim(),
@@ -314,14 +330,7 @@ export default function NewCustomerPage() {
       shipping_pin_code: shipping.pinCode.trim(),
       shipping_phone: shipping.phone.trim(),
       shipping_fax: shipping.fax.trim(),
-      contact_persons: contactPersons.map((cp) => ({
-        salutation: cp.salutation.trim(),
-        first_name: cp.first_name.trim(),
-        last_name: cp.last_name.trim(),
-        email: cp.email.trim(),
-        work_phone: cp.work_phone.trim(),
-        mobile: cp.mobile.trim(),
-      })),
+      contact_persons:mappedContactPersons,
       custom_fields: Object.fromEntries(
         customFields
           .filter((cf) => cf.key.trim())

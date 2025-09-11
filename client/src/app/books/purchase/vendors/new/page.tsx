@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchWithAuth } from "@/auth/tokenservice";
 import { useRouter } from "next/navigation";
 import { useState, ChangeEvent } from "react";
 import {
@@ -24,11 +25,11 @@ type TabKey =
   | "Remarks";
 
 type ContactPerson = {
-  salutation: string;
-  firstName: string;
-  lastName: string;
+  salutation: "dr" | "mr" | "ms" | "mrs" | "";
+  first_name: string;
+  last_name: string;
   email: string;
-  workPhone: string;
+  work_phone: string;
   mobile: string;
 };
 
@@ -121,10 +122,10 @@ export default function NewVendorPage() {
   const [contactPersons, setContactPersons] = useState<ContactPerson[]>([
     {
       salutation: "",
-      firstName: "",
-      lastName: "",
+      first_name: "",
+      last_name: "",
       email: "",
-      workPhone: "",
+      work_phone: "",
       mobile: "",
     },
   ]);
@@ -184,10 +185,10 @@ export default function NewVendorPage() {
       ...arr,
       {
         salutation: "",
-        firstName: "",
-        lastName: "",
+        first_name: "",
+        last_name: "",
         email: "",
-        workPhone: "",
+        work_phone: "",
         mobile: "",
       },
     ]);
@@ -236,46 +237,76 @@ export default function NewVendorPage() {
     return Object.keys(next).length === 0;
   }
 
-  function saveVendor() {
+  async function saveVendor() {
     if (!validate()) return;
 
-    const vendor = {
-      id: Date.now(),
-      createdAt: new Date().toISOString(),
-      type: vendorType,
-
+    // Construct payload matching your Django serializer fields
+    const payload = {
+      type: vendorType.toLowerCase(),
       salutation,
-      firstName,
-      lastName,
-      companyName,
-      displayName,
-
+      first_name: firstName,
+      last_name: lastName,
+      company_name: companyName,
+      display_name: displayName,
       email,
-      workPhone,
+      work_phone: workPhone,
       mobile,
-
-      taxId,
-      currency,
-      openingBalance,
-      paymentTerms,
-      documents, // meta only
-
-      billing,
-      shipping,
-
-      contactPersons,
-      customFields,
-      reportingTags,
-
+      pan: taxId,
+      currency: currency.split(" ")[0], // e.g. 'INR'
+      opening_balance: openingBalance,
+      payment_terms: paymentTerms.toLowerCase().replace(/\s/g, "_"),
+      documents, // Note: needs special handling for actual upload
+      billing_attention: billing.attention,
+      billing_country: billing.country,
+      billing_street1: billing.street1,
+      billing_street2: billing.street2,
+      billing_city: billing.city,
+      billing_state: billing.state,
+      billing_pin_code: billing.pinCode,
+      billing_phone: billing.phone,
+      billing_fax: billing.fax,
+      shipping_attention: shipping.attention,
+      shipping_country: shipping.country,
+      shipping_street1: shipping.street1,
+      shipping_street2: shipping.street2,
+      shipping_city: shipping.city,
+      shipping_state: shipping.state,
+      shipping_pin_code: shipping.pinCode,
+      shipping_phone: shipping.phone,
+      shipping_fax: shipping.fax,
+      contact_persons: contactPersons,
+      custom_fields: customFields.reduce((acc, cur) => {
+        if (cur.key.trim()) acc[cur.key] = cur.value;
+        return acc;
+      }, {} as Record<string, string>),
+      tags: reportingTags,
       remarks,
     };
+    const token = localStorage.getItem('authToken');
 
-    const existing = JSON.parse(localStorage.getItem("vendors") || "[]");
-    existing.push(vendor);
-    localStorage.setItem("vendors", JSON.stringify(existing));
 
-    router.push("/books/purchase/vendors");
+    try {
+      const response = await fetchWithAuth("https://bom-front-production.up.railway.app/api/vendors/", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(`Error saving vendor: ${JSON.stringify(errorData)}`);
+        return;
+      }
+
+      // On success, navigate back to vendor list or as needed
+      router.push('/books/purchase/vendors');
+
+    } catch (error) {
+      alert("Network error saving vendor. Please try again.");
+      console.error(error);
+    }
   }
+
 
   // =================== UI ===================
   return (
@@ -321,10 +352,10 @@ export default function NewVendorPage() {
               onChange={(e) => setSalutation(e.target.value)}
             >
               <option value="">Select</option>
-              <option>Dr</option>
-              <option>Mr</option>
-              <option>Ms</option>
-              <option>Mrs</option>
+  <option value="dr">Dr</option>
+  <option value="mr">Mr</option>
+  <option value="ms">Ms</option>
+  <option value="mrs">Mrs</option>
             </select>
           </div>
           <div>
@@ -698,31 +729,31 @@ export default function NewVendorPage() {
                           className="w-full px-2 py-1 border border-green-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
                           value={cp.salutation}
                           onChange={(e) =>
-                            updateCP(idx, { salutation: e.target.value })
+                            updateCP(idx, { salutation: e.target.value as ContactPerson["salutation"] })
                           }
                         >
                           <option value=""></option>
-                          <option>Dr</option>
-                          <option>Mr</option>
-                          <option>Ms</option>
-                          <option>Mrs</option>
+                          <option value="dr">Dr</option>
+  <option value="mr">Mr</option>
+  <option value="ms">Ms</option>
+  <option value="mrs">Mrs</option>
                         </select>
                       </td>
                       <td className="px-3 py-2">
                         <input
                           className="w-full px-2 py-1 border border-green-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-                          value={cp.firstName}
+                          value={cp.first_name}
                           onChange={(e) =>
-                            updateCP(idx, { firstName: e.target.value })
+                            updateCP(idx, { first_name: e.target.value })
                           }
                         />
                       </td>
                       <td className="px-3 py-2">
                         <input
                           className="w-full px-2 py-1 border border-green-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-                          value={cp.lastName}
+                          value={cp.last_name}
                           onChange={(e) =>
-                            updateCP(idx, { lastName: e.target.value })
+                            updateCP(idx, { last_name: e.target.value })
                           }
                         />
                       </td>
@@ -742,9 +773,9 @@ export default function NewVendorPage() {
                           <FaPhone className="mr-2 text-green-500" />
                           <input
                             className="w-full py-1 outline-none"
-                            value={cp.workPhone}
+                            value={cp.work_phone}
                             onChange={(e) =>
-                              updateCP(idx, { workPhone: e.target.value })
+                              updateCP(idx, { work_phone: e.target.value })
                             }
                           />
                         </div>
