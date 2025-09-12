@@ -1,13 +1,6 @@
-import logging
 
 from .inventory_management_models import InventoryManagement
 from .serializers import InventoryManagementSerializer
-import io
-import json
-import xlsxwriter
-from django.core.mail import EmailMessage
-from django.http import JsonResponse
-
 # ...existing code...
 
 # Inventory Management CRUD endpoint
@@ -17,6 +10,7 @@ class InventoryManagementViewSet(viewsets.ModelViewSet):
     queryset = InventoryManagement.objects.all()
     serializer_class = InventoryManagementSerializer
     permission_classes = [permissions.IsAuthenticated]
+
 
 # pylint: disable=no-member, import-outside-toplevel, import-self, redefined-outer-name
 """Views for core Django REST API endpoints."""
@@ -28,6 +22,7 @@ import calendar
 # Third-party imports
 from django.db.models import Sum, Q
 from rest_framework import viewsets, permissions, status
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -45,8 +40,10 @@ from .models import (
     Payment,
     ProformaInvoice,
     Quote,
-    Vendor,
+    Vendor
 )
+from .filters import QuoteFilter
+from .filters_extra import InvoiceFilter, ProformaInvoiceFilter, DeliveryChallanFilter, BillFilter
 from .serializers import (
     BillSerializer,
     CustomerDocumentSerializer,
@@ -179,113 +176,65 @@ class BalanceSheetReportView(APIView):
         }
 
 
-# class CustomerDocumentViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
-#     """ViewSet for uploading, retrieving, and updating customer documents (files)."""
-#     queryset = CustomerDocument.objects.all().order_by("-uploaded_at")  # pylint: disable=no-member,too-many-ancestors
-#     serializer_class = CustomerDocumentSerializer
-#     permission_classes = [permissions.IsAuthenticated]
-#     parser_classes = [MultiPartParser, FormParser]
-
-
-#     def retrieve(self, request, *args, **kwargs) -> Response:
-#         """Return file metadata as JSON if ?meta=1, else stream file content."""
-#         from django.http import FileResponse
-#         instance = self.get_object()
-#         if request.query_params.get("meta") == "1":
-#             serializer = self.get_serializer(instance)
-#             return Response(serializer.data)
-#         file_handle = instance.file.open("rb")
-#         response = FileResponse(file_handle, as_attachment=False)
-#         response["Content-Disposition"] = (
-#             f'inline; filename="{instance.file.name.split("/")[-1]}"'
-#         )
-#         return response
-
-#     def create(self, request, *args, **kwargs) -> Response:
-#         """Handle file upload."""
-#         serializer = self.get_serializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         self.perform_create(serializer)
-#         headers = self.get_success_headers(serializer.data)
-#         return Response(
-#             serializer.data,
-#             status=status.HTTP_201_CREATED,
-#             headers=headers,
-#         )
-
-#     def update(self, request, *args, **kwargs) -> Response:
-#         """Handle file update (replace file)."""
-#         partial = kwargs.pop("partial", False)
-#         instance = self.get_object()
-#         serializer = self.get_serializer(
-#             instance, data=request.data, partial=partial
-#         )
-#         serializer.is_valid(raise_exception=True)
-#         self.perform_update(serializer)
-#         return Response(serializer.data)
-
-import logging
-from rest_framework import status
-from rest_framework.response import Response
-
-logger = logging.getLogger(__name__)
-
-class CustomerDocumentViewSet(viewsets.ModelViewSet):
+class CustomerDocumentViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     """ViewSet for uploading, retrieving, and updating customer documents (files)."""
-    queryset = CustomerDocument.objects.all().order_by("-uploaded_at")
+    queryset = CustomerDocument.objects.all().order_by("-uploaded_at")  # pylint: disable=no-member,too-many-ancestors
     serializer_class = CustomerDocumentSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    # No filterset_class for CustomerDocumentViewSet
     parser_classes = [MultiPartParser, FormParser]
 
+
     def retrieve(self, request, *args, **kwargs) -> Response:
-        try:
-            from django.http import FileResponse
-            instance = self.get_object()
-            if request.query_params.get("meta") == "1":
-                serializer = self.get_serializer(instance)
-                return Response(serializer.data)
-            file_handle = instance.file.open("rb")
-            response = FileResponse(file_handle, as_attachment=False)
-            response["Content-Disposition"] = (
-                f'inline; filename="{instance.file.name.split("/")[-1]}"'
-            )
-            return response
-        except Exception as e:
-            logger.error(f"Error in CustomerDocument retrieve: {e}", exc_info=True)
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        """Return file metadata as JSON if ?meta=1, else stream file content."""
+        from django.http import FileResponse
+        instance = self.get_object()
+        if request.query_params.get("meta") == "1":
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        file_handle = instance.file.open("rb")
+        response = FileResponse(file_handle, as_attachment=False)
+        response["Content-Disposition"] = (
+            f'inline; filename="{instance.file.name.split("/")[-1]}"'
+        )
+        return response
 
     def create(self, request, *args, **kwargs) -> Response:
-        try:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
-            headers = self.get_success_headers(serializer.data)
-            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-        except Exception as e:
-            logger.error(f"Error in CustomerDocument create: {e}", exc_info=True)
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        """Handle file upload."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED,
+            headers=headers,
+        )
 
     def update(self, request, *args, **kwargs) -> Response:
-        try:
-            partial = kwargs.pop("partial", False)
-            instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data, partial=partial)
-            serializer.is_valid(raise_exception=True)
-            self.perform_update(serializer)
-            return Response(serializer.data)
-        except Exception as e:
-            logger.error(f"Error in CustomerDocument update: {e}", exc_info=True)
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        """Handle file update (replace file)."""
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=partial
+        )
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
 
 class BillViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Bills."""
     queryset = (
-    Bill.objects.select_related("vendor")  # pylint: disable=no-member,too-many-ancestors
+        Bill.objects.select_related("vendor")  # pylint: disable=no-member,too-many-ancestors
         .prefetch_related("item_details")
         .order_by("-created_at")
     )
     serializer_class = BillSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = BillFilter
 
 
 class CustomerViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
@@ -307,6 +256,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancesto
     )
     serializer_class = InvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = InvoiceFilter
 
 
 class VendorViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
@@ -333,12 +284,14 @@ class PaymentViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancesto
 class QuoteViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Quotes."""
     queryset = (
-    Quote.objects.select_related("customer")  # pylint: disable=no-member,too-many-ancestors
+        Quote.objects.select_related("customer")
         .prefetch_related("item_details", "quote_files")
         .order_by("-created_at")
     )
     serializer_class = QuoteSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = QuoteFilter
 
 
 class ProformaInvoiceViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
@@ -350,6 +303,8 @@ class ProformaInvoiceViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many
     )
     serializer_class = ProformaInvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ProformaInvoiceFilter
 
 
 class DeliveryChallanViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
@@ -361,6 +316,8 @@ class DeliveryChallanViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many
     )
     serializer_class = DeliveryChallanSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = DeliveryChallanFilter
 
 
 class InventoryAdjustmentViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
@@ -385,7 +342,9 @@ class ProfitAndLossReportView(APIView):
         time_param = request.query_params.get("time", "This Month")
         basis = request.query_params.get("basis", "Accrual")
         compare_with = request.query_params.get("compare_with", "None")
+
         customer_id = request.query_params.get("customer_id")
+        vendor_id = request.query_params.get("vendor_id")
 
         start_date, end_date = self._get_range(time_param, today)
         if not start_date or not end_date:
@@ -401,6 +360,7 @@ class ProfitAndLossReportView(APIView):
             end_date,
             summary_only=summary_only,
             customer_id=customer_id,
+            vendor_id=vendor_id,
         )
         compare_data = None
         if compare_start and compare_end:
@@ -409,6 +369,7 @@ class ProfitAndLossReportView(APIView):
                 compare_end,
                 summary_only=summary_only,
                 customer_id=customer_id,
+                vendor_id=vendor_id,
             )
 
         response = {
@@ -445,7 +406,8 @@ class ProfitAndLossReportView(APIView):
             return None, None
         return start, end
 
-    def _get_report(self, start_date, end_date, summary_only=False, customer_id=None):  # pylint: disable=too-many-locals
+
+    def _get_report(self, start_date, end_date, summary_only=False, customer_id=None, vendor_id=None):  # pylint: disable=too-many-locals
         invoice_filter = Q(invoice_date__gte=start_date, invoice_date__lte=end_date)
         if customer_id:
             invoice_filter &= Q(customer_id=customer_id)
@@ -453,6 +415,8 @@ class ProfitAndLossReportView(APIView):
         operating_income = invoices.aggregate(total=Sum("total_amount"))['total'] or 0
 
         bill_filter = Q(bill_date__gte=start_date, bill_date__lte=end_date)
+        if vendor_id:
+            bill_filter &= Q(vendor_id=vendor_id)
         bills = Bill.objects.filter(bill_filter)  # pylint: disable=no-member
         cost_of_goods_sold = bills.aggregate(total=Sum("total_amount"))['total'] or 0
 
@@ -505,56 +469,3 @@ class ProfitAndLossReportView(APIView):
             "invoice_breakdown": invoice_breakdown,
             "bill_breakdown": bill_breakdown,
         }
-
-from rest_framework.decorators import api_view, permission_classes
-from django.core.mail import EmailMessage
-import json
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def send_report_email(request):
-    """
-    Expects JSON body with:
-    - recipient_email: string
-    - subject: string (optional)
-    - report_data: JSON (summary + invoice + bill breakdowns)
-    """
-    
-    recipient = request.data.get('recipient_email')
-    subject = request.data.get('subject', 'Profit and Loss Report')
-    report_data = request.data.get('report_data')
-
-    if not recipient or not report_data:
-        return Response({'error': 'recipient_email and report_data are required'}, status=400)
-
-    try:
-        # Generate Excel file in memory
-        output = io.BytesIO()
-        workbook = xlsxwriter.Workbook(output, {"in_memory": True})
-        worksheet = workbook.add_worksheet("Report")
-
-        # Get headers from first row of Account
-        headers = list(report_data["Account"][0].keys())
-        for col, header in enumerate(headers):
-            worksheet.write(0, col, header)
-
-        # Write each row
-        for row, item in enumerate(report_data["Account"], start=1):
-            for col, header in enumerate(headers):
-                worksheet.write(row, col, item.get(header, ""))
-
-        workbook.close()
-        output.seek(0)
-
-        # Create email with attachment
-        email = EmailMessage(
-            subject,
-            "Please find attached your Profit and Loss report.",
-            to=[recipient],
-        )
-        email.attach("profit_and_loss_report.xlsx", output.read(), "application/vnd.ms-excel")
-        email.send()
-
-        return JsonResponse({"message": "Email sent successfully"})
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)

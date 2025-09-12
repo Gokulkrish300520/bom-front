@@ -15,8 +15,7 @@ class ItemAPITestCase(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
         self.item_data = {"name": "Test Item",
-                          "price": "10.00",
-                          "sku": "SKU123"}
+                        }
 
     def test_create_item(self):
         """Test creating an item via the API."""

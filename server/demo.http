@@ -59,8 +59,8 @@ POST http://localhost:8000/api/auth/token/
 Content-Type: application/json
 
 {
-    "username": "Gokul",
-    "password": "Gokul@2005"
+    "username": "your_username",
+    "password": "your_password"
 }
 
 ####
@@ -97,8 +97,10 @@ Content-Type: application/json
 
 # Upload a PDF file
 POST http://localhost:8000/api/files/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NDMyMjM3LCJpYXQiOjE3NTc0MzE2MzcsImp0aSI6IjY2OTUyNmE3YWZjZTRlNWE4MmZjMGNmZDQ0Yzc5MTZlIiwidXNlcl9pZCI6IjEifQ.tAG1DeqHxMJyHuBCA-juhYO8w1p17GsPqaWM8IigeC0
-file: @./Reinforcement_learning.pdf
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+
+file: @./sample_invoice.pdf
 
 ####
 
@@ -130,13 +132,13 @@ file: @./updated_receipt.jpg
 ####
 # List all files
 GET http://localhost:8000/api/files/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NDMxNjk4LCJpYXQiOjE3NTc0MzEwOTgsImp0aSI6ImVmMjA5NGM5YzQ1ODQ5Y2E5MjJjYmFmMzE2YTQ5YzljIiwidXNlcl9pZCI6IjEifQ.skNEuTvMyjo4mFmit_umnHuRzSh1ZvY6TdFOs_nTj00
+Authorization: Bearer <access_token>
 
 ####
 
 # Get file metadata only
 GET http://localhost:8000/api/files/1/?meta=1
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NDMxNjk4LCJpYXQiOjE3NTc0MzEwOTgsImp0aSI6ImVmMjA5NGM5YzQ1ODQ5Y2E5MjJjYmFmMzE2YTQ5YzljIiwidXNlcl9pZCI6IjEifQ.skNEuTvMyjo4mFmit_umnHuRzSh1ZvY6TdFOs_nTj00
+Authorization: Bearer <access_token>
 
 # Response:
 # {
@@ -149,7 +151,7 @@ Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiY
 
 # View/Download a file (PDF or JPG, stream content)
 GET http://localhost:8000/api/files/1/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NDMxNjk4LCJpYXQiOjE3NTc0MzEwOTgsImp0aSI6ImVmMjA5NGM5YzQ1ODQ5Y2E5MjJjYmFmMzE2YTQ5YzljIiwidXNlcl9pZCI6IjEifQ.skNEuTvMyjo4mFmit_umnHuRzSh1ZvY6TdFOs_nTj00
+Authorization: Bearer <access_token>
 
 # Response: (file stream, e.g. PDF, JPG, etc)
 # If the file exists, the file will be returned as a download or inline view.
@@ -270,21 +272,41 @@ Authorization: Bearer <access_token>
 GET http://localhost:8000/api/vendors/
 Authorization: Bearer <access_token>
 
+# List quotes for a specific customer
+GET http://localhost:8000/api/quotes/?customer_id=1
+Authorization: Bearer <access_token>
+
 ####
 
 # Create vendor (all fields)
+
+# List invoices for a specific customer
+GET http://localhost:8000/api/invoices/?customer_id=1
+Authorization: Bearer <access_token>
 POST http://localhost:8000/api/vendors/
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
+
+# List proforma invoices for a specific customer
+GET http://localhost:8000/api/proforma-invoices/?customer_id=1
+Authorization: Bearer <access_token>
 {
   "vendor_type": "business",
   "salutation": "mr",
   "first_name": "John",
+
+# List delivery challans for a specific customer
+GET http://localhost:8000/api/delivery-challans/?customer_id=1
+Authorization: Bearer <access_token>
   "last_name": "Doe",
   "company_name": "Acme Vendor",
   "display_name": "Acme Vendor (John Doe)",
   "email": "john.doe@vendor.com",
+
+# List bills for a specific vendor
+GET http://localhost:8000/api/bills/?vendor_id=2
+Authorization: Bearer <access_token>
   "work_phone": "1234567890",
   "mobile": "9876543210",
   "pan": "ABCDE1234F",
@@ -388,11 +410,21 @@ Authorization: Bearer <access_token>
 # Response example:
 # {
 #   "id": 1,
-#   ...
+#   "customer": { ... },
+#   "invoice_number": "INV-2025-001",
+#   "order_number": "ORD-123",
+#   "invoice_date": "2025-08-30",
+#   "due_date": "2025-09-15",
+#   "status": "UNPAID",
 #   "item_details": [
 #     {"id": 1, "item": { ... }, "quantity": 2, "rate": "5000.00", "amount": "10000.00", "invoice_item_number": 1},
 #     {"id": 2, "item": { ... }, "quantity": 1, "rate": "1000.00", "amount": "1000.00", "invoice_item_number": 2}
 #   ],
+#   "customer_notes": "Thank you for your business.",
+#   "terms_and_conditions": "Payment due in 30 days.",
+#   "subtotal_amount": "11000.00",
+#   "gst_amount": "1980.00",
+#   "total_amount": "12980.00",
 #   "attached_files": [
 #     {"id": 4, "file": "/media/customer_documents/file4.pdf", "uploaded_at": "..."},
 #     {"id": 5, "file": "/media/customer_documents/file5.pdf", "uploaded_at": "..."}
@@ -402,7 +434,7 @@ Authorization: Bearer <access_token>
 #     {"id": 2, "file": "/media/customer_documents/file2.pdf", "uploaded_at": "..."},
 #     {"id": 3, "file": "/media/customer_documents/file3.pdf", "uploaded_at": "..."}
 #   ],
-#   ...
+#   "created_at": "2025-08-30T10:00:00Z"
 # }
 
 ####
@@ -438,10 +470,7 @@ Content-Type: application/json
 
 {
   "name": "Item 1",
-  "unit": "Nos",
-  "description": "A sample item",
-  "price": "10.00",
-  "sku": "SKU001"
+  "unit": "Nos"
 }
 
 # Create item (with sales info)
@@ -455,10 +484,7 @@ Content-Type: application/json
   "manage_sales_info": true,
   "sales_selling_price": "100.00",
   "sales_account": "Sales",
-  "sales_description": "Sales item description",
-  "description": "A sales item",
-  "price": "100.00",
-  "sku": "SKU_SALES"
+  "sales_description": "Sales item description"
 }
 
 # Create item (with purchase info)
@@ -473,10 +499,7 @@ Content-Type: application/json
   "purchase_cost_price": "80.00",
   "purchase_account": "Cost of Goods Sold",
   "purchase_description": "Purchase item description",
-  "preferred_vendor": 1,
-  "description": "A purchase item",
-  "price": "80.00",
-  "sku": "SKU_PURCHASE"
+  "preferred_vendor": 1
 }
 
 # Create item (with inventory tracking)
@@ -492,10 +515,7 @@ Content-Type: application/json
   "inventory_valuation_method": "FIFO",
   "opening_stock": "100.00",
   "opening_stock_rate_per_unit": "10.00",
-  "reorder_point": "20.00",
-  "description": "An inventory item",
-  "price": "10.00",
-  "sku": "SKU_INV"
+  "reorder_point": "20.00"
 }
 
 # Create item (all fields)
@@ -520,10 +540,7 @@ Content-Type: application/json
   "inventory_valuation_method": "FIFO",
   "opening_stock": "50.00",
   "opening_stock_rate_per_unit": "3.00",
-  "reorder_point": "10.00",
-  "description": "A full-featured item",
-  "price": "200.00",
-  "sku": "SKU_FULL"
+  "reorder_point": "10.00"
 }
 
 ####
@@ -826,12 +843,12 @@ Authorization: Bearer <access_token>
 
 # List bills
 GET http://localhost:8000/api/bills/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NDM1NTQ2LCJpYXQiOjE3NTc0MzQ5NDYsImp0aSI6IjY0NDI2ZGI5YzVmZDQzNWE4ZWI5YjY4MjhlZTJiY2Q5IiwidXNlcl9pZCI6IjEifQ.zKGP33AJXRQmlfQ232CNfqb0OrREr9YN9Zqw71ylUTw
+Authorization: Bearer <access_token>
 
 ####
 # Create bill (basic fields, with file association)
 POST http://localhost:8000/api/bills/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NDM1NTQ2LCJpYXQiOjE3NTc0MzQ5NDYsImp0aSI6IjY0NDI2ZGI5YzVmZDQzNWE4ZWI5YjY4MjhlZTJiY2Q5IiwidXNlcl9pZCI6IjEifQ.zKGP33AJXRQmlfQ232CNfqb0OrREr9YN9Zqw71ylUTw
+Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {

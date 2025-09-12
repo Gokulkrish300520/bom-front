@@ -19,9 +19,7 @@ class Command(BaseCommand):
         item1, _ = Item.objects.get_or_create(
             name='Widget A',
             defaults={
-                'description': 'A widget',
-                'price': 500.00,
-                'sku': 'WIDGET-A-001',
+                # legacy fields removed
                 'track_inventory': True,
                 'opening_stock': 100,
                 'current_stock': 100,
@@ -30,9 +28,7 @@ class Command(BaseCommand):
         item2, _ = Item.objects.get_or_create(
             name='Widget B',
             defaults={
-                'description': 'B widget',
-                'price': 1000.00,
-                'sku': 'WIDGET-B-002',
+                # legacy fields removed
                 'track_inventory': True,
                 'opening_stock': 50,
                 'current_stock': 50,
@@ -41,9 +37,7 @@ class Command(BaseCommand):
         item3, _ = Item.objects.get_or_create(
             name='Gadget X',
             defaults={
-                'description': 'X gadget',
-                'price': 800.00,
-                'sku': 'GADGET-X-003',
+                # legacy fields removed
                 'track_inventory': False,
             }
         )
@@ -55,21 +49,21 @@ class Command(BaseCommand):
             unit="Nos",
             type="Goods",
             hsn_code="1001",
-            description="Demo inventory item 1 description",
+            # description removed
             selling_price=150.00,
             purchase_price=120.00,
             tax="18%",
         )
         InventoryItemDetail.objects.get_or_create(
             inventory=inv1,
-            description="Batch A",
+            # description removed
             quantity=10,
             adjustment=0,
             amount=1500.00,
         )
         InventoryItemDetail.objects.get_or_create(
             inventory=inv1,
-            description="Batch B",
+            # description removed
             quantity=5,
             adjustment=1,
             amount=750.00,
@@ -79,14 +73,14 @@ class Command(BaseCommand):
             unit="Kgs",
             type="Goods",
             hsn_code="2002",
-            description="Demo inventory item 2 description",
+            # description removed
             selling_price=300.00,
             purchase_price=250.00,
             tax="12%",
         )
         InventoryItemDetail.objects.get_or_create(
             inventory=inv2,
-            description="Batch X",
+            # description removed
             quantity=20,
             adjustment=0,
             amount=6000.00,
@@ -275,6 +269,71 @@ class Command(BaseCommand):
                 'rate': 800,
                 'amount': 16000,
                 'quote_item_number': 1,
+            }
+        )
+
+        # Demo Invoices
+        from core.models import Invoice, InvoiceItem
+        import decimal
+        invoice1, _ = Invoice.objects.get_or_create(
+            invoice_number="INV-2025-001",
+            defaults={
+                "customer": customer1,
+                "order_number": "ORD-123",
+                "invoice_date": today,
+                "due_date": today.replace(day=min(today.day+15,28)),
+                "status": "UNPAID",
+                "customer_notes": "Demo invoice for Acme Corp.",
+                "terms_and_conditions": "Payment due in 30 days.",
+                "subtotal_amount": decimal.Decimal("11000.00"),
+                "gst_amount": decimal.Decimal("1980.00"),
+                "total_amount": decimal.Decimal("12980.00"),
+            }
+        )
+        invoice2, _ = Invoice.objects.get_or_create(
+            invoice_number="INV-2025-002",
+            defaults={
+                "customer": customer2,
+                "order_number": "ORD-124",
+                "invoice_date": today,
+                "due_date": today.replace(day=min(today.day+20,28)),
+                "status": "DRAFT",
+                "customer_notes": "Demo invoice for Globex Inc.",
+                "terms_and_conditions": "Payment due in 15 days.",
+                "subtotal_amount": decimal.Decimal("5000.00"),
+                "gst_amount": decimal.Decimal("900.00"),
+                "total_amount": decimal.Decimal("5900.00"),
+            }
+        )
+        # Demo Invoice Items
+        InvoiceItem.objects.get_or_create(
+            invoice=invoice1,
+            item=item1,
+            invoice_item_number=1,
+            defaults={
+                "quantity": 2,
+                "rate": decimal.Decimal("5000.00"),
+                "amount": decimal.Decimal("10000.00"),
+            }
+        )
+        InvoiceItem.objects.get_or_create(
+            invoice=invoice1,
+            item=item2,
+            invoice_item_number=2,
+            defaults={
+                "quantity": 1,
+                "rate": decimal.Decimal("1000.00"),
+                "amount": decimal.Decimal("1000.00"),
+            }
+        )
+        InvoiceItem.objects.get_or_create(
+            invoice=invoice2,
+            item=item3,
+            invoice_item_number=1,
+            defaults={
+                "quantity": 5,
+                "rate": decimal.Decimal("1000.00"),
+                "amount": decimal.Decimal("5000.00"),
             }
         )
 

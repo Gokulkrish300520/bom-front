@@ -2,7 +2,6 @@
 
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenBlacklistView
-from .views import send_report_email
 
 from rest_framework.routers import DefaultRouter
 from .views import (
@@ -64,5 +63,4 @@ urlpatterns = [
         name="balance-sheet-report",
     ),
     path("auth/logout/", TokenBlacklistView.as_view(), name="token_blacklist"),
-    path('api/send-report-email/', send_report_email, name='send_report_email'),
 ]

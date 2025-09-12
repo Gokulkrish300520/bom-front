@@ -103,7 +103,7 @@ class ItemSerializer(serializers.ModelSerializer):
             'manage_sales_info', 'sales_selling_price', 'sales_account', 'sales_description',
             'manage_purchase_info', 'purchase_cost_price', 'purchase_account', 'purchase_description', 'preferred_vendor',
             'track_inventory', 'inventory_account', 'inventory_valuation_method', 'opening_stock', 'opening_stock_rate_per_unit', 'reorder_point',
-            'description', 'price', 'sku', 'created_at',
+            'created_at',
         ]
 
     def validate(self, data):
@@ -354,8 +354,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
         model = Invoice
         fields = [
             "id", "customer", "customer_id", "invoice_number", "order_number",
-            "invoice_date", "item_details", "customer_notes", "terms_and_conditions",
-            "total_amount", "attached_files", "attached_file_ids", "invoice_files",
+            "invoice_date", "due_date", "status", "item_details", "customer_notes", "terms_and_conditions",
+            "subtotal_amount", "gst_amount", "total_amount", "attached_files", "attached_file_ids", "invoice_files",
             "invoice_file_ids", "created_at"
         ]
     read_only_fields = ["id", "created_at", "customer", "attached_files", "invoice_files"]

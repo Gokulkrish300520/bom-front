@@ -9,11 +9,13 @@
 - Aggregates all Invoices (income), Payments (received), and Bills (expenses) in the period.
 - Returns detailed breakdowns by invoice and bill, and calculates gross and net profit/loss.
 
+
 #### Query Parameters
 - time: string (This Month, Last Month, This Year; default: This Month)
 - basis: string (Accrual or Cash; default: Accrual)
 - compare_with: string (None, Last Month, Last Year; default: None)
-- customer_id: integer (optional)
+- customer_id: integer (optional; filter all results to a specific customer)
+- vendor_id: integer (optional; filter all bill-related results to a specific vendor)
 - summary_only: boolean (optional; default: false)
 
 #### Output Fields
@@ -54,7 +56,14 @@
   }
 }
 
-#### Example: Get Profit and Loss Report
+
+#### Example: Get Profit and Loss Report (by customer and vendor)
+GET /api/reports/profit-and-loss/?time=This%20Month&basis=Accrual&customer_id=1&vendor_id=2
+Authorization: Bearer <access_token>
+
+This will return a report for the specified period, filtered to only include invoices for customer 1 and bills for vendor 2.
+
+#### Example: Get Profit and Loss Report (basic)
 GET /api/reports/profit-and-loss/?time=This%20Month&basis=Accrual
 Authorization: Bearer <access_token>
 
@@ -111,6 +120,9 @@ Response:
 - 400: Missing required query parameters
 - 401: Unauthorized
 
+
 #### Notes
 - The report is always up to date with all CRUD changes to Invoices, Bills, and Payments.
+- You can filter the report by `customer_id` (for customer-specific income/expenses) and `vendor_id` (for vendor-specific bills/expenses).
+- Filtering is available on all relevant endpoints (see API instructions for details).
 - For future: This endpoint can be extended for Balance Sheet and other financial reports.

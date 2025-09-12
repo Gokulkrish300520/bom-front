@@ -468,10 +468,7 @@ class Item(models.Model):
     reorder_point = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     current_stock = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
-    # Legacy fields
-    description = models.TextField(blank=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    sku = models.CharField(max_length=100, unique=True)
+    # Legacy fields removed: description, price, sku
     created_at = models.DateTimeField(auto_now_add=True)
 
     def clean(self):
@@ -809,6 +806,18 @@ class InvoiceItem(DocumentItemBase):
 
 
 class Invoice(models.Model):
+    subtotal_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gst_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    STATUS_CHOICES = [
+        ("DRAFT", "Draft"),
+        ("UNPAID", "Unpaid"),
+        ("PAID", "Paid"),
+        ("PARTIAL", "Partial"),
+        ("CANCELLED", "Cancelled"),
+    ]
+
+    due_date = models.DateField(null=True, blank=True, db_index=True)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="DRAFT", db_index=True)
     """Model representing a sales Invoice."""
     invoice_files = models.ManyToManyField(
         "CustomerDocument",
@@ -830,6 +839,11 @@ class Invoice(models.Model):
     files = models.ManyToManyField(
         "CustomerDocument",
         related_name="invoices_ui",
+        blank=True,
+    )
+    invoice_files = models.ManyToManyField(
+        "CustomerDocument",
+        related_name="invoices_programmatic",
         blank=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)

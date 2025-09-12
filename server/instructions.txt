@@ -8,6 +8,30 @@
 
 - The server will be available at http://localhost:8000/
 
+## 1a. Filtering Endpoints by customer_id and vendor_id
+
+Many list endpoints support filtering by `customer_id` and/or `vendor_id` via query parameters. This allows you to retrieve only the records related to a specific customer or vendor.
+
+### Supported Endpoints
+- Quotes: `/api/quotes/?customer_id=<id>`
+- Invoices: `/api/invoices/?customer_id=<id>`
+- Proforma Invoices: `/api/proforma-invoices/?customer_id=<id>`
+- Delivery Challans: `/api/delivery-challans/?customer_id=<id>`
+- Bills: `/api/bills/?vendor_id=<id>`
+
+### Usage Examples
+
+- List all invoices for a customer:
+    `GET /api/invoices/?customer_id=1`
+
+- List all bills for a vendor:
+    `GET /api/bills/?vendor_id=2`
+
+- List all quotes for a customer:
+    `GET /api/quotes/?customer_id=3`
+
+You can combine these filters with other query parameters as needed. Filtering is robust and works with pagination and ordering.
+
 ## 2. User Management (Admin Only)
 - Create a superuser:
 
@@ -282,25 +306,79 @@ Authorization: Bearer <access_token>
 - Update:    PUT    /api/invoices/{id}/
 - Delete:    DELETE /api/invoices/{id}/
 
+
+
 #### Invoice Fields
 - customer: Customer object (from Customers endpoint)
 - invoice_number: string (required, unique)
 - order_number: string (optional)
 - invoice_date: date (YYYY-MM-DD)
- customer: Customer object (from Customers endpoint)
- challan_number: string (required, unique)
- reference_number: string (optional)
- date: date (YYYY-MM-DD)
- challan_type: "liquid_gas", "job_work", "approval", "others" (enum)
- item_details: array of DeliveryChallanItem objects (see below)
- delivery_challan_file_ids: array of CustomerDocument IDs (for file association; read/write)
- delivery_challan_files: array of CustomerDocument objects (read-only, see CustomerDocument Fields)
- total_amount: decimal
- created_at: datetime
+- due_date: date (optional, read-write)
+- status: string ("DRAFT", "UNPAID", "PAID", "PARTIAL", "CANCELLED") (read-write)
+- item_details: array of InvoiceItem objects (see below)
+- customer_notes: string (optional)
+- terms_and_conditions: string (optional)
+- subtotal_amount: decimal (read-write)
+- gst_amount: decimal (read-write)  # GST amount for the invoice
+- total_amount: decimal (read-write)
+- attached_files: array of CustomerDocument objects (read-only)
+- attached_file_ids: array of integers (write-only, for associating existing files)
+- invoice_files: array of CustomerDocument objects (read-only)
+- invoice_file_ids: array of integers (write-only, for associating existing files)
+- created_at: datetime (read-only)
+
+##### InvoiceItem Fields
+- id: integer (read-only)
+- item: Item object (read-only)
 - item_id: integer (write-only)
 - quantity: integer
 - rate: decimal
 - amount: decimal (read-only)
+- invoice_item_number: integer (read-only)
+
+#### Example: Create Invoice
+POST /api/invoices/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+    "customer_id": 1,
+    "invoice_number": "INV-2025-001",
+    "order_number": "ORD-123",
+    "invoice_date": "2025-08-30",
+    "due_date": "2025-09-15",
+    "item_details": [
+        {"item_id": 1, "quantity": 2, "rate": "5000.00"},
+        {"item_id": 2, "quantity": 1, "rate": "1000.00"}
+    ],
+    "customer_notes": "Thank you for your business.",
+    "terms_and_conditions": "Payment due in 30 days.",
+    "attached_file_ids": [4],
+    "invoice_file_ids": [1, 2]
+}
+
+#### Example: Retrieve Invoice (response)
+{
+    "id": 1,
+    "customer": { ... },
+    "invoice_number": "INV-2025-001",
+    "order_number": "ORD-123",
+    "invoice_date": "2025-08-30",
+    "due_date": "2025-09-15",
+    "status": "UNPAID",
+    "item_details": [
+        {"id": 1, "item": { ... }, "quantity": 2, "rate": "5000.00", "amount": "10000.00", "invoice_item_number": 1},
+        {"id": 2, "item": { ... }, "quantity": 1, "rate": "1000.00", "amount": "1000.00", "invoice_item_number": 2}
+    ],
+    "customer_notes": "Thank you for your business.",
+    "terms_and_conditions": "Payment due in 30 days.",
+    "subtotal_amount": "11000.00",
+    "gst_amount": "1980.00",
+    "total_amount": "12980.00",
+    "attached_files": [ {"id": 4, "file": "/media/customer_documents/file4.pdf", "uploaded_at": "..."} ],
+    "invoice_files": [ {"id": 1, "file": "/media/customer_documents/file1.pdf", "uploaded_at": "..."}, {"id": 2, "file": "/media/customer_documents/file2.pdf", "uploaded_at": "..."} ],
+    "created_at": "2025-08-30T10:00:00Z"
+}
 
 #### Example: Create Invoice
 POST /api/invoices/
@@ -348,13 +426,11 @@ Authorization: Bearer <access_token>
 - Update:    PUT    /api/items/{id}/
 - Delete:    DELETE /api/items/{id}/
 
-#### Item Fields (2025-09-08)
+
+#### Item Fields (2025-09-11)
 - id: integer (read-only)
 - name: string (required)
 - unit: "Nos", "Kgs", "Litres" (default: "Nos")
-- description: string (optional)
-- price: decimal (required)
-- sku: string (required, unique)
 - created_at: datetime (read-only)
 
 **Sales Information**
@@ -368,6 +444,16 @@ Authorization: Bearer <access_token>
 - purchase_cost_price: decimal (required if manage_purchase_info is true)
 - purchase_account: string (required if manage_purchase_info is true, default: "Cost of Goods Sold")
 - purchase_description: string (optional)
+- preferred_vendor: integer (optional, FK)
+
+**Inventory Tracking**
+- track_inventory: boolean (default: false)
+- inventory_account: string (required if track_inventory is true)
+- inventory_valuation_method: string (required if track_inventory is true)
+- opening_stock: decimal (required if track_inventory is true)
+- opening_stock_rate_per_unit: decimal (required if track_inventory is true)
+- reorder_point: decimal (required if track_inventory is true)
+- current_stock: decimal (default: 0)
 - preferred_vendor: integer (optional, Vendor ID)
 
 **Inventory Tracking**

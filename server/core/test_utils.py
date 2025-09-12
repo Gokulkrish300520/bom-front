@@ -25,7 +25,7 @@ class FileAttachmentTestBase(APITestCase):
             CustomerDocument.objects.create(file=fname) for fname in self.file_names  # pylint: disable=no-member
         ]
         self.item = Item.objects.create(  # pylint: disable=no-member
-            name=self.item_name, description="desc", price=100, sku=self.item_sku
+            name=self.item_name
         )
 
     def get_file_ids(self, count=None):
