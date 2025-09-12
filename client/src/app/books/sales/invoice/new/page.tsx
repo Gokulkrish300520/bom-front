@@ -35,7 +35,7 @@ type Customer = {
 type ItemType = {
   id: number;
   name: string;
-  price: number | string;
+  sales_selling_price: number | string;
 };
 
 type InvoiceItem = {
@@ -169,7 +169,7 @@ export default function InvoiceFormPage() {
               ...item,
               itemId,
               name: selectedItem.name,
-              rate: typeof selectedItem.price === "string" ? Number(selectedItem.price) : selectedItem.price,
+              rate: typeof selectedItem.sales_selling_price === "string" ? Number(selectedItem.sales_selling_price) : selectedItem.sales_selling_price,
             }
           : item
       )
@@ -183,7 +183,7 @@ export default function InvoiceFormPage() {
   };
 
   // Save invoice handler, with POST to backend
-  const saveInvoice = async (status: "draft" | "sent") => {
+  const saveInvoice = async (status: "Draft" | "Paid") => {
     if (!selectedCustomerId) {
       alert("Please select a customer");
       return;
@@ -221,7 +221,7 @@ export default function InvoiceFormPage() {
         return;
       }
 
-      if (status === "sent") {
+      if (status === "Draft") {
       const customerObj = customers.find((c) => c.id === selectedCustomerId);
       if (!customerObj) {
         alert("Customer data not available for PDF generation");
@@ -256,7 +256,7 @@ export default function InvoiceFormPage() {
       }
     }
 
-      alert(`Invoice ${status === "sent" ? "sent" : "saved as draft"} successfully.`);
+      alert(`Invoice ${status === "Paid" ? "Paid" : "saved as DRAFT"} successfully.`);
       router.push("/books/sales/invoice");
     } catch (err) {
       alert("Error saving invoice.");
@@ -450,13 +450,13 @@ export default function InvoiceFormPage() {
       {/* Action Bar */}
       <div className="sticky bottom-0 flex justify-end gap-2 py-3 mt-4 border-t bg-gray-50">
         <button
-          onClick={() => saveInvoice("draft")}
+          onClick={() => saveInvoice("Draft")}
           className="px-4 py-2 text-sm border rounded hover:bg-gray-100"
         >
           Save as Draft
         </button>
         <button
-          onClick={() => saveInvoice("sent")}
+          onClick={() => saveInvoice("Paid")}
           className="px-4 py-2 text-sm text-white bg-green-600 rounded hover:bg-green-700"
         >
           Save and Send

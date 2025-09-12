@@ -17,7 +17,7 @@ type ContactPerson = {
 type Item = {
   id: number;
   name: string;
-  description?: string;
+  sales_description?: string;
 };
 
 type Customer = {
@@ -293,7 +293,7 @@ export default function QuoteDetailPage() {
               return (
               <tr key={idx} className="border-b">
               <td className="text-center align-middle">{item?.name || "..."}</td>
-              <td className="text-center align-middle">{item?.description || "N/A"}</td>
+              <td className="text-center align-middle">{item?.sales_description || "N/A"}</td>
               <td className="text-center align-middle">{detail.quantity}</td>
               <td className="text-center align-middle">{detail.rate}</td>
               <td className="text-center align-middle">₹{parseFloat(detail.amount).toFixed(2)}</td>

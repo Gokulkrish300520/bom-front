@@ -146,6 +146,7 @@ export default function QuotesPage() {
               <th className="px-4 py-3 font-semibold text-left">Customer</th>
               <th className="px-4 py-3 font-semibold text-left">Expiry Date</th>
               <th className="px-4 py-3 font-semibold text-right">Amount</th>
+              <th className="px-4 py-3 font-semibold text-right">Created_at</th>
               <th className="px-4 py-3 font-semibold text-left">Status</th>
               <th className="px-4 py-3 font-semibold text-left">Actions</th>
             </tr>
@@ -167,6 +168,13 @@ export default function QuotesPage() {
                   <td className="px-4 py-3">{q.customer.display_name}</td>
                   <td className="px-4 py-3">{formatDate(q.expiry_date)}</td>
                   <td className="px-4 py-3 font-medium text-right">₹{q.total_amount}</td>
+                  <td className="px-5 py-3 text-right">
+                  {new Date(q.created_at).toLocaleTimeString("en-GB", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                  })}
+                   </td>
                   <td className="px-4 py-3">
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusStyle(q.status)}`}

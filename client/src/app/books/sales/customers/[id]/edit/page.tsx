@@ -337,7 +337,7 @@ export default function EditCustomerPage() {
 
     const contactPersonsPayload = contactPersons.map((cp) => ({
       id: cp.id,
-      salutation: cp.salutation,
+      salutation: cp.salutation ? cp.salutation.toLowerCase() : null,
       first_name: cp.firstName,
       last_name: cp.lastName,
       email: cp.email,
@@ -347,7 +347,7 @@ export default function EditCustomerPage() {
 
     const payload = {
       customer_type: customerType.toLowerCase(),
-      salutation: salutation.toLowerCase() || null,
+      salutation: salutation? salutation.toLowerCase() : null,
       first_name: firstName,
       last_name: lastName,
       company_name: companyName,
@@ -381,7 +381,7 @@ export default function EditCustomerPage() {
       custom_fields: customFieldsObj,
       tags: reportingTags,
       remarks,
-      contactPersons:contactPersonsPayload,
+      contact_persons:contactPersonsPayload,
     };
 
     try {
@@ -608,7 +608,7 @@ export default function EditCustomerPage() {
                       <button
                         type="button"
                         className="mt-2 text-sm font-medium text-green-600 hover:underline"
-                        onClick={() => setCurrency("INR - Indian Rupee")}
+                        onClick={() => setCurrency("INR")}
                         title="Reset to INR"
                       >
                         Reset to INR

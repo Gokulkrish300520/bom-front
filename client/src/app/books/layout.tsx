@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut,LayoutDashboard } from "lucide-react";
 import {
   Package,
   Banknote,
@@ -13,12 +13,24 @@ import {
   ChevronRight,
   Repeat,
 } from "lucide-react"; // Added Repeat for Transactions icon
-import { useState, useEffect } from "react";
+import { useState, useEffect,useRef } from "react";
 
 export default function BooksLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -52,7 +64,7 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
       icon: <Package size={18} />,
       subItems: [
         { name: "Items", href: "/books/items/item" },
-        { name: "Inventory Management", href: "/books/items/inventory" },
+        { name: "Inventory Adjustments", href: "/books/items/inventory" },
       ],
     },
     {
@@ -110,7 +122,7 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
     <div className="flex min-h-screen font-sans">
       {/* Sidebar */}
       <div className="flex flex-col w-64 bg-white border-r border-gray-200">
-        <div className="px-4 py-3 border-b border-gray-200">
+        <div className="px-4 py-2 border-b border-green-700">
           <h1 className="text-lg font-semibold text-green-600">Books</h1>
         </div>
 
@@ -177,21 +189,40 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
             );
           })}
         </nav>
-
-        {/* Logout Button */}
-        <div className="p-4 border-t border-gray-200">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-2 mb-7 text-sm font-medium text-red-600 hover:bg-red-100 rounded-lg"
-          >
-            <LogOut size={18} />
-            Logout
-          </button>
-        </div>
       </div>
+        
+        <div className="flex-1 flex flex-col bg-gray-50">
+        {/* Top Navbar */}
+        <div className="h-11 bg-green-700 flex justify-end items-center px-4 shadow-md">
+          <div className="relative" ref={dropdownRef}>
+            <div
+              className="w-8 h-8 rounded-full bg-gray-200 cursor-pointer"
+              onClick={() => setDropdownOpen((prev) => !prev)}
+            />
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-2 w-44 bg-white shadow-md rounded-md py-2 z-50">
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                >
+                  <LayoutDashboard size={16} />
+                  Go to Dashboard
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left"
+                >
+                  <LogOut size={16} />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
       {/* Main content */}
       <div className="flex-1 p-6 bg-gray-50">{children}</div>
+    </div>
     </div>
   );
 }

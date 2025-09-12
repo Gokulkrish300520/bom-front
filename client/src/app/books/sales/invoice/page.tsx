@@ -71,25 +71,23 @@ export default function InvoiceListPage() {
   const [prevPageUrl, setPrevPageUrl] = useState<string | null>(null);
   
 
-  const getStatusStyle = (status?: string) => {
-  if (!status) return "bg-gray-100 text-gray-700 border border-gray-300";
-  switch (status.toLowerCase()) {
-    case "draft":
-      return "bg-gray-100 text-gray-700 border border-gray-300";
-    case "sent":
-      return "bg-yellow-100 text-yellow-800 border border-yellow-300";
-    case "paid":
-      return "bg-green-100 text-green-700 border border-green-300";
-    case "overdue":
-      return "bg-red-100 text-red-700 border border-red-300";
-    case "partial":
-      return "bg-blue-100 text-blue-700 border border-blue-300";
-    case "cancelled":
-      return "bg-red-200 text-red-900 border border-red-400";
-    default:
-      return "bg-gray-100 text-gray-700";
-  }
-};
+  const getStatusColor = (status?: string) => {
+    if (!status) return "bg-gray-100 text-gray-800";
+    switch (status.toLowerCase()) {
+      case "draft":
+        return "bg-yellow-100 text-yellow-800";
+      case "sent":
+        return "bg-blue-100 text-blue-800";
+      case "accepted":
+      case "paid": // for invoice status
+        return "bg-green-100 text-green-800";
+      case "rejected":
+      case "unpaid":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
 
 
   const baseApiUrl = "https://bom-front-production.up.railway.app/api/invoices/";
@@ -214,9 +212,9 @@ export default function InvoiceListPage() {
                   <td className="px-4 py-3 font-medium text-right">₹{Number(inv.total_amount).toLocaleString()}</td>
                   <td className="px-4 py-3">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusStyle(inv.status)}`}
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(inv.status)}`}
                     >
-                      {inv.status}
+                      {inv?.status.toLowerCase()|| "-"}
                     </span>
                   </td>
                   <td className="px-4 py-3">

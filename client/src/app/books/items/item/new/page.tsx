@@ -45,9 +45,7 @@ export default function NewItemPage() {
     opening_stock: "",
     opening_stock_rate_per_unit: "",
     reorder_point: "",
-    // price:"",
-    // description:"",
-    // sku: "",
+
   });
 
   const [loading, setLoading] = useState(false);
@@ -89,22 +87,12 @@ export default function NewItemPage() {
       setError("Unit is required");
       return;
     }
-    if (!form.price.trim()) {
-      setError("Price is required");
-      return;
-    }
-    if (!form.sku.trim()) {
-      setError("SKU is required");
-      return;
-    }
 
     // Compose payload conditionally based on checkboxes
     const payload: any = {
       name: form.name,
       unit: form.unit,
-      description: form.description,
-      price: form.price,
-      sku: form.sku,
+      
     };
 
     if (manageSalesInfo) {
@@ -141,9 +129,6 @@ export default function NewItemPage() {
       payload.opening_stock = form.opening_stock;
       payload.opening_stock_rate_per_unit = form.opening_stock_rate_per_unit;
       payload.reorder_point = form.reorder_point;
-      payload.price = "100";
-      payload.description = "",
-      payload.sku=""
     } else {
       payload.track_inventory = false;
     }
@@ -185,7 +170,7 @@ export default function NewItemPage() {
               name="name"
               value={form.name}
               onChange={handleChange}
-              className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+              className="w-full p-2 mt-2 border border-black rounded-lg focus:ring-2 focus:ring-green-500"
             />
           </div>
           <div>
@@ -196,7 +181,7 @@ export default function NewItemPage() {
               name="unit"
               value={form.unit}
               onChange={handleChange}
-              className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+              className="w-full p-2 mt-2 border border-black rounded-lg focus:ring-2 focus:ring-green-500"
             >
               <option value="">Select unit</option>
               {units.map((u) => (
@@ -228,7 +213,7 @@ export default function NewItemPage() {
                   name="sales_selling_price"
                   value={form.sales_selling_price}
                   onChange={handleChange}
-                  className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full p-2 mt-2 border  border-black rounded-lg focus:ring-2 focus:ring-green-500"
                 />
               </div>
 
@@ -238,7 +223,7 @@ export default function NewItemPage() {
                   name="sales_account"
                   value={form.sales_account}
                   onChange={handleChange}
-                  className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full p-2 mt-2 border  border-black rounded-lg focus:ring-2 focus:ring-green-500"
                 >
                   <option value="Sales">Sales</option>
                 </select>
@@ -250,7 +235,7 @@ export default function NewItemPage() {
                   name="sales_description"
                   value={form.sales_description}
                   onChange={handleChange}
-                  className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full p-2 mt-2 border  border-black rounded-lg focus:ring-2 focus:ring-green-500"
                 />
               </div>
             </div>
@@ -277,7 +262,7 @@ export default function NewItemPage() {
                   name="purchase_cost_price"
                   value={form.purchase_cost_price}
                   onChange={handleChange}
-                  className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full p-2 mt-2 border  border-black rounded-lg focus:ring-2 focus:ring-green-500"
                 />
               </div>
 
@@ -287,7 +272,7 @@ export default function NewItemPage() {
                   name="purchase_account"
                   value={form.purchase_account}
                   onChange={handleChange}
-                  className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full p-2 mt-2 border  border-black rounded-lg focus:ring-2 focus:ring-green-500"
                 >
                   <option value="Cost of Goods Sold">Cost of Goods Sold</option>
                 </select>
@@ -299,7 +284,7 @@ export default function NewItemPage() {
                   name="purchase_description"
                   value={form.purchase_description}
                   onChange={handleChange}
-                  className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full p-2 mt-2 border border-black rounded-lg focus:ring-2 focus:ring-green-500"
                 />
               </div>
 
@@ -309,7 +294,7 @@ export default function NewItemPage() {
                   name="preferred_vendor"
                   value={form.preferred_vendor}
                   onChange={handleChange}
-                  className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full p-2 mt-2 border  border-black rounded-lg focus:ring-2 focus:ring-green-500"
                 >
                   <option value="">Select Vendor</option>
                   {vendors.map((v) => (
@@ -347,7 +332,7 @@ export default function NewItemPage() {
                     name="inventory_account"
                     value={form.inventory_account}
                     onChange={handleChange}
-                    className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                    className="w-full p-2 mt-2 border  border-black rounded-lg focus:ring-2 focus:ring-green-500"
                   >
                     <option value="">Select an account</option>
                     <option value="Inventory">Inventory</option>
@@ -360,7 +345,7 @@ export default function NewItemPage() {
                     name="inventory_valuation_method"
                     value={form.inventory_valuation_method}
                     onChange={handleChange}
-                    className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                    className="w-full p-2 mt-2 border  border-black rounded-lg focus:ring-2 focus:ring-green-500"
                   >
                     <option value="">Select Method</option>
                     <option value="FIFO">FIFO</option>
@@ -375,7 +360,7 @@ export default function NewItemPage() {
                     name="opening_stock"
                     value={form.opening_stock}
                     onChange={handleChange}
-                    className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                    className="w-full p-2 mt-2 border  border-black rounded-lg focus:ring-2 focus:ring-green-500"
                   />
                 </div>
                 <div>
@@ -385,7 +370,7 @@ export default function NewItemPage() {
                     name="opening_stock_rate_per_unit"
                     value={form.opening_stock_rate_per_unit}
                     onChange={handleChange}
-                    className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                    className="w-full p-2 mt-2 border  border-black rounded-lg focus:ring-2 focus:ring-green-500"
                   />
                 </div>
                 <div>
@@ -395,7 +380,7 @@ export default function NewItemPage() {
                     name="reorder_point"
                     value={form.reorder_point}
                     onChange={handleChange}
-                    className="w-full p-2 mt-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                    className="w-full p-2 mt-2 border  border-black rounded-lg focus:ring-2 focus:ring-green-500"
                   />
                 </div>
               </div>

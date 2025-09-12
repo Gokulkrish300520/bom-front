@@ -31,7 +31,7 @@ type Customer = {
 type Item = {
   id: number;
   name: string;
-  price: string;  // stringified decimal from backend
+  sales_selling_price: string;  // stringified decimal from backend
 };
 
 type QuoteItemRow = {
@@ -406,7 +406,7 @@ console.log(itemsList);
                         updateRow(item.id, {
                           itemId: id,
                           name: selectedItem?.name ?? "",
-                          rate: selectedItem ? Number(selectedItem.price) : 0,
+                          rate: selectedItem ? Number(selectedItem.sales_selling_price) : 0,
                         });
                       }}
                     >

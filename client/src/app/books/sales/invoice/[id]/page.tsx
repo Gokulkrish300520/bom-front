@@ -17,7 +17,7 @@ type ContactPerson = {
 type Item = {
   id: number;
   name: string;
-  description?: string;
+  sales_description?: string;
 };
 
 type Customer = {
@@ -76,6 +76,7 @@ type Invoice = {
   order_number: string;
   invoice_date: string;
   due_date: string; // assuming a due_date exists, replace or remove if not
+  status:string;
   item_details: InvoiceItemDetail[];
   customer_notes?: string;
   terms_and_conditions?: string;
@@ -165,13 +166,13 @@ export default function InvoiceDetailPage() {
             <span className="text-gray-900">{invoice.invoice_date}</span>
           </div>
           {/* Include Due Date if applicable */}
-          {/* <div>
+          <div>
             <span className="text-gray-700">Due Date:</span>{" "}
             <span className="text-gray-900">{invoice.due_date}</span>
-          </div> */}
+          </div>
           <div>
             <span className="text-gray-700">Status:</span>{" "}
-            <span className="text-gray-900">{/* You may add invoice.status or similar */}</span>
+            <span className="text-gray-900">{invoice.status}</span>
           </div>
         </div>
       </div>
@@ -242,7 +243,7 @@ export default function InvoiceDetailPage() {
               {invoice.item_details.map((detail, idx) => (
                 <tr key={detail.id} className="border-b">
                   <td className="text-center align-middle">{detail.item?.name || "N/A"}</td>
-                  <td className="text-center align-middle">{detail.item?.description || "N/A"}</td>
+                  <td className="text-center align-middle">{detail.item?.sales_description || "N/A"}</td>
                   <td className="text-center align-middle">{detail.quantity}</td>
                   <td className="text-center align-middle">₹{parseFloat(detail.rate).toFixed(2)}</td>
                   <td className="text-center align-middle">₹{parseFloat(detail.amount).toFixed(2)}</td>

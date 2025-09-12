@@ -86,13 +86,13 @@ export default function ItemsPage() {
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr
-                  key={item.id}
-                  className={`${
+                <tr key={item.id}
+                  className={`cursor-pointer ${
                     item.id % 2 === 0 ? "bg-green-50" : "bg-green-100"
-                  } hover:bg-green-200`}
-                >
-                  <td className="px-4 py-3 font-medium">{item.name}</td>
+                    } hover:bg-green-200`}
+                  onClick={() => router.push(`/books/items/item/${item.id}`)} // 👈 Navigate to detail page
+                  >
+                  <td className="px-4 py-3 font-medium text-green-700">{item.name}</td>
                   <td className="px-4 py-3">{item.purchase_description || "-"}</td>
                   <td className="px-4 py-3">
                     {item.purchase_cost_price != null
@@ -100,7 +100,7 @@ export default function ItemsPage() {
                       : "-"}
                   </td>
                   <td className="px-4 py-3">
-                    {item.price != null ? `₹${Number(item.price).toFixed(2)}` : "-"}
+                    {item.sales_selling_price != null ? `₹${Number(item.sales_selling_price).toFixed(2)}` : "-"}
                   </td>
                   <td className="px-4 py-3">{item.opening_stock ?? "-"}</td>
                   <td className="px-4 py-3">

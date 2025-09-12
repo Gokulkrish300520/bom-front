@@ -17,7 +17,7 @@ type ContactPerson = {
 type Item = {
   id: number;
   name: string;
-  description?: string;
+  sales_description?: string;
 };
 
 type Customer = {
@@ -276,7 +276,7 @@ export default function ProformaInvoiceDetailPage() {
               {proforma.item_details.map((detail, idx) => (
                 <tr key={detail.id} className="border-b">
                   <td className="text-center align-middle">{detail.item?.name || "N/A"}</td>
-                  <td className="text-center align-middle">{detail.item?.description || "N/A"}</td>
+                  <td className="text-center align-middle">{detail.item?.sales_description || "N/A"}</td>
                   <td className="text-center align-middle">{detail.quantity}</td>
                   <td className="text-center align-middle">₹{parseFloat(detail.rate).toFixed(2)}</td>
                   <td className="text-center align-middle">₹{parseFloat(detail.amount).toFixed(2)}</td>
