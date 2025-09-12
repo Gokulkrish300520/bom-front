@@ -9,4 +9,6 @@ psycopg2-binary
 python-dotenv
 django-background-tasks
 xlsxwriter
+django-filter
+
 
