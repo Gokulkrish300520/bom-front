@@ -6,18 +6,29 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0028_remove_item_legacy_fields'),
+        ("core", "0028_remove_item_legacy_fields"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='invoice',
-            name='due_date',
+            model_name="invoice",
+            name="due_date",
             field=models.DateField(blank=True, db_index=True, null=True),
         ),
         migrations.AddField(
-            model_name='invoice',
-            name='status',
-            field=models.CharField(choices=[('DRAFT', 'Draft'), ('UNPAID', 'Unpaid'), ('PAID', 'Paid'), ('PARTIAL', 'Partial'), ('CANCELLED', 'Cancelled')], db_index=True, default='DRAFT', max_length=16),
+            model_name="invoice",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("DRAFT", "Draft"),
+                    ("UNPAID", "Unpaid"),
+                    ("PAID", "Paid"),
+                    ("PARTIAL", "Partial"),
+                    ("CANCELLED", "Cancelled"),
+                ],
+                db_index=True,
+                default="DRAFT",
+                max_length=16,
+            ),
         ),
     ]

@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
+
 from pathlib import Path
 import os
 import dj_database_url
@@ -19,17 +20,17 @@ from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+load_dotenv(BASE_DIR.parent / '.env')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-load_dotenv(BASE_DIR / '.env')
 
-# SECURITY WARNING: keep the secret key used in production secret!
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "your-fallback-insecure-key")
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
+
+# SECURITY WARNING: don't run with debug turned on in production!
 
 # Use comma-separated env var for allowed hosts, fallback to localhost/dev IPs
 ALLOWED_HOSTS = [
@@ -40,10 +41,13 @@ ALLOWED_HOSTS = [
     'bom-front.vercel.app',
     'bpm-production.up.railway.app',
     'bom-front-production.up.railway.app',
+    'bom-front-production-140a.up.railway.app',
 ]
 
 
 # Application definition
+WSGI_APPLICATION = "server.wsgi.application"
+ASGI_APPLICATION = "server.asgi.application"
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -53,11 +57,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "corsheaders",
-    "core.apps.CoreConfig",
+    "server.core.apps.CoreConfig",
+    "server.core.banking.apps.BankingConfig",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
     "background_task",
-    'django_filters',
 ]
 
 MIDDLEWARE = [
@@ -81,10 +85,12 @@ CORS_ALLOWED_ORIGINS = [
     "https://glonix-frontend-indol.vercel.app",
     "https://bom-front.vercel.app",
     "https://bom-front-production.up.railway.app",
+    "https://bom-front-production-140a.up.railway.app",
     # Add other addresses if needed
 ]
 
-ROOT_URLCONF = "server.urls"
+
+ROOT_URLCONF = "server.server.urls"
 
 TEMPLATES = [
     {
@@ -109,6 +115,7 @@ WSGI_APPLICATION = "server.wsgi.application"
 
 
 # Use DATABASE_URL if set, else fallback to sqlite3
+
 DATABASES = {
     "default": dj_database_url.config(
         default=os.environ.get("DATABASE_URL"),  # System env var, not .env
@@ -124,7 +131,8 @@ DATABASES = {
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (
-            "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+            "django.contrib.auth.password_validation."
+            "UserAttributeSimilarityValidator"
         ),
     },
     {
@@ -160,7 +168,10 @@ CSRF_TRUSTED_ORIGINS = [
     "https://bpm-production.up.railway.app",
     "https://glonix-frontend-indol.vercel.app",
     "https://bom-front-production.up.railway.app",
+    "https://bom-front-production-140a.up.railway.app",
+    "https://bom-front-production-140a.up.railway.app",
 ]
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
@@ -168,7 +179,6 @@ CSRF_TRUSTED_ORIGINS = [
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # Collected static files location
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -187,7 +197,6 @@ SECURE_HSTS_PRELOAD = not DEBUG
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-from datetime import timedelta
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -210,7 +219,10 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
-    "TOKEN_BLACKLIST_SERIALIZER": "rest_framework_simplejwt.token_blacklist.serializers.BlacklistSerializer",
+    "TOKEN_BLACKLIST_SERIALIZER": (
+        "rest_framework_simplejwt.token_blacklist.serializers."
+        "BlacklistSerializer"
+    ),
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

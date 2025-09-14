@@ -38,12 +38,14 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="proformainvoice",
             name="adjustment",
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=12),
+            field=models.DecimalField(
+                decimal_places=2, default=0, max_digits=12),
         ),
         migrations.AddField(
             model_name="proformainvoice",
             name="discount",
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=5),
+            field=models.DecimalField(
+                decimal_places=2, default=0, max_digits=5),
         ),
         migrations.AddField(
             model_name="proformainvoice",
@@ -68,7 +70,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="proformainvoice",
             name="subtotal",
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=12),
+            field=models.DecimalField(
+                decimal_places=2, default=0, max_digits=12),
         ),
         migrations.AddField(
             model_name="proformainvoice",
@@ -100,7 +103,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="proformainvoice",
             name="total_amount",
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=12),
+            field=models.DecimalField(
+                decimal_places=2, default=0, max_digits=12),
         ),
         migrations.CreateModel(
             name="ProformaInvoiceItem",

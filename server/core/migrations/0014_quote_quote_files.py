@@ -13,6 +13,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="quote",
             name="quote_files",
-            field=models.ManyToManyField(blank=True, to="core.customerdocument"),
+            field=models.ManyToManyField(
+                blank=True, to="core.customerdocument"),
         ),
     ]

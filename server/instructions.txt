@@ -1,12 +1,29 @@
-# Django REST API: Complete Usage Guide
+
+# Django REST API: Complete Usage Guide (2025)
+
+## Project Structure (Updated)
+- Modular Django apps: core, banking, etc.
+- All business logic is atomic and auditable
+- All endpoints require JWT authentication
+- Full test coverage, all tests discoverable from project root
+- Linter score: ~95% (see flake8_report.txt)
+
+
 
 ## 1. Running the Server
+- Install dependencies:
+    pipenv install --dev
 - Apply migrations and start the server:
-
     python manage.py migrate
     python manage.py runserver
-
 - The server will be available at http://localhost:8000/
+
+## 1b. Running Tests and Linter
+- Run all tests from project root:
+    PYTHONPATH=$(pwd) DJANGO_SETTINGS_MODULE=server.server.settings pipenv run python3 -m django test
+- Run linter (excluding migrations):
+    pipenv run flake8 server/core --exclude=migrations
+
 
 ## 1a. Filtering Endpoints by customer_id and vendor_id
 
@@ -40,24 +57,38 @@ You can combine these filters with other query parameters as needed. Filtering i
 - Visit http://localhost:8000/admin/ and log in.
 - Add users via the Django admin interface (no public registration endpoint).
 
+
 ## 3. Authentication (JWT)
-
 - Obtain a JWT token:
-
     POST /api/auth/token/
     {
         "username": "<username>",
         "password": "<password>"
     }
-
 - Response:
     {
         "refresh": "<refresh_token>",
         "access": "<access_token>"
     }
-
 - Use the access token in the Authorization header for all API requests:
+    Authorization: Bearer <access_token>
 
+## 4. Banking & Transaction Endpoints (New)
+- Modular endpoints for banking accounts and transactions under `/api/banking/`
+- All balance updates are atomic and auditable
+- Filtering, reporting, and reconciliation supported
+- See core/banking/README.md for full details and examples
+
+## 5. Reporting & Profit/Loss (New)
+- Real-time profit and loss reporting endpoint: `/api/reports/profit-and-loss/`
+- Supports filtering by time, basis, customer, vendor, and comparison
+- Fully integrated with banking and transaction modules
+- See profit_and_loss_report.md for details
+
+## 8. Linting & Test Quality
+- Linter score: ~95% (see flake8_report.txt)
+- All tests must pass before deployment
+- Lint and test regularly for code quality
     Authorization: Bearer <access_token>
 
 - Refresh the access token (access token lifetime: 10 minutes, refresh token lifetime: 15 minutes):
@@ -877,6 +908,7 @@ Response:
 - reference_number: string (optional)
 - date: date (YYYY-MM-DD)
 - challan_type: "liquid_gas", "job_work", "approval", "others" (enum)
+- status: "draft", "issued", "dispatched", "delivered", "cancelled", "returned" (enum, default: draft, read/write)
 - item_details: array of DeliveryChallanItem objects (see below)
 - delivery_challan_file_ids: array of CustomerDocument IDs (for file attachment; read/write)
 - delivery_challan_files: array of CustomerDocument objects (read-only, see CustomerDocument Fields)
@@ -903,6 +935,7 @@ Authorization: Bearer <access_token>
     "reference_number": "REF-789",
     "date": "2025-08-30",
     "challan_type": "liquid_gas",
+    "status": "draft",
     "delivery_challan_file_ids": [10, 11],
     "total_amount": "20000.00"
 }
@@ -919,6 +952,7 @@ Response:
     "reference_number": "REF-789",
     "date": "2025-08-30",
     "challan_type": "liquid_gas",
+    "status": "draft",
     "item_details": [
         {"id": 1, "item": { ... }, "quantity": 5, "rate": "4000.00", "amount": "20000.00", "delivery_challan_item_number": 1}
     ],

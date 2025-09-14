@@ -33,12 +33,14 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="quote",
             name="adjustment",
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=12),
+            field=models.DecimalField(
+                decimal_places=2, default=0, max_digits=12),
         ),
         migrations.AddField(
             model_name="quote",
             name="discount",
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=5),
+            field=models.DecimalField(
+                decimal_places=2, default=0, max_digits=5),
         ),
         migrations.AddField(
             model_name="quote",
@@ -63,7 +65,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="quote",
             name="subtotal",
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=12),
+            field=models.DecimalField(
+                decimal_places=2, default=0, max_digits=12),
         ),
         migrations.AddField(
             model_name="quote",
@@ -95,7 +98,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="quote",
             name="total_amount",
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=12),
+            field=models.DecimalField(
+                decimal_places=2, default=0, max_digits=12),
         ),
         migrations.CreateModel(
             name="QuoteItem",

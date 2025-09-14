@@ -1,7 +1,7 @@
-
 """Admin configuration for the core Django app models and background tasks."""
+
 from django.contrib import admin
-from core.models import (
+from server.core.models import (
     DailySummary,
     Customer,
     CustomerDocument,
@@ -16,11 +16,13 @@ from core.models import (
     Bill,
     BillItem,
 )
-from core.background_tasks import preaggregate_daily_summaries
+from server.core.background_tasks import preaggregate_daily_summaries
+
 
 @admin.register(DailySummary)
 class DailySummaryAdmin(admin.ModelAdmin):
     """Admin interface for DailySummary model, with preaggregation action."""
+
     list_display = (
         "date",
         "invoices_total",
@@ -36,6 +38,7 @@ class DailySummaryAdmin(admin.ModelAdmin):
         # 'queryset' argument is unused, kept for admin action signature
         preaggregate_daily_summaries()
         self.message_user(request, "Pre-aggregation task has been scheduled.")
+
     run_preaggregation.short_description = "Run daily pre-aggregation now"
 
 

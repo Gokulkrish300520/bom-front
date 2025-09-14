@@ -1,5 +1,5 @@
-
 """API tests for CRUD operations on Item endpoint."""
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
@@ -14,8 +14,9 @@ class ItemAPITestCase(APITestCase):
             username="itemuser", password="itempass"
         )
         self.client.force_authenticate(user=self.user)
-        self.item_data = {"name": "Test Item",
-                        }
+        self.item_data = {
+            "name": "Test Item",
+        }
 
     def test_create_item(self):
         """Test creating an item via the API."""

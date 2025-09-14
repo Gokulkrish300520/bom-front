@@ -1,3 +1,4 @@
+
 ### INVENTORY MANAGEMENT CRUD
 
 # List inventory management records
@@ -52,16 +53,62 @@ Content-Type: application/json
 # Delete inventory management record
 DELETE http://localhost:8000/api/inventory-management/1/
 Authorization: Bearer <access_token>
-### AUTHENTICATION
 
+### AUTHENTICATION
 # Obtain JWT token
 POST http://localhost:8000/api/auth/token/
 Content-Type: application/json
-
 {
-    "username": "your_username",
-    "password": "your_password"
+  "username": "your_username",
+  "password": "your_password"
 }
+### BANKING ACCOUNTS CRUD
+# List banking accounts
+GET http://localhost:8000/api/banking/banking-accounts/
+Authorization: Bearer <access_token>
+
+# Create banking account
+POST http://localhost:8000/api/banking/banking-accounts/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+{
+  "account_type": "bank",
+  "account_name": "Main Bank",
+  "account_code": "MB001",
+  "account_number": "1234567890",
+  "bank_name": "BankName",
+  "ifsc": "BANK0001",
+  "opening_balance": 1000.0,
+  "primary": true
+}
+
+### TRANSACTIONS CRUD
+# List transactions
+GET http://localhost:8000/api/banking/transactions/?from_date=2025-09-01&to_date=2025-09-12
+Authorization: Bearer <access_token>
+
+# Create transaction
+POST http://localhost:8000/api/banking/transactions/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+{
+  "source_type": "bank",
+  "source_id": 1,
+  "destination_type": "credit_card",
+  "destination_id": 2,
+  "transaction_type": "payment",
+  "amount": 100.0,
+  "date": "2025-09-11"
+}
+
+### PROFIT AND LOSS REPORT
+# Get profit and loss report
+GET http://localhost:8000/api/reports/profit-and-loss/?time=This%20Month&basis=Accrual
+Authorization: Bearer <access_token>
+
+# Get profit and loss report by customer and vendor
+GET http://localhost:8000/api/reports/profit-and-loss/?customer_id=1&vendor_id=2&time=This%20Month&basis=Accrual
+Authorization: Bearer <access_token>
 
 ####
 # Refresh JWT token
@@ -804,6 +851,7 @@ Content-Type: application/json
   "reference_number": "REF-789",
   "date": "2025-08-30",
   "challan_type": "liquid_gas",
+  "status": "draft",
   "item_details": [
     {"item_id": 1, "quantity": 2, "rate": "100.00", "amount": "200.00"},
     {"item_id": 2, "quantity": 1, "rate": "150.00", "amount": "150.00"}
@@ -829,6 +877,7 @@ Content-Type: application/json
 
 {
   "challan_type": "job_work",
+  "status": "dispatched",
   "delivery_challan_file_ids": [10],
   "total_amount": "21000.00"
 }
