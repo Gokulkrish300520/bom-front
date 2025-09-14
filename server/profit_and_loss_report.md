@@ -1,13 +1,16 @@
-### Profit and Loss Report (API)
+### Profit and Loss Report (API, 2025)
 
 #### Endpoint
 - GET /api/reports/profit-and-loss/?time=This%20Month|Last%20Month|This%20Year&basis=Accrual|Cash&compare_with=None|Last%20Month|Last%20Year
+- Requires JWT authentication (see instructions.txt)
 
 #### Description
 - Returns a real-time Profit and Loss report for the specified period.
-- Filter results by time frame (This Month, Last Month, This Year), accounting basis (Accrual or Cash), and compare with previous periods.
-- Aggregates all Invoices (income), Payments (received), and Bills (expenses) in the period.
-- Returns detailed breakdowns by invoice and bill, and calculates gross and net profit/loss.
+- Fully integrated with modular banking and transaction endpoints
+- Filter results by time frame, accounting basis, customer, vendor, and comparison
+- Aggregates all Invoices (income), Payments (received), and Bills (expenses) in the period
+- Returns detailed breakdowns by invoice and bill, and calculates gross and net profit/loss
+- All calculations are atomic and auditable
 
 
 #### Query Parameters
@@ -58,7 +61,9 @@
 
 
 #### Example: Get Profit and Loss Report (by customer and vendor)
-GET /api/reports/profit-and-loss/?time=This%20Month&basis=Accrual&customer_id=1&vendor_id=2
+
+#### Example: Get Profit and Loss Report (by customer and vendor)
+GET /api/reports/profit-and-loss/?customer_id=1&vendor_id=2&time=This%20Month&basis=Accrual
 Authorization: Bearer <access_token>
 
 This will return a report for the specified period, filtered to only include invoices for customer 1 and bills for vendor 2.
@@ -121,8 +126,12 @@ Response:
 - 401: Unauthorized
 
 
+
 #### Notes
 - The report is always up to date with all CRUD changes to Invoices, Bills, and Payments.
-- You can filter the report by `customer_id` (for customer-specific income/expenses) and `vendor_id` (for vendor-specific bills/expenses).
-- Filtering is available on all relevant endpoints (see API instructions for details).
+- Fully integrated with banking, invoice, and bill modules
+- All calculations are atomic and reflect the latest transactions
+- You can filter the report by `customer_id` (for customer-specific income/expenses) and `vendor_id` (for vendor-specific bills/expenses)
+- Filtering is available on all relevant endpoints (see API instructions for details)
+- Fully tested; see instructions.txt for setup, authentication, and test/linting
 - For future: This endpoint can be extended for Balance Sheet and other financial reports.

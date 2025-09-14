@@ -6,20 +6,20 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0022_vendor_schema_alignment'),
+        ("core", "0022_vendor_schema_alignment"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='vendor',
-            name='address',
+            model_name="vendor",
+            name="address",
         ),
         migrations.RemoveField(
-            model_name='vendor',
-            name='name',
+            model_name="vendor",
+            name="name",
         ),
         migrations.RemoveField(
-            model_name='vendor',
-            name='phone',
+            model_name="vendor",
+            name="phone",
         ),
     ]

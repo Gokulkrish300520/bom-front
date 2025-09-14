@@ -18,17 +18,28 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 
 # Local imports
 from .models import (
-    Vendor, Item, Invoice, Bill, ContactPerson,
-    DeliveryChallan, ProformaInvoice, InventoryAdjustment,
-    Customer, CustomerDocument, Quote, DailySummary
+    Vendor,
+    Item,
+    Invoice,
+    Bill,
+    ContactPerson,
+    DeliveryChallan,
+    ProformaInvoice,
+    InventoryAdjustment,
+    Customer,
+    CustomerDocument,
+    Quote,
+    DailySummary,
 )
 from .serializers import CustomerDocumentSerializer
 
 
 from .test_utils import FileAttachmentTestBase
 
+
 class DeliveryChallanFileAttachmentTestCase(FileAttachmentTestBase):
     """Test attaching files to DeliveryChallan via API and retrieving them."""
+
     def setUp(self):
         super().setUp()
         self.challan_data = {
@@ -38,6 +49,7 @@ class DeliveryChallanFileAttachmentTestCase(FileAttachmentTestBase):
             "challan_type": "others",
             "item_details": [],
             "delivery_challan_file_ids": self.get_file_ids(3),
+            "status": "draft",
         }
         self.challan_data_with_items = {
             "customer_id": self.customer.id,
@@ -45,10 +57,21 @@ class DeliveryChallanFileAttachmentTestCase(FileAttachmentTestBase):
             "date": "2025-09-05",
             "challan_type": "others",
             "item_details": [
-                {"item_id": self.item.id, "quantity": 2, "rate": "100.00", "amount": "200.00"},
-                {"item_id": self.item.id, "quantity": 1, "rate": "150.00", "amount": "150.00"}
+                {
+                    "item_id": self.item.id,
+                    "quantity": 2,
+                    "rate": "100.00",
+                    "amount": "200.00",
+                },
+                {
+                    "item_id": self.item.id,
+                    "quantity": 1,
+                    "rate": "150.00",
+                    "amount": "150.00",
+                },
             ],
             "delivery_challan_file_ids": self.get_file_ids(1),
+            "status": "issued",
         }
 
     def test_create_challan_with_files(self):
@@ -58,23 +81,36 @@ class DeliveryChallanFileAttachmentTestCase(FileAttachmentTestBase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("delivery_challan_files", response.data)
         file_ids = {f["id"] for f in response.data["delivery_challan_files"]}
-        self.assertEqual(file_ids, {self.files[0].id, self.files[1].id, self.files[2].id})
+        self.assertEqual(
+            file_ids, {self.files[0].id, self.files[1].id, self.files[2].id}
+        )
+        self.assertIn("status", response.data)
+        self.assertEqual(response.data["status"], "draft")
 
     def test_update_challan_with_item_details(self):
         """Test updating a DeliveryChallan with new item details."""
         url = reverse("deliverychallan-list")
-        create_resp = self.client.post(url, self.challan_data_with_items, format="json")
+        create_resp = self.client.post(
+            url, self.challan_data_with_items, format="json")
         challan_id = create_resp.data["id"]
         update_url = reverse("deliverychallan-detail", args=[challan_id])
         update_data = self.challan_data_with_items.copy()
         update_data["item_details"] = [
-            {"item_id": self.item.id, "quantity": 5, "rate": "99.00", "amount": "495.00"}
+            {
+                "item_id": self.item.id,
+                "quantity": 5,
+                "rate": "99.00",
+                "amount": "495.00",
+            }
         ]
         update_data["challan_number"] = "DC-2025-TEST-ITEMS-UPDATED"
+        update_data["status"] = "dispatched"
         resp = self.client.put(update_url, update_data, format="json")
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(len(resp.data["item_details"]), 1)
         self.assertEqual(resp.data["item_details"][0]["quantity"], 5)
+        self.assertIn("status", resp.data)
+        self.assertEqual(resp.data["status"], "dispatched")
 
     def test_retrieve_challan_with_files(self):
         """Test retrieving a DeliveryChallan with attached files."""
@@ -85,7 +121,11 @@ class DeliveryChallanFileAttachmentTestCase(FileAttachmentTestBase):
         get_resp = self.client.get(get_url)
         self.assertIn("delivery_challan_files", get_resp.data)
         file_ids = {f["id"] for f in get_resp.data["delivery_challan_files"]}
-        self.assertEqual(file_ids, {self.files[0].id, self.files[1].id, self.files[2].id})
+        self.assertEqual(
+            file_ids, {self.files[0].id, self.files[1].id, self.files[2].id}
+        )
+        self.assertIn("status", get_resp.data)
+        self.assertIsInstance(get_resp.data["status"], str)
 
     def test_create_challan_invalid_customer(self):
         """Test creating a DeliveryChallan with an invalid customer ID."""
@@ -106,13 +146,15 @@ class DeliveryChallanFileAttachmentTestCase(FileAttachmentTestBase):
             "customer_id": self.customer.id,
             "challan_number": "DC-ERR2",
             "date": "2025-09-04",
-            "challan_type": "others"
+            "challan_type": "others",
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 401)
 
+
 class InvoiceFileAttachmentTestCase(FileAttachmentTestBase):
     """Test attaching files to Invoice via API and retrieving them."""
+
     def setUp(self):
         super().setUp()
         self.inv_data = {
@@ -127,8 +169,18 @@ class InvoiceFileAttachmentTestCase(FileAttachmentTestBase):
             "invoice_number": "INV-2025-TEST-ITEMS",
             "invoice_date": "2025-09-05",
             "item_details": [
-                {"item_id": self.item.id, "quantity": 2, "rate": "100.00", "amount": "200.00"},
-                {"item_id": self.item.id, "quantity": 1, "rate": "150.00", "amount": "150.00"}
+                {
+                    "item_id": self.item.id,
+                    "quantity": 2,
+                    "rate": "100.00",
+                    "amount": "200.00",
+                },
+                {
+                    "item_id": self.item.id,
+                    "quantity": 1,
+                    "rate": "150.00",
+                    "amount": "150.00",
+                },
             ],
             # Removed unused 'invoice_file_ids' and 'attached_file_ids'
         }
@@ -142,7 +194,8 @@ class InvoiceFileAttachmentTestCase(FileAttachmentTestBase):
     def test_create_invoice_with_item_details(self):
         """Test creating an Invoice with item details."""
         url = reverse("invoice-list")
-        response = self.client.post(url, self.inv_data_with_items, format="json")
+        response = self.client.post(
+            url, self.inv_data_with_items, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("item_details", response.data)
         self.assertEqual(len(response.data["item_details"]), 2)
@@ -151,18 +204,25 @@ class InvoiceFileAttachmentTestCase(FileAttachmentTestBase):
     def test_update_invoice_with_item_details(self):
         """Test updating an Invoice with new item details."""
         url = reverse("invoice-list")
-        create_resp = self.client.post(url, self.inv_data_with_items, format="json")
+        create_resp = self.client.post(
+            url, self.inv_data_with_items, format="json")
         inv_id = create_resp.data["id"]
         update_url = reverse("invoice-detail", args=[inv_id])
         update_data = self.inv_data_with_items.copy()
         update_data["item_details"] = [
-            {"item_id": self.item.id, "quantity": 5, "rate": "99.00", "amount": "495.00"}
+            {
+                "item_id": self.item.id,
+                "quantity": 5,
+                "rate": "99.00",
+                "amount": "495.00",
+            }
         ]
         update_data["invoice_number"] = "INV-2025-TEST-ITEMS-UPDATED"
         resp = self.client.put(update_url, update_data, format="json")
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(len(resp.data["item_details"]), 1)
         self.assertEqual(resp.data["item_details"][0]["quantity"], 5)
+
     # Removed unused 'invoice_file_ids'
 
     def test_retrieve_invoice_with_files(self):
@@ -174,14 +234,19 @@ class InvoiceFileAttachmentTestCase(FileAttachmentTestBase):
         get_resp = self.client.get(get_url)
         self.assertEqual(get_resp.status_code, status.HTTP_200_OK)
         self.assertIn("invoice_files", get_resp.data)
-    # Removed unused 'invoice_file_ids' and assertion
+        # Removed unused 'invoice_file_ids' and assertion
         self.assertIn("attached_files", get_resp.data)
+
     # Removed unused 'attached_file_ids'
 
     def test_create_invoice_invalid_customer(self):
         """Test creating an Invoice with an invalid customer ID."""
         url = reverse("invoice-list")
-        data = {"customer_id": 9999, "invoice_number": "INV-ERR", "invoice_date": "2025-09-04"}
+        data = {
+            "customer_id": 9999,
+            "invoice_number": "INV-ERR",
+            "invoice_date": "2025-09-04",
+        }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 400)
 
@@ -197,11 +262,15 @@ class InvoiceFileAttachmentTestCase(FileAttachmentTestBase):
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 401)
 
+
 class ReportAndFileViewCoverageTestCase(APITestCase):
     """Test Balance Sheet report and file view coverage for API endpoints."""
+
     def setUp(self):
         """Set up test user for report and file view coverage tests."""
-        self.user = get_user_model().objects.create_user(username="testuser", password="testpass")
+        self.user = get_user_model().objects.create_user(
+            username="testuser", password="testpass"
+        )
         self.client.force_authenticate(user=self.user)
 
     def test_balance_sheet_report_cash_basis(self):
@@ -220,21 +289,39 @@ class ReportAndFileViewCoverageTestCase(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("assets", resp.data)
 
+
 class ModelStrCoverageTestCase(APITestCase):
-    """Test __str__ methods for all major models for coverage and correctness."""
+    """
+    Test __str__ methods for all major models for coverage
+    and correctness.
+    """
+
     def setUp(self):
         """Set up test data for model __str__ method coverage tests."""
-        self.vendor = Vendor.objects.create(display_name="Vendor1", email="v1@example.com")
+        self.vendor = Vendor.objects.create(
+            display_name="Vendor1", email="v1@example.com"
+        )
         self.item = Item.objects.create(name="Item1")
-        self.customer = Customer.objects.create(display_name="Cust1", email="c1@example.com")
+        self.customer = Customer.objects.create(
+            display_name="Cust1",
+            email="c1@example.com",
+        )
         self.invoice = Invoice.objects.create(
-            customer=self.customer, invoice_number="INV1", invoice_date="2025-09-04"
+            customer=self.customer,
+            invoice_number="INV1",
+            invoice_date="2025-09-04",
         )
         self.bill = Bill.objects.create(
-            vendor=self.vendor, bill_number="BILL1", bill_date="2025-09-04", due_date="2025-09-10"
+            vendor=self.vendor,
+            bill_number="BILL1",
+            bill_date="2025-09-04",
+            due_date="2025-09-10",
         )
         self.contact = ContactPerson.objects.create(
-            customer=self.customer, first_name="A", last_name="B", email="ab@example.com"
+            customer=self.customer,
+            first_name="A",
+            last_name="B",
+            email="ab@example.com",
         )
         self.dc = DeliveryChallan.objects.create(
             customer=self.customer, challan_number="DC1", date="2025-09-04"
@@ -246,7 +333,11 @@ class ModelStrCoverageTestCase(APITestCase):
             expiry_date="2025-09-10",
         )
         self.ia = InventoryAdjustment.objects.create(
-            item=self.item, adjustment_number="ADJ1", date="2025-09-04", quantity=1, reason="add"
+            item=self.item,
+            adjustment_number="ADJ1",
+            date="2025-09-04",
+            quantity=1,
+            reason="add",
         )
 
     def test_vendor_str(self):
@@ -281,11 +372,21 @@ class ModelStrCoverageTestCase(APITestCase):
         """Test __str__ method of InventoryAdjustment model."""
         self.assertIn("ADJ1", str(self.ia))
 
+
 class CustomerDocumentFileTests(APITestCase):
-    """Test file upload, update, and validation for CustomerDocument API endpoints."""
+    """
+    Test file upload, update, and validation for CustomerDocument
+    API endpoints.
+    """
+
     def setUp(self):
-        """Set up test user, file, and API request factory for CustomerDocument tests."""
-        self.user = get_user_model().objects.create_user(username="reportuser", password="testpass")
+        """
+        Set up test user, file, and API request factory for
+        CustomerDocument tests.
+        """
+        self.user = get_user_model().objects.create_user(
+            username="reportuser", password="testpass"
+        )
         self.client.force_authenticate(user=self.user)
         self.factory = APIRequestFactory()
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
@@ -304,20 +405,34 @@ class CustomerDocumentFileTests(APITestCase):
             pass
 
     def test_customer_document_upload_too_large(self):
-        """Test uploading a too-large file is rejected by CustomerDocument API."""
+        """
+        Test uploading a too-large file is rejected by
+        CustomerDocument API.
+        """
         bigfile = SimpleUploadedFile(
-            "bigfile.pdf", b"0" * (10 * 1024 * 1024 + 1), content_type="application/pdf"
+            "bigfile.pdf",
+            b"0" * (10 * 1024 * 1024 + 1),
+            content_type="application/pdf",
         )
-        resp = self.client.post(reverse("file-list"), {"file": bigfile}, format="multipart")
+        resp = self.client.post(
+            reverse("file-list"),
+            {"file": bigfile},
+            format="multipart",
+        )
         self.assertEqual(resp.status_code, 400)
         self.assertIn("file", resp.data)
 
     def test_customer_document_upload_invalid_extension(self):
-        """Test uploading a file with invalid extension is rejected by CustomerDocument API."""
+        """
+        Test uploading a file with invalid extension is rejected by
+        CustomerDocument API.
+        """
         badfile = SimpleUploadedFile(
             "badfile.exe", b"dummy", content_type="application/octet-stream"
         )
-        resp = self.client.post(reverse("file-list"), {"file": badfile}, format="multipart")
+        resp = self.client.post(
+            reverse("file-list"), {"file": badfile}, format="multipart"
+        )
         self.assertEqual(resp.status_code, 400)
         self.assertIn("file", resp.data)
 
@@ -331,7 +446,9 @@ class CustomerDocumentFileTests(APITestCase):
         """Test updating a CustomerDocument with invalid data is rejected."""
         url = reverse("file-detail", args=[self.file.id])
         bigfile = SimpleUploadedFile(
-            "bigfile2.pdf", b"0" * (10 * 1024 * 1024 + 1), content_type="application/pdf"
+            "bigfile2.pdf",
+            b"0" * (10 * 1024 * 1024 + 1),
+            content_type="application/pdf",
         )
         resp = self.client.put(url, {"file": bigfile}, format="multipart")
         self.assertEqual(resp.status_code, 400)
@@ -344,8 +461,10 @@ class CustomerDocumentFileTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("Content-Disposition", resp)
 
+
 class QuoteFileAttachmentTestCase(FileAttachmentTestBase):
     """Test attaching files to Quote via API and retrieving them."""
+
     def setUp(self):
         super().setUp()
         self.quote_data = {
@@ -362,8 +481,18 @@ class QuoteFileAttachmentTestCase(FileAttachmentTestBase):
             "quote_date": "2025-09-05",
             "expiry_date": "2025-09-12",
             "item_details": [
-                {"item_id": self.item.id, "quantity": 2, "rate": "100.00", "amount": "200.00"},
-                {"item_id": self.item.id, "quantity": 1, "rate": "150.00", "amount": "150.00"}
+                {
+                    "item_id": self.item.id,
+                    "quantity": 2,
+                    "rate": "100.00",
+                    "amount": "200.00",
+                },
+                {
+                    "item_id": self.item.id,
+                    "quantity": 1,
+                    "rate": "150.00",
+                    "amount": "150.00",
+                },
             ],
             "quote_file_ids": self.get_file_ids(1),
         }
@@ -375,12 +504,15 @@ class QuoteFileAttachmentTestCase(FileAttachmentTestBase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("quote_files", response.data)
         file_ids = {f["id"] for f in response.data["quote_files"]}
-        self.assertEqual(file_ids, {self.files[0].id, self.files[1].id, self.files[2].id})
+        self.assertEqual(
+            file_ids, {self.files[0].id, self.files[1].id, self.files[2].id}
+        )
 
     def test_create_quote_with_item_details(self):
         """Test creating a Quote with item details."""
         url = reverse("quote-list")
-        response = self.client.post(url, self.quote_data_with_items, format="json")
+        response = self.client.post(
+            url, self.quote_data_with_items, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("item_details", response.data)
         self.assertEqual(len(response.data["item_details"]), 2)
@@ -390,12 +522,18 @@ class QuoteFileAttachmentTestCase(FileAttachmentTestBase):
     def test_update_quote_with_item_details(self):
         """Test updating a Quote with new item details."""
         url = reverse("quote-list")
-        create_resp = self.client.post(url, self.quote_data_with_items, format="json")
+        create_resp = self.client.post(
+            url, self.quote_data_with_items, format="json")
         quote_id = create_resp.data["id"]
         update_url = reverse("quote-detail", args=[quote_id])
         update_data = self.quote_data_with_items.copy()
         update_data["item_details"] = [
-            {"item_id": self.item.id, "quantity": 5, "rate": "99.00", "amount": "495.00"}
+            {
+                "item_id": self.item.id,
+                "quantity": 5,
+                "rate": "99.00",
+                "amount": "495.00",
+            }
         ]
         update_data["quote_number"] = "Q-2025-TEST-ITEMS-UPDATED"
         resp = self.client.put(update_url, update_data, format="json")
@@ -412,7 +550,9 @@ class QuoteFileAttachmentTestCase(FileAttachmentTestBase):
         get_resp = self.client.get(get_url)
         self.assertIn("quote_files", get_resp.data)
         file_ids = {f["id"] for f in get_resp.data["quote_files"]}
-        self.assertEqual(file_ids, {self.files[0].id, self.files[1].id, self.files[2].id})
+        self.assertEqual(
+            file_ids, {self.files[0].id, self.files[1].id, self.files[2].id}
+        )
 
     def test_create_quote_invalid_customer(self):
         """Test creating a Quote with an invalid customer ID."""
@@ -426,8 +566,13 @@ class QuoteFileAttachmentTestCase(FileAttachmentTestBase):
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 400)
 
+
 class CoverageBoostTestCase(APITestCase):
-    """Test additional model and serializer coverage for edge cases and validation."""
+    """
+    Test additional model and serializer coverage for edge cases
+    and validation.
+    """
+
     def setUp(self):
         """Set up test data for coverage boost tests."""
         self.customer = Customer.objects.create(
@@ -447,19 +592,28 @@ class CoverageBoostTestCase(APITestCase):
         self.assertEqual(str(self.customer), "Coverage Customer")
 
     def test_customerdocument_clean_too_large(self):
-        """Test CustomerDocument.clean() raises ValidationError for large files."""
+        """
+        Test CustomerDocument.clean() raises ValidationError for
+        large files.
+        """
+
         class DummyFile:
             """Dummy file object for testing file size validation."""
+
             size = 11 * 1024 * 1024
+
         doc = CustomerDocument(file=DummyFile())
         with self.assertRaises(ValidationError):
             doc.clean()
 
     def test_customerdocumentserializer_file_validation(self):
         """Test CustomerDocumentSerializer file validation for large files."""
+
         class DummyFile:
             """Dummy file object for testing file size validation."""
+
             size = 11 * 1024 * 1024
+
         serializer = CustomerDocumentSerializer()
         with self.assertRaises(DRFValidationError):
             serializer.validate_file(DummyFile())
@@ -470,11 +624,15 @@ class CoverageBoostTestCase(APITestCase):
 
     def test_daily_summary_str(self):
         """Test __str__ method of DailySummary model."""
-        summary = DailySummary.objects.create(date="2025-09-04")  # pylint: disable=no-member
+        summary = DailySummary.objects.create(
+            date="2025-09-04"
+        )  # pylint: disable=no-member
         self.assertIn("2025-09-04", str(summary))
+
 
 class ProformaInvoiceFileAttachmentTestCase(FileAttachmentTestBase):
     """Test attaching files to ProformaInvoice via API and retrieving them."""
+
     def setUp(self):
         super().setUp()
         self.pi_data = {
@@ -491,8 +649,18 @@ class ProformaInvoiceFileAttachmentTestCase(FileAttachmentTestBase):
             "invoice_date": "2025-09-05",
             "expiry_date": "2025-09-12",
             "item_details": [
-                {"item_id": self.item.id, "quantity": 2, "rate": "100.00", "amount": "200.00"},
-                {"item_id": self.item.id, "quantity": 1, "rate": "150.00", "amount": "150.00"}
+                {
+                    "item_id": self.item.id,
+                    "quantity": 2,
+                    "rate": "100.00",
+                    "amount": "200.00",
+                },
+                {
+                    "item_id": self.item.id,
+                    "quantity": 1,
+                    "rate": "150.00",
+                    "amount": "150.00",
+                },
             ],
             # Removed unused 'proforma_invoice_file_ids'
         }  # pylint: disable=no-member
@@ -510,7 +678,8 @@ class ProformaInvoiceFileAttachmentTestCase(FileAttachmentTestBase):
     def test_create_proforma_invoice_with_item_details(self):
         """Test creating a ProformaInvoice with item details."""
         url = reverse("proformainvoice-list")
-        response = self.client.post(url, self.pi_data_with_items, format="json")
+        response = self.client.post(
+            url, self.pi_data_with_items, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("item_details", response.data)
         self.assertEqual(len(response.data["item_details"]), 2)
@@ -520,12 +689,18 @@ class ProformaInvoiceFileAttachmentTestCase(FileAttachmentTestBase):
     def test_update_proforma_invoice_with_item_details(self):
         """Test updating a ProformaInvoice with new item details."""
         url = reverse("proformainvoice-list")
-        create_resp = self.client.post(url, self.pi_data_with_items, format="json")
+        create_resp = self.client.post(
+            url, self.pi_data_with_items, format="json")
         pi_id = create_resp.data["id"]
         update_url = reverse("proformainvoice-detail", args=[pi_id])
         update_data = self.pi_data_with_items.copy()
         update_data["item_details"] = [
-            {"item_id": self.item.id, "quantity": 5, "rate": "99.00", "amount": "495.00"}
+            {
+                "item_id": self.item.id,
+                "quantity": 5,
+                "rate": "99.00",
+                "amount": "495.00",
+            }
         ]
         update_data["invoice_number"] = "PI-2025-TEST-ITEMS-UPDATED"
         resp = self.client.put(update_url, update_data, format="json")

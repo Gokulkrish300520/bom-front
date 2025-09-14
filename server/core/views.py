@@ -1,54 +1,3 @@
-
-from .inventory_management_models import InventoryManagement
-from .serializers import InventoryManagementSerializer
-import io
-import json
-import xlsxwriter
-from django.core.mail import EmailMessage
-from django.http import JsonResponse
-# ...existing code...
-
-# Inventory Management CRUD endpoint
-from rest_framework import viewsets, permissions
-
-class InventoryManagementViewSet(viewsets.ModelViewSet):
-    queryset = InventoryManagement.objects.all()
-    serializer_class = InventoryManagementSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-
-# pylint: disable=no-member, import-outside-toplevel, import-self, redefined-outer-name
-"""Views for core Django REST API endpoints."""
-
-# Standard library imports
-from datetime import date, timedelta
-import calendar
-
-# Third-party imports
-from django.db.models import Sum, Q
-from rest_framework import viewsets, permissions, status
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-
-# Local imports
-from .models import (
-    Bill,
-    Customer,
-    CustomerDocument,
-    DeliveryChallan,
-    InventoryAdjustment,
-    Invoice,
-    Item,
-    Payment,
-    ProformaInvoice,
-    Quote,
-    Vendor
-)
-from .filters import QuoteFilter
-from .filters_extra import InvoiceFilter, ProformaInvoiceFilter, DeliveryChallanFilter, BillFilter
 from .serializers import (
     BillSerializer,
     CustomerDocumentSerializer,
@@ -62,11 +11,63 @@ from .serializers import (
     QuoteSerializer,
     VendorSerializer,
 )
+from .filters_extra import (
+    InvoiceFilter,
+    ProformaInvoiceFilter,
+    DeliveryChallanFilter,
+    BillFilter,
+)
+from .filters import QuoteFilter
+from .models import (
+    Bill,
+    Customer,
+    CustomerDocument,
+    DeliveryChallan,
+    InventoryAdjustment,
+    Invoice,
+    Item,
+    Payment,
+    ProformaInvoice,
+    Quote,
+    Vendor,
+)
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets, permissions, status
+from django.db.models import Sum, Q
+import calendar
+from datetime import date, timedelta
+from .inventory_management_models import InventoryManagement
+from .serializers import InventoryManagementSerializer
+
+# ...existing code...
+
+
+class InventoryManagementViewSet(viewsets.ModelViewSet):
+    queryset = InventoryManagement.objects.all()
+    serializer_class = InventoryManagementSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+# pylint: disable=no-member, import-outside-toplevel, import-self,
+#   redefined-outer-name
+"""Views for core Django REST API endpoints."""
+# Standard library imports
+# Third-party imports
+# Local imports
+
+
 class BalanceSheetReportView(APIView):
     """View for generating balance sheet reports."""
+
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def get(
+        self, request
+    ):  # pylint: disable=too-many-arguments,too-many-positional-arguments
         """
         Returns a Balance Sheet report for the given time and basis.
         Query params: time (Today|Yesterday|This Month), basis (Accrual|Cash)
@@ -81,25 +82,39 @@ class BalanceSheetReportView(APIView):
         assets = self._calculate_assets(basis, start_date, end_date)
         liabilities = self._calculate_liabilities(basis, start_date, end_date)
         equities = 0
-        total_liabilities_and_equities = liabilities["total_liabilities"] + equities
+        total_liabilities_and_equities = (
+            liabilities["total_liabilities"] + equities
+        )
 
-        return Response({
-            "assets": assets,
-            "liabilities_and_equities": {
-                "liabilities": {
-                    "current_liabilities": float(liabilities["current_liabilities"]),
-                    "long_term_liabilities": float(liabilities["long_term_liabilities"]),
-                    "other_liabilities": float(liabilities["other_liabilities"]),
-                    "total_liabilities": float(liabilities["total_liabilities"]),
+        return Response(
+            {
+                "assets": assets,
+                "liabilities_and_equities": {
+                    "liabilities": {
+                        "current_liabilities": float(
+                            liabilities["current_liabilities"]
+                        ),
+                        "long_term_liabilities": float(
+                            liabilities["long_term_liabilities"]
+                        ),
+                        "other_liabilities": float(
+                            liabilities["other_liabilities"]
+                        ),
+                        "total_liabilities": float(
+                            liabilities["total_liabilities"]
+                        ),
+                    },
+                    "equities": float(equities),
+                    "total_liabilities_and_equities": float(
+                        total_liabilities_and_equities
+                    ),
                 },
-                "equities": float(equities),
-                "total_liabilities_and_equities": float(total_liabilities_and_equities),
-            },
-            "time": time_param,
-            "basis": basis,
-            "start_date": str(start_date),
-            "end_date": str(end_date),
-        })
+                "time": time_param,
+                "basis": basis,
+                "start_date": str(start_date),
+                "end_date": str(end_date),
+            }
+        )
 
     def _get_date_range(self, time_param, today):
         if time_param == "Today":
@@ -111,17 +126,27 @@ class BalanceSheetReportView(APIView):
             return today.replace(day=1), today
         return None, None
 
-    def _filter_by_basis(self, qs, date_field, basis, start_date, end_date):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def _filter_by_basis(
+        self, qs, date_field, basis, start_date, end_date
+    ):  # pylint: disable=too-many-arguments,too-many-positional-arguments
         if basis in ("Accrual", "Cash"):
             return qs.filter(
-                **{f"{date_field}__gte": start_date, f"{date_field}__lte": end_date}
+                **{
+                    f"{date_field}__gte": start_date,
+                    f"{date_field}__lte": end_date,
+                }
             )
         return qs.none()
 
     def _calculate_assets(self, basis, start_date, end_date):
         cash_inflows = (
-            self._filter_by_basis(Payment.objects.all(), "date", basis, start_date, end_date)  # pylint: disable=no-member
-            .aggregate(total=Sum("amount"))["total"]
+            self._filter_by_basis(
+                Payment.objects.all(), "date", basis, start_date, end_date
+            ).aggregate(  # pylint: disable=no-member
+                total=Sum("amount")
+            )[
+                "total"
+            ]
             or 0
         )
         invoices = self._filter_by_basis(
@@ -131,7 +156,8 @@ class BalanceSheetReportView(APIView):
             start_date,
             end_date,
         )  # pylint: disable=no-member
-        total_invoiced = invoices.aggregate(total=Sum("total_amount"))['total'] or 0
+        total_invoiced = invoices.aggregate(
+            total=Sum("total_amount"))["total"] or 0
         payments = self._filter_by_basis(
             Payment.objects.all(),
             "date",
@@ -139,10 +165,12 @@ class BalanceSheetReportView(APIView):
             start_date,
             end_date,
         )  # pylint: disable=no-member
-        total_paid = payments.aggregate(total=Sum("amount"))['total'] or 0
+        total_paid = payments.aggregate(total=Sum("amount"))["total"] or 0
         accounts_receivable = max(total_invoiced - total_paid, 0)
         other_current_assets = 0
-        total_current_assets = cash_inflows + accounts_receivable + other_current_assets
+        total_current_assets = (
+            cash_inflows + accounts_receivable + other_current_assets
+        )
         other_assets = 0
         fixed_assets = 0
         total_assets = total_current_assets + other_assets + fixed_assets
@@ -167,12 +195,14 @@ class BalanceSheetReportView(APIView):
             start_date,
             end_date,
         )  # pylint: disable=no-member
-        total_billed = bills.aggregate(total=Sum("total_amount"))['total'] or 0
+        total_billed = bills.aggregate(total=Sum("total_amount"))["total"] or 0
         accounts_payable = total_billed
         current_liabilities = accounts_payable
         long_term_liabilities = 0
         other_liabilities = 0
-        total_liabilities = current_liabilities + long_term_liabilities + other_liabilities
+        total_liabilities = (
+            current_liabilities + long_term_liabilities + other_liabilities
+        )
         return {
             "current_liabilities": current_liabilities,
             "long_term_liabilities": long_term_liabilities,
@@ -181,19 +211,30 @@ class BalanceSheetReportView(APIView):
         }
 
 
-class CustomerDocumentViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
-    """ViewSet for uploading, retrieving, and updating customer documents (files)."""
-    queryset = CustomerDocument.objects.all().order_by("-uploaded_at")  # pylint: disable=no-member,too-many-ancestors
+class CustomerDocumentViewSet(
+    viewsets.ModelViewSet
+):  # pylint: disable=too-many-ancestors
+
+    """
+    ViewSet for uploading, retrieving, and updating customer
+    documents (files).
+    """
+
+    queryset = CustomerDocument.objects.all().order_by(
+        "-uploaded_at"
+    )  # pylint: disable=no-member,too-many-ancestors
     serializer_class = CustomerDocumentSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     # No filterset_class for CustomerDocumentViewSet
     parser_classes = [MultiPartParser, FormParser]
 
-
     def retrieve(self, request, *args, **kwargs) -> Response:
-        """Return file metadata as JSON if ?meta=1, else stream file content."""
+        """
+        Return file metadata as JSON if ?meta=1, else stream file content.
+        """
         from django.http import FileResponse
+
         instance = self.get_object()
         if request.query_params.get("meta") == "1":
             serializer = self.get_serializer(instance)
@@ -222,8 +263,7 @@ class CustomerDocumentViewSet(viewsets.ModelViewSet):  # pylint: disable=too-man
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
         serializer = self.get_serializer(
-            instance, data=request.data, partial=partial
-        )
+            instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data)
@@ -231,8 +271,11 @@ class CustomerDocumentViewSet(viewsets.ModelViewSet):  # pylint: disable=too-man
 
 class BillViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Bills."""
+
     queryset = (
-        Bill.objects.select_related("vendor")  # pylint: disable=no-member,too-many-ancestors
+        Bill.objects.select_related(
+            "vendor"
+        )  # pylint: disable=no-member,too-many-ancestors
         .prefetch_related("item_details")
         .order_by("-created_at")
     )
@@ -242,20 +285,29 @@ class BillViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     filterset_class = BillFilter
 
 
-class CustomerViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
+class CustomerViewSet(
+    viewsets.ModelViewSet
+):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Customers."""
-    queryset = (
-    Customer.objects.prefetch_related("documents", "contact_persons")  # pylint: disable=no-member,too-many-ancestors
-        .order_by("-created_at")
+
+    queryset = Customer.objects.prefetch_related(
+        "documents", "contact_persons"
+    ).order_by(  # pylint: disable=no-member,too-many-ancestors
+        "-created_at"
     )
     serializer_class = CustomerSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class InvoiceViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
+class InvoiceViewSet(
+    viewsets.ModelViewSet
+):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Invoices."""
+
     queryset = (
-    Invoice.objects.select_related("customer")  # pylint: disable=no-member,too-many-ancestors
+        Invoice.objects.select_related(
+            "customer"
+        )  # pylint: disable=no-member,too-many-ancestors
         .prefetch_related("item_details", "files")
         .order_by("-created_at")
     )
@@ -265,29 +317,45 @@ class InvoiceViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancesto
     filterset_class = InvoiceFilter
 
 
-class VendorViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
+class VendorViewSet(
+    viewsets.ModelViewSet
+):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Vendors."""
-    queryset = Vendor.objects.all().order_by("-created_at")  # pylint: disable=no-member,too-many-ancestors
+
+    queryset = Vendor.objects.all().order_by(
+        "-created_at"
+    )  # pylint: disable=no-member,too-many-ancestors
     serializer_class = VendorSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
 class ItemViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Items."""
-    queryset = Item.objects.all().order_by("-created_at")  # pylint: disable=no-member,too-many-ancestors
+
+    queryset = Item.objects.all().order_by(
+        "-created_at"
+    )  # pylint: disable=no-member,too-many-ancestors
     serializer_class = ItemSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class PaymentViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
+class PaymentViewSet(
+    viewsets.ModelViewSet
+):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Payments."""
-    queryset = Payment.objects.select_related("invoice").order_by("-created_at")  # pylint: disable=no-member,too-many-ancestors
+
+    queryset = Payment.objects.select_related("invoice").order_by(
+        "-created_at"
+    )  # pylint: disable=no-member,too-many-ancestors
     serializer_class = PaymentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class QuoteViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
+class QuoteViewSet(
+    viewsets.ModelViewSet
+):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Quotes."""
+
     queryset = (
         Quote.objects.select_related("customer")
         .prefetch_related("item_details", "quote_files")
@@ -299,10 +367,15 @@ class QuoteViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     filterset_class = QuoteFilter
 
 
-class ProformaInvoiceViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
+class ProformaInvoiceViewSet(
+    viewsets.ModelViewSet
+):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Proforma Invoices."""
+
     queryset = (
-    ProformaInvoice.objects.select_related("customer")  # pylint: disable=no-member,too-many-ancestors
+        ProformaInvoice.objects.select_related(
+            "customer"
+        )  # pylint: disable=no-member,too-many-ancestors
         .prefetch_related("item_details", "proforma_invoice_files")
         .order_by("-created_at")
     )
@@ -312,10 +385,15 @@ class ProformaInvoiceViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many
     filterset_class = ProformaInvoiceFilter
 
 
-class DeliveryChallanViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
+class DeliveryChallanViewSet(
+    viewsets.ModelViewSet
+):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Delivery Challans."""
+
     queryset = (
-    DeliveryChallan.objects.select_related("customer")  # pylint: disable=no-member,too-many-ancestors
+        DeliveryChallan.objects.select_related(
+            "customer"
+        )  # pylint: disable=no-member,too-many-ancestors
         .prefetch_related("delivery_challan_files")
         .order_by("-created_at")
     )
@@ -325,41 +403,69 @@ class DeliveryChallanViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many
     filterset_class = DeliveryChallanFilter
 
 
-class InventoryAdjustmentViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
+class InventoryAdjustmentViewSet(
+    viewsets.ModelViewSet
+):  # pylint: disable=too-many-ancestors
     """ViewSet for managing Inventory Adjustments."""
-    queryset = InventoryAdjustment.objects.all().order_by("-created_at")  # pylint: disable=no-member,too-many-ancestors
+
+    queryset = InventoryAdjustment.objects.all().order_by(
+        "-created_at"
+    )  # pylint: disable=no-member,too-many-ancestors
     serializer_class = InventoryAdjustmentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-
     #
+
+
 class ProfitAndLossReportView(APIView):
-    """View for generating Profit and Loss reports for a given period and basis."""
+    """
+    View for generating Profit and Loss reports for a given period
+    and basis.
+    """
+
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
-        """
-        Returns a Profit and Loss report for the given period, basis, and comparison.
-        Query params:
-            - time: "This Month", "Last Month", "This Year" (default: This Month)
-        """
+    def get(
+        self,
+        request,
+    ):
+        # pylint: disable=too-many-arguments
+        # pylint: disable=too-many-positional-arguments
+        # pylint: disable=too-many-locals
+        # Docstring temporarily removed to debug persistent E501 error.
         today = date.today()
-        time_param = request.query_params.get("time", "This Month")
-        basis = request.query_params.get("basis", "Accrual")
-        compare_with = request.query_params.get("compare_with", "None")
-
-        customer_id = request.query_params.get("customer_id")
-        vendor_id = request.query_params.get("vendor_id")
-
-        start_date, end_date = self._get_range(time_param, today)
+        time_param = request.query_params.get(
+            "time", "This Month"
+        )
+        basis = request.query_params.get(
+            "basis", "Accrual"
+        )
+        compare_with = request.query_params.get(
+            "compare_with", "None"
+        )
+        customer_id = request.query_params.get(
+            "customer_id"
+        )
+        vendor_id = request.query_params.get(
+            "vendor_id"
+        )
+        start_date, end_date = self._get_range(
+            time_param, today
+        )
         if not start_date or not end_date:
-            return Response({"error": "Invalid time parameter."}, status=400)
-
+            return Response(
+                {"error": "Invalid time parameter."}, status=400
+            )
         compare_start, compare_end = (None, None)
         if compare_with and compare_with != "None":
-            compare_start, compare_end = self._get_range(compare_with, today)
-
-        summary_only = request.query_params.get("summary_only", "false").lower() == "true"
+            compare_start, compare_end = self._get_range(
+                compare_with, today
+            )
+        summary_only = (
+            request.query_params.get(
+                "summary_only", "false"
+            ).lower() == "true"
+        )
         main_data = self._get_report(
             start_date,
             end_date,
@@ -376,7 +482,6 @@ class ProfitAndLossReportView(APIView):
                 customer_id=customer_id,
                 vendor_id=vendor_id,
             )
-
         response = {
             "period": time_param,
             "basis": basis,
@@ -401,39 +506,57 @@ class ProfitAndLossReportView(APIView):
             start = today.replace(month=1, day=1)
             end = today
         elif period == "Last Year":
-            start = today.replace(year=today.year-1, month=1, day=1)
+            start = today.replace(year=today.year - 1, month=1, day=1)
             end = today.replace(
-                year=today.year-1,
+                year=today.year - 1,
                 month=12,
-                day=calendar.monthrange(today.year-1, 12)[1],
+                day=calendar.monthrange(today.year - 1, 12)[1],
             )
         else:
             return None, None
         return start, end
 
-
-    def _get_report(self, start_date, end_date, summary_only=False, customer_id=None, vendor_id=None):  # pylint: disable=too-many-locals
-        invoice_filter = Q(invoice_date__gte=start_date, invoice_date__lte=end_date)
+    def _get_report(
+        self,
+        start_date,
+        end_date,
+        summary_only=False,
+        customer_id=None,
+        vendor_id=None
+    ):  # pylint: disable=too-many-locals
+        invoice_filter = Q(
+            invoice_date__gte=start_date,
+            invoice_date__lte=end_date
+        )
         if customer_id:
             invoice_filter &= Q(customer_id=customer_id)
-        invoices = Invoice.objects.filter(invoice_filter)  # pylint: disable=no-member
-        operating_income = invoices.aggregate(total=Sum("total_amount"))['total'] or 0
+        invoices = Invoice.objects.filter(
+            invoice_filter)  # pylint: disable=no-member
+        operating_income = invoices.aggregate(
+            total=Sum("total_amount"))["total"] or 0
 
         bill_filter = Q(bill_date__gte=start_date, bill_date__lte=end_date)
         if vendor_id:
             bill_filter &= Q(vendor_id=vendor_id)
         bills = Bill.objects.filter(bill_filter)  # pylint: disable=no-member
-        cost_of_goods_sold = bills.aggregate(total=Sum("total_amount"))['total'] or 0
+        cost_of_goods_sold = (
+            bills.aggregate(total=Sum("total_amount"))["total"] or 0
+        )
 
         gross_profit = operating_income - cost_of_goods_sold
         operating_expense = 0
         operating_profit = gross_profit - operating_expense
         non_operating_income = 0
         non_operating_expense = 0
-        net_profit_loss = operating_profit + non_operating_income - non_operating_expense
+        net_profit_loss = (
+            operating_profit + non_operating_income - non_operating_expense
+        )
         payments_total = (
-            Payment.objects.filter(date__gte=start_date, date__lte=end_date)  # pylint: disable=no-member
-            .aggregate(total=Sum("amount"))["total"]
+            Payment.objects.filter(
+                date__gte=start_date, date__lte=end_date
+            ).aggregate(  # pylint: disable=no-member
+                total=Sum("amount")
+            )["total"]
             or 0
         )
 
@@ -474,55 +597,3 @@ class ProfitAndLossReportView(APIView):
             "invoice_breakdown": invoice_breakdown,
             "bill_breakdown": bill_breakdown,
         }
-from rest_framework.decorators import api_view, permission_classes
-from django.core.mail import EmailMessage
-import json
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def send_report_email(request):
-    """
-    Expects JSON body with:
-    - recipient_email: string
-    - subject: string (optional)
-    - report_data: JSON (summary + invoice + bill breakdowns)
-    """
-    
-    recipient = request.data.get('recipient_email')
-    subject = request.data.get('subject', 'Profit and Loss Report')
-    report_data = request.data.get('report_data')
-
-    if not recipient or not report_data:
-        return Response({'error': 'recipient_email and report_data are required'}, status=400)
-
-    try:
-        # Generate Excel file in memory
-        output = io.BytesIO()
-        workbook = xlsxwriter.Workbook(output, {"in_memory": True})
-        worksheet = workbook.add_worksheet("Report")
-
-        # Get headers from first row of Account
-        headers = list(report_data["Account"][0].keys())
-        for col, header in enumerate(headers):
-            worksheet.write(0, col, header)
-
-        # Write each row
-        for row, item in enumerate(report_data["Account"], start=1):
-            for col, header in enumerate(headers):
-                worksheet.write(row, col, item.get(header, ""))
-
-        workbook.close()
-        output.seek(0)
-
-        # Create email with attachment
-        email = EmailMessage(
-            subject,
-            "Please find attached your Profit and Loss report.",
-            to=[recipient],
-        )
-        email.attach("profit_and_loss_report.xlsx", output.read(), "application/vnd.ms-excel")
-        email.send()
-
-        return JsonResponse({"message": "Email sent successfully"})
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)

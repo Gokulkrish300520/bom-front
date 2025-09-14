@@ -4,8 +4,10 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 from .models import Customer, CustomerDocument, Item
 
+
 class FileAttachmentTestBase(APITestCase):
     """Base class for file attachment and item detail test setup."""
+
     user_username = "testuser"
     user_password = "testpass"
     customer_email = "testcustomer@example.com"
@@ -22,7 +24,8 @@ class FileAttachmentTestBase(APITestCase):
             display_name="Test Customer", email=self.customer_email
         )
         self.files = [
-            CustomerDocument.objects.create(file=fname) for fname in self.file_names  # pylint: disable=no-member
+            CustomerDocument.objects.create(file=fname)
+            for fname in self.file_names  # pylint: disable=no-member
         ]
         self.item = Item.objects.create(  # pylint: disable=no-member
             name=self.item_name

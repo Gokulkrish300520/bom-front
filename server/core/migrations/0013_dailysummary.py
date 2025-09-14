@@ -25,15 +25,18 @@ class Migration(migrations.Migration):
                 ("date", models.DateField(db_index=True, unique=True)),
                 (
                     "invoices_total",
-                    models.DecimalField(decimal_places=2, default=0, max_digits=12),
+                    models.DecimalField(
+                        decimal_places=2, default=0, max_digits=12),
                 ),
                 (
                     "bills_total",
-                    models.DecimalField(decimal_places=2, default=0, max_digits=12),
+                    models.DecimalField(
+                        decimal_places=2, default=0, max_digits=12),
                 ),
                 (
                     "payments_total",
-                    models.DecimalField(decimal_places=2, default=0, max_digits=12),
+                    models.DecimalField(
+                        decimal_places=2, default=0, max_digits=12),
                 ),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),

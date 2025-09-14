@@ -132,7 +132,8 @@ class Migration(migrations.Migration):
             model_name="customer",
             name="customer_type",
             field=models.CharField(
-                choices=[("business", "Business"), ("individual", "Individual")],
+                choices=[("business", "Business"),
+                         ("individual", "Individual")],
                 default="business",
                 max_length=20,
             ),
@@ -155,7 +156,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="customer",
             name="opening_balance",
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=12),
+            field=models.DecimalField(
+                decimal_places=2, default=0, max_digits=12),
         ),
         migrations.AddField(
             model_name="customer",
@@ -187,7 +189,8 @@ class Migration(migrations.Migration):
             name="salutation",
             field=models.CharField(
                 blank=True,
-                choices=[("dr", "Dr"), ("mr", "Mr"), ("ms", "Ms"), ("mrs", "Mrs")],
+                choices=[("dr", "Dr"), ("mr", "Mr"),
+                         ("ms", "Ms"), ("mrs", "Mrs")],
                 max_length=5,
                 null=True,
             ),
@@ -291,6 +294,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="customer",
             name="documents",
-            field=models.ManyToManyField(blank=True, to="core.customerdocument"),
+            field=models.ManyToManyField(
+                blank=True, to="core.customerdocument"),
         ),
     ]

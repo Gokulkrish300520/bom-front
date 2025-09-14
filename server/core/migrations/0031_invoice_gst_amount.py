@@ -6,13 +6,14 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0030_invoice_subtotal_amount'),
+        ("core", "0030_invoice_subtotal_amount"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='invoice',
-            name='gst_amount',
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=12),
+            model_name="invoice",
+            name="gst_amount",
+            field=models.DecimalField(
+                decimal_places=2, default=0, max_digits=12),
         ),
     ]

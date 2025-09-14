@@ -1,13 +1,20 @@
 """Django models for the core business logic and data structures."""
+
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
+
+
 class DailySummary(models.Model):
     """Model representing a daily summary of invoices, bills, and payments."""
+
     date = models.DateField(db_index=True, unique=True)
-    invoices_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    bills_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    payments_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    invoices_total = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
+    bills_total = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
+    payments_total = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -25,6 +32,7 @@ class BillItem(models.Model):
             self._old_quantity = None
             self._old_item_id = None
         super().save(*args, **kwargs)
+
     """Model representing an item entry in a Bill."""
     # ...existing code...
 
@@ -55,13 +63,15 @@ class BillItem(models.Model):
     def __str__(self) -> str:
         """String representation of BillItem."""
         return (
-            f"{self.item.name} x {self.quantity} for Bill "  # pylint: disable=no-member
+            f"{self.item.name} x {self.quantity} "  # pylint: disable=no-member
+            f"for Bill "
             f"{self.bill.bill_number}"  # pylint: disable=no-member
         )
 
 
 class Bill(models.Model):
     """Model representing a Bill issued by a Vendor."""
+
     # ...existing code...
 
     STATUS_CHOICES = [
@@ -118,10 +128,19 @@ class Bill(models.Model):
 
     def __str__(self) -> str:
         """String representation of Bill."""
-        return f"Bill {self.bill_number} - {self.vendor.display_name}"  # pylint: disable=no-member
+        return (
+            f"Bill {self.bill_number} - {self.vendor.display_name}"
+        )  # pylint: disable=no-member
 
 
 class Customer(models.Model):
+    def save(self, *args, **kwargs):
+        if self._state.adding and (
+            self.current_balance is None or self.current_balance == 0
+        ):
+            self.current_balance = self.opening_balance
+        super().save(*args, **kwargs)
+
     """Represents a customer, including contact and billing information."""
 
     CUSTOMER_TYPE_CHOICES = [
@@ -192,6 +211,16 @@ class Customer(models.Model):
         max_digits=12,
         decimal_places=2,
         default=0,
+    )
+    current_balance = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        editable=False,
+        help_text=(
+            "Current outstanding balance for this customer. "
+            "Updated automatically."
+        ),
     )
     payment_terms = models.CharField(
         max_length=20,
@@ -332,10 +361,18 @@ class ContactPerson(models.Model):
         ("mrs", "Mrs"),
     ]
     customer = models.ForeignKey(
-        Customer, related_name="contact_persons", on_delete=models.CASCADE, null=True, blank=True
+        Customer,
+        related_name="contact_persons",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
     vendor = models.ForeignKey(
-        'Vendor', related_name="contact_persons", on_delete=models.CASCADE, null=True, blank=True
+        "Vendor",
+        related_name="contact_persons",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
     salutation = models.CharField(
         max_length=5, choices=SALUTATION_CHOICES, blank=True, null=True
@@ -352,8 +389,14 @@ class ContactPerson(models.Model):
 
 
 class Vendor(models.Model):
-    """Represents a vendor supplying goods or services."""
+    def save(self, *args, **kwargs):
+        if self._state.adding and (
+            self.current_balance is None or self.current_balance == 0
+        ):
+            self.current_balance = self.opening_balance
+        super().save(*args, **kwargs)
 
+    """Represents a vendor supplying goods or services."""
 
     VENDOR_TYPE_CHOICES = [
         ("business", "Business"),
@@ -401,8 +444,20 @@ class Vendor(models.Model):
     work_phone = models.CharField(max_length=50, blank=True)
     mobile = models.CharField(max_length=50, blank=True)
     pan = models.CharField(max_length=20, blank=True)
-    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="INR")
-    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    currency = models.CharField(
+        max_length=3, choices=CURRENCY_CHOICES, default="INR")
+    opening_balance = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
+    current_balance = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        editable=False,
+        help_text=(
+            "Current outstanding balance for this vendor. "
+            "Updated automatically."
+        ),
+    )
     payment_terms = models.CharField(
         max_length=20, choices=PAYMENT_TERMS_CHOICES, default="due_on_receipt"
     )
@@ -448,25 +503,41 @@ class Item(models.Model):
 
     # Sales Information
     manage_sales_info = models.BooleanField(default=False)
-    sales_selling_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    sales_account = models.CharField(max_length=100, default="Sales", blank=True)
+    sales_selling_price = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    sales_account = models.CharField(
+        max_length=100, default="Sales", blank=True)
     sales_description = models.TextField(blank=True)
 
     # Purchase Information
     manage_purchase_info = models.BooleanField(default=False)
-    purchase_cost_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    purchase_account = models.CharField(max_length=100, default="Cost of Goods Sold", blank=True)
+    purchase_cost_price = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    purchase_account = models.CharField(
+        max_length=100, default="Cost of Goods Sold", blank=True
+    )
     purchase_description = models.TextField(blank=True)
-    preferred_vendor = models.ForeignKey('Vendor', null=True, blank=True, on_delete=models.SET_NULL)
+    preferred_vendor = models.ForeignKey(
+        "Vendor", null=True, blank=True, on_delete=models.SET_NULL
+    )
 
     # Inventory Tracking
     track_inventory = models.BooleanField(default=False)
     inventory_account = models.CharField(max_length=100, blank=True)
     inventory_valuation_method = models.CharField(max_length=50, blank=True)
-    opening_stock = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    opening_stock_rate_per_unit = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    reorder_point = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    current_stock = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    opening_stock = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    opening_stock_rate_per_unit = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    reorder_point = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    current_stock = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
 
     # Legacy fields removed: description, price, sku
     created_at = models.DateTimeField(auto_now_add=True)
@@ -475,25 +546,43 @@ class Item(models.Model):
         errors = {}
         if self.manage_sales_info:
             if self.sales_selling_price is None:
-                errors['sales_selling_price'] = 'This field is required when managing sales info.'
+                errors["sales_selling_price"] = (
+                    "This field is required when managing sales info."
+                )
             if not self.sales_account:
-                errors['sales_account'] = 'This field is required when managing sales info.'
+                errors["sales_account"] = (
+                    "This field is required when managing sales info."
+                )
         if self.manage_purchase_info:
             if self.purchase_cost_price is None:
-                errors['purchase_cost_price'] = 'This field is required when managing purchase info.'
+                errors["purchase_cost_price"] = (
+                    "This field is required when managing purchase info."
+                )
             if not self.purchase_account:
-                errors['purchase_account'] = 'This field is required when managing purchase info.'
+                errors["purchase_account"] = (
+                    "This field is required when managing purchase info."
+                )
         if self.track_inventory:
             if not self.inventory_account:
-                errors['inventory_account'] = 'This field is required when tracking inventory.'
+                errors["inventory_account"] = (
+                    "This field is required when tracking inventory."
+                )
             if not self.inventory_valuation_method:
-                errors['inventory_valuation_method'] = 'This field is required when tracking inventory.'
+                errors["inventory_valuation_method"] = (
+                    "This field is required when tracking inventory."
+                )
             if self.opening_stock is None:
-                errors['opening_stock'] = 'This field is required when tracking inventory.'
+                errors["opening_stock"] = (
+                    "This field is required when tracking inventory."
+                )
             if self.opening_stock_rate_per_unit is None:
-                errors['opening_stock_rate_per_unit'] = 'This field is required when tracking inventory.'
+                errors["opening_stock_rate_per_unit"] = (
+                    "This field is required when tracking inventory."
+                )
             if self.reorder_point is None:
-                errors['reorder_point'] = 'This field is required when tracking inventory.'
+                errors["reorder_point"] = (
+                    "This field is required when tracking inventory."
+                )
         if errors:
             raise ValidationError(errors)
 
@@ -586,11 +675,14 @@ class Quote(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Quote {self.quote_number} - {self.customer.display_name}"  # pylint: disable=no-member
+        return (
+            f"Quote {self.quote_number} - {self.customer.display_name}"
+        )  # pylint: disable=no-member
 
 
 class DocumentItemBase(models.Model):
     """Abstract base class for document item models."""
+
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
     rate = models.DecimalField(max_digits=12, decimal_places=2)
@@ -598,11 +690,13 @@ class DocumentItemBase(models.Model):
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta options for DocumentItemBase (abstract base class)."""
+
         abstract = True
 
 
 class QuoteItem(DocumentItemBase):
     """Model representing an item entry in a Quote."""
+
     quote = models.ForeignKey(
         Quote,
         related_name="item_details",
@@ -615,13 +709,14 @@ class QuoteItem(DocumentItemBase):
 
     def __str__(self):
         return (
-            f"[{self.quote_item_number}] {self.item.name} x {self.quantity} for Quote "  # pylint: disable=no-member
-            f"{self.quote.quote_number}"  # pylint: disable=no-member
-        )
+            f"[{self.quote_item_number}] {self.item.name} x {self.quantity} "
+            f"for Quote {self.quote.quote_number}"
+        )  # pylint: disable=no-member
 
 
 class ProformaInvoice(models.Model):
     """Model representing a Proforma Invoice."""
+
     proforma_invoice_files = models.ManyToManyField(
         "CustomerDocument",
         blank=True,
@@ -682,49 +777,58 @@ class ProformaInvoice(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Proforma {self.invoice_number} - {self.customer.display_name}"  # pylint: disable=no-member
+        return (
+            f"Proforma {self.invoice_number} - {self.customer.display_name}"
+        )  # pylint: disable=no-member
 
 
 class ProformaInvoiceItem(DocumentItemBase):
     """Model representing an item entry in a Proforma Invoice."""
+
     proforma_invoice = models.ForeignKey(
         ProformaInvoice,  # pylint: disable=no-member
         related_name="item_details",
         on_delete=models.CASCADE,
     )
-    proforma_invoice_item_number = models.PositiveIntegerField(null=True, blank=True)
+    proforma_invoice_item_number = models.PositiveIntegerField(
+        null=True, blank=True)
 
     class Meta:
         unique_together = ("proforma_invoice", "proforma_invoice_item_number")
 
     def __str__(self):
         return (
-            f"[{self.proforma_invoice_item_number}] {self.item.name} x {self.quantity} for Proforma "
-            f"{self.proforma_invoice.invoice_number}"  # pylint: disable=no-member
-        )
+            f"[{self.proforma_invoice_item_number}] "
+            f"{self.item.name} x {self.quantity} "
+            f"for Proforma {self.proforma_invoice.invoice_number}"
+        )  # pylint: disable=no-member
 
 
 class DeliveryChallanItem(DocumentItemBase):
     """Model representing an item entry in a Delivery Challan."""
+
     delivery_challan = models.ForeignKey(
         "DeliveryChallan",  # pylint: disable=no-member
         related_name="item_details",
         on_delete=models.CASCADE,
     )
-    delivery_challan_item_number = models.PositiveIntegerField(null=True, blank=True)
+    delivery_challan_item_number = models.PositiveIntegerField(
+        null=True, blank=True)
 
     class Meta:
         unique_together = ("delivery_challan", "delivery_challan_item_number")
 
     def __str__(self):
         return (
-            f"[{self.delivery_challan_item_number}] {self.item.name} x {self.quantity} for Challan "
-            f"{self.delivery_challan.challan_number}"  # pylint: disable=no-member
-        )
+            f"[{self.delivery_challan_item_number}] "
+            f"{self.item.name} x {self.quantity} "
+            f"for Challan {self.delivery_challan.challan_number}"
+        )  # pylint: disable=no-member
 
 
 class DeliveryChallan(models.Model):
     """Model representing a Delivery Challan document."""
+
     delivery_challan_files = models.ManyToManyField(
         "CustomerDocument",
         related_name="deliverychallans_programmatic",
@@ -747,8 +851,21 @@ class DeliveryChallan(models.Model):
         choices=CHALLAN_TYPE_CHOICES,
         default="others",
     )
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2,
-                                       default=0)
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("issued", "Issued"),
+        ("dispatched", "Dispatched"),
+        ("delivered", "Delivered"),
+        ("cancelled", "Cancelled"),
+        ("returned", "Returned"),
+    ]
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="draft",
+    )
+    total_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -760,6 +877,7 @@ class DeliveryChallan(models.Model):
 
 class InventoryAdjustment(models.Model):
     """Model representing an inventory adjustment entry."""
+
     item = models.ForeignKey(
         Item, related_name="inventory_adjustments", on_delete=models.CASCADE
     )
@@ -771,10 +889,7 @@ class InventoryAdjustment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return (
-            f"Adjustment {self.adjustment_number} - "
-            f"{self.item.name}"
-        )
+        return f"Adjustment {self.adjustment_number} - " f"{self.item.name}"
 
 
 class InvoiceItem(DocumentItemBase):
@@ -787,6 +902,7 @@ class InvoiceItem(DocumentItemBase):
             self._old_quantity = None
             self._old_item_id = None
         super().save(*args, **kwargs)
+
     """Model representing an item entry in an Invoice."""
     invoice = models.ForeignKey(
         "Invoice",
@@ -800,14 +916,16 @@ class InvoiceItem(DocumentItemBase):
 
     def __str__(self):
         return (
-            f"[{self.invoice_item_number}] {self.item.name} x {self.quantity} for Invoice "  # pylint: disable=no-member
-            f"{self.invoice.invoice_number}"  # pylint: disable=no-member
-        )
+            f"[{self.invoice_item_number}] {self.item.name} x {self.quantity} "
+            f"for Invoice {self.invoice.invoice_number}"
+        )  # pylint: disable=no-member
 
 
 class Invoice(models.Model):
-    subtotal_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    gst_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    subtotal_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
+    gst_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
     STATUS_CHOICES = [
         ("DRAFT", "Draft"),
         ("UNPAID", "Unpaid"),
@@ -817,7 +935,9 @@ class Invoice(models.Model):
     ]
 
     due_date = models.DateField(null=True, blank=True, db_index=True)
-    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="DRAFT", db_index=True)
+    status = models.CharField(
+        max_length=16, choices=STATUS_CHOICES, default="DRAFT", db_index=True
+    )
     """Model representing a sales Invoice."""
     invoice_files = models.ManyToManyField(
         "CustomerDocument",
@@ -834,8 +954,8 @@ class Invoice(models.Model):
     invoice_date = models.DateField(db_index=True)
     customer_notes = models.TextField(blank=True)
     terms_and_conditions = models.TextField(blank=True)
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2,
-                                       default=0)
+    total_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
     files = models.ManyToManyField(
         "CustomerDocument",
         related_name="invoices_ui",
@@ -853,3 +973,10 @@ class Invoice(models.Model):
             f"Invoice {self.invoice_number} - "  # pylint: disable=no-member
             f"{self.customer.display_name}"  # pylint: disable=no-member
         )
+
+
+# Register banking signals
+try:
+    import server.core.banking.signals  # noqa: F401
+except ImportError:
+    pass

@@ -43,20 +43,24 @@ class Migration(migrations.Migration):
                 ("notes", models.TextField(blank=True)),
                 (
                     "subtotal",
-                    models.DecimalField(decimal_places=2, default=0, max_digits=12),
+                    models.DecimalField(
+                        decimal_places=2, default=0, max_digits=12),
                 ),
                 (
                     "tax",
-                    models.DecimalField(decimal_places=2, default=0, max_digits=12),
+                    models.DecimalField(
+                        decimal_places=2, default=0, max_digits=12),
                 ),
                 (
                     "total_amount",
-                    models.DecimalField(decimal_places=2, default=0, max_digits=12),
+                    models.DecimalField(
+                        decimal_places=2, default=0, max_digits=12),
                 ),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 (
                     "files",
-                    models.ManyToManyField(blank=True, to="core.customerdocument"),
+                    models.ManyToManyField(
+                        blank=True, to="core.customerdocument"),
                 ),
                 (
                     "vendor",
@@ -84,7 +88,8 @@ class Migration(migrations.Migration):
                 ("rate", models.DecimalField(decimal_places=2, max_digits=12)),
                 (
                     "tax_percentage",
-                    models.DecimalField(decimal_places=2, default=0, max_digits=5),
+                    models.DecimalField(
+                        decimal_places=2, default=0, max_digits=5),
                 ),
                 ("amount", models.DecimalField(decimal_places=2, max_digits=12)),
                 (
