@@ -67,4 +67,5 @@ urlpatterns = [
         name="balance-sheet-report",
     ),
     path("auth/logout/", TokenBlacklistView.as_view(), name="token_blacklist"),
+    path('api/send-report-email/', send_report_email, name='send_report_email'),
 ]

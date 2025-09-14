@@ -42,6 +42,11 @@ import calendar
 from datetime import date, timedelta
 from .inventory_management_models import InventoryManagement
 from .serializers import InventoryManagementSerializer
+import io
+import json
+import xlsxwriter
+from django.core.mail import EmailMessage
+from django.http import JsonResponse
 
 # ...existing code...
 
@@ -597,3 +602,56 @@ class ProfitAndLossReportView(APIView):
             "invoice_breakdown": invoice_breakdown,
             "bill_breakdown": bill_breakdown,
         }
+
+from rest_framework.decorators import api_view, permission_classes
+from django.core.mail import EmailMessage
+import json
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_report_email(request):
+    """
+    Expects JSON body with:
+    - recipient_email: string
+    - subject: string (optional)
+    - report_data: JSON (summary + invoice + bill breakdowns)
+    """
+    
+    recipient = request.data.get('recipient_email')
+    subject = request.data.get('subject', 'Profit and Loss Report')
+    report_data = request.data.get('report_data')
+
+    if not recipient or not report_data:
+        return Response({'error': 'recipient_email and report_data are required'}, status=400)
+
+    try:
+        # Generate Excel file in memory
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {"in_memory": True})
+        worksheet = workbook.add_worksheet("Report")
+
+        # Get headers from first row of Account
+        headers = list(report_data["Account"][0].keys())
+        for col, header in enumerate(headers):
+            worksheet.write(0, col, header)
+
+        # Write each row
+        for row, item in enumerate(report_data["Account"], start=1):
+            for col, header in enumerate(headers):
+                worksheet.write(row, col, item.get(header, ""))
+
+        workbook.close()
+        output.seek(0)
+
+        # Create email with attachment
+        email = EmailMessage(
+            subject,
+            "Please find attached your Profit and Loss report.",
+            to=[recipient],
+        )
+        email.attach("profit_and_loss_report.xlsx", output.read(), "application/vnd.ms-excel")
+        email.send()
+
+        return JsonResponse({"message": "Email sent successfully"})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)

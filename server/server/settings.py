@@ -10,34 +10,38 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from datetime import timedelta
-import dj_database_url
-import os
 from pathlib import Path
+import os
+import dj_database_url
+from dotenv import load_dotenv
+from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+load_dotenv(BASE_DIR / '.env')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY",
-    # fallback for dev only
-    "django-insecure-rg07c)&)br4t_34gpt4mp#dmt2_x@vrsi)69_^a&zj8!884&cp",
-)
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "your-fallback-insecure-key")
+
+DEBUG = os.getenv("DEBUG", "False") == "True"
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
-
 
 # Use comma-separated env var for allowed hosts, fallback to localhost/dev IPs
-ALLOWED_HOSTS = os.environ.get(
-    "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,192.168.0.22,172.20.10.6"
-).split(",")
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'bpm-production.up.railway.app',
+    'glonix-frontend-indol.vercel.app',
+    'bom-front.vercel.app',
+    'bpm-production.up.railway.app',
+    'bom-front-production.up.railway.app',
+]
 
 
 # Application definition
@@ -61,6 +65,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -73,6 +78,12 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "https://bpm-production.up.railway.app",
+    "https://glonix-frontend-indol.vercel.app",
+    "https://bom-front.vercel.app",
+    "https://bom-front-production.up.railway.app",
     # Add other addresses if needed
 ]
 
@@ -105,7 +116,9 @@ WSGI_APPLICATION = "server.wsgi.application"
 
 DATABASES = {
     "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+        default=os.environ.get("DATABASE_URL"),  # System env var, not .env
+        conn_max_age=600,
+        ssl_require=os.environ.get("RAILWAY_ENV") == "production",
     )
 }
 
@@ -149,13 +162,19 @@ USE_I18N = True
 
 USE_TZ = True
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://bpm-production.up.railway.app",
+    "https://glonix-frontend-indol.vercel.app",
+    "https://bom-front-production.up.railway.app",
+]
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = "/static/"
-STATIC_ROOT = os.environ.get(
-    "DJANGO_STATIC_ROOT", str(BASE_DIR / "staticfiles"))
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # Collected static files location
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -200,4 +219,26 @@ SIMPLE_JWT = {
         "rest_framework_simplejwt.token_blacklist.serializers."
         "BlacklistSerializer"
     ),
+}
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "ERROR",
+    },
 }
