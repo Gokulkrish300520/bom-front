@@ -1,131 +1,124 @@
 "use client";
-
 import { useEffect, useState } from "react";
-import * as XLSX from "xlsx";
+import { fetchWithAuth } from "@/auth/tokenservice";
+import Link from "next/link";
 
 type Transaction = {
   id: number;
-  type: "Customer" | "Vendor";
+  source_type: string;
+  source_id: number;
+  destination_type: string;
+  destination_id: number;
+  transaction_type: string;
   name: string;
-  date: string; // stored as YYYY-MM-DD
+  date: string;
   amount: number;
   description: string;
+  reference_number?: string;
 };
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
   const [filtered, setFiltered] = useState<Transaction[]>([]);
 
   useEffect(() => {
-    const data = localStorage.getItem("transactions");
-    if (data) {
+    async function loadTransactions() {
+      setLoading(true);
       try {
-        const parsed: Transaction[] = JSON.parse(data);
-        setTransactions(parsed);
-        setFiltered(parsed);
-      } catch (err) {
-        console.error("Failed to parse transactions", err);
+        const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/banking/transactions/");
+        const data = await res.json();
+        setTransactions(data.results || []);
+      } finally {
+        setLoading(false);
       }
     }
+    loadTransactions();
   }, []);
 
-  // Filter by date
   useEffect(() => {
     let result = [...transactions];
-    if (fromDate) {
-      result = result.filter((t) => new Date(t.date) >= new Date(fromDate));
-    }
-    if (toDate) {
-      result = result.filter((t) => new Date(t.date) <= new Date(toDate));
-    }
+    if (filterFrom) result = result.filter((t) => new Date(t.date) >= new Date(filterFrom));
+    if (filterTo) result = result.filter((t) => new Date(t.date) <= new Date(filterTo));
     setFiltered(result);
-  }, [fromDate, toDate, transactions]);
+  }, [filterFrom, filterTo, transactions]);
 
-  // Download Excel
-  const handleDownloadExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(filtered);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Transactions");
-    XLSX.writeFile(wb, "transactions.xlsx");
-  };
+  async function handleDelete(id: number) {
+    if (!confirm("Delete this transaction?")) return;
+    try {
+      const res = await fetchWithAuth(`http://127.0.0.1:8000/api/banking/transactions/${id}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken") || ""}` },
+      });
+      if (res.ok) setTransactions((prev) => prev.filter((t) => t.id !== id));
+    } catch {
+      alert("Network error");
+    }
+  }
+
+  if (loading) return <div>Loading transactions...</div>;
 
   return (
-    <div className="relative min-h-screen p-6 bg-green-50">
+    <div className="page p-6 bg-green-50 min-h-screen">
       <h1 className="mb-6 text-2xl font-bold text-green-900">Transactions</h1>
 
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
         <div>
-          <label className="block mb-1 text-sm font-medium text-green-800">
-            From Date
-          </label>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="px-2 py-1 border rounded-md"
-          />
+          <label className="block mb-1 text-sm font-medium text-green-800">From</label>
+          <input type="date" className="px-2 py-1 border rounded" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
         </div>
         <div>
-          <label className="block mb-1 text-sm font-medium text-green-800">
-            To Date
-          </label>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="px-2 py-1 border rounded-md"
-          />
+          <label className="block mb-1 text-sm font-medium text-green-800">To</label>
+          <input type="date" className="px-2 py-1 border rounded" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
         </div>
+        <div>
+  <label className="block mb-1 text-sm font-medium text-green-800 invisible">Placeholder</label>
+  <Link href="/books/transactions/new">
+    <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+      + Add Transaction
+    </button>
+  </Link>
+</div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden bg-white rounded-lg shadow-md">
+      <div className="bg-white shadow-md rounded overflow-auto max-h-[60vh]">
         <table className="w-full text-left border-collapse">
-          <thead className="text-sm text-green-800 uppercase bg-green-100">
+          <thead className="bg-green-100">
             <tr>
-              <th className="px-4 py-2 border">Type</th>
-              <th className="px-4 py-2 border">Name</th>
-              <th className="px-4 py-2 border">Date</th>
-              <th className="px-4 py-2 border">Amount</th>
-              <th className="px-4 py-2 border">Description</th>
+              <th className="border p-2 text-green-800 uppercase">Type</th>
+              <th className="border p-2 text-green-800 uppercase">Name</th>
+              <th className="border p-2 text-green-800 uppercase">Date</th>
+              <th className="border p-2 text-green-800 uppercase">Amount</th>
+              <th className="border p-2 text-green-800 uppercase">Description</th>
+              <th className="border p-2 text-green-800 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.length > 0 ? (
-              filtered.map((t) => (
-                <tr key={t.id} className="hover:bg-green-50">
-                  <td className="px-4 py-2 border">{t.type}</td>
-                  <td className="px-4 py-2 border">{t.name}</td>
-                  <td className="px-4 py-2 border">{t.date}</td>
-                  <td className="px-4 py-2 border">${t.amount.toFixed(2)}</td>
-                  <td className="px-4 py-2 border">{t.description}</td>
-                </tr>
-              ))
-            ) : (
+            {filtered.length === 0 ? (
               <tr>
-                <td
-                  colSpan={5}
-                  className="py-4 italic text-center text-gray-500"
-                >
-                  No transactions recorded yet.
+                <td colSpan={6} className="p-4 text-center italic text-gray-500">
+                  No transactions found.
                 </td>
               </tr>
+            ) : (
+              filtered.map((t) => (
+                <tr key={t.id} className="hover:bg-green-50">
+                  <td className="border p-2 capitalize">{t.transaction_type}</td>
+                  <td className="border p-2">{t.name}</td>
+                  <td className="border p-2">{t.date}</td>
+                  <td className="border p-2">${t.amount.toFixed(2)}</td>
+                  <td className="border p-2">{t.description}</td>
+                  <td className="border p-2">
+                    <Link href={`/transactions/edit/${t.id}`} className="text-green-700 mr-2">Edit</Link>
+                    <button className="text-red-600" onClick={() => handleDelete(t.id)}>Delete</button>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* Download Button (Bottom Right) */}
-      <div className="fixed bottom-6 right-6">
-        <button
-          onClick={handleDownloadExcel}
-          className="px-4 py-2 text-white bg-green-600 rounded-md shadow hover:bg-green-700"
-        >
-          Download Excel
-        </button>
       </div>
     </div>
   );

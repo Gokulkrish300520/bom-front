@@ -1,29 +1,118 @@
 "use client";
-import { useState } from "react";
+import { fetchWithAuth } from "@/auth/tokenservice";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 
-// Props types for subcomponents
 type HomeProps = {
   onConnect: () => void;
   onManual: () => void;
 };
+
 type ConnectProps = {
-  onBack: () => void;
+  onBack: () => void;
 };
 type ManualProps = {
-  onCancel: () => void;
+  onCancel: () => void;
+  onSaved?: () => void;
 };
+
 
 export default function BankingOnePage() {
   const [view, setView] = useState<"home" | "connect" | "manual">("home");
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
+
+  useEffect(() => {
+    async function loadAccounts() {
+      try {
+        const res = await fetchWithAuth("http://127.0.0.1:8000/api/banking/banking-accounts/");
+        if (res.ok) {
+          const data = await res.json();
+          setAccounts(data.results || []);
+        } else {
+          setAccounts([]);
+        }
+      } catch {
+        setAccounts([]);
+      } finally {
+        setLoadingAccounts(false);
+      }
+    }
+    loadAccounts();
+  }, []);
+
+  if (loadingAccounts) return <div>Loading accounts...</div>;
 
   return (
-    <div className="page">
-      {view === "home" && <Home onConnect={() => setView("connect")} onManual={() => setView("manual")} />}
-      {view === "connect" && <Connect onBack={() => setView("home")} />}
-      {view === "manual" && <Manual onCancel={() => setView("home")} />}
+    <div className="page" style={{ position: "relative", width: "100%", maxWidth: 980 }}>
+      {/* Floating modal triggers if accounts exist */}
+      {accounts.length > 0 && (
+        <div style={{
+          position: "absolute",
+          top: 20,
+          right: 20,
+          display: "flex",
+          gap: 10,
+          zIndex: 99
+        }}>
+          <button className="btn btn-ghost" onClick={() => setView("manual")}>
+            + Add Manually
+          </button>
+          <button className="btn btn-ghost" onClick={() => setView("connect")}>
+            Connect Bank
+          </button>
+        </div>
+      )}
 
-      {/* your styles */}
+      {/* Large onboarding card if no accounts */}
+      {accounts.length === 0 && view === "home" && (
+        <Home onConnect={() => setView("connect")} onManual={() => setView("manual")} />
+      )}
+
+      {/* Table if accounts exist */}
+      {accounts.length > 0 && view === "home" && (
+        <>
+          <h2 className="title" style={{ marginBottom: 12 }}>Your Bank Accounts</h2>
+          <table className="table-auto w-full border-collapse border border-green-300">
+            <thead>
+              <tr>
+                <th className="border border-green-300 p-2">Type</th>
+                <th className="border border-green-300 p-2">Name</th>
+                <th className="border border-green-300 p-2">Account Number</th>
+                <th className="border border-green-300 p-2">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accounts.map((acct) => (
+                <tr key={acct.id} className="even:bg-green-50">
+                  <td className="border border-green-300 p-2 capitalize">{acct.account_type}</td>
+                  <td className="border border-green-300 p-2">{acct.account_type === "bank" ? acct.account_name : acct.card_holder_name}</td>
+                  <td className="border border-green-300 p-2">{acct.account_type === "bank" ? acct.account_number : acct.card_number}</td>
+                  <td className="border border-green-300 p-2">
+                    ₹{(acct.current_balance ?? acct.current_outstanding)?.toFixed(2) ?? "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {/* Modal overlays */}
+      {view === "connect" && (
+        <Modal onClose={() => setView("home")}>
+          <Connect onBack={() => setView("home")} />
+        </Modal>
+      )}
+      {view === "manual" && (
+        <Modal onClose={() => setView("home")}>
+          <Manual onCancel={() => setView("home")} />
+        </Modal>
+      )}
+
+      {/* Global styles (include your full .card, .form, etc styles here) */}
       <style jsx global>{`
+        /* (Paste your CSS from the full card view here...) */
         :root {
           --g-50: #f2fbf3;
           --g-100: #e0f5e2;
@@ -55,7 +144,6 @@ export default function BankingOnePage() {
         .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .bank { border: 1px solid var(--g-200); border-radius: 12px; padding: 16px; text-align: center; font-weight: 600; color: #194a28; background: #fff; }
         .bank:hover { border-color: var(--g-400); box-shadow: 0 6px 16px rgba(21, 106, 49, 0.08); }
-        /* Form */
         .form { display: grid; gap: 16px; max-width: 640px; }
         .label { font-weight: 600; color: var(--g-700); margin-bottom: 6px; display: inline-block; }
         .control, .select, .textarea { width: 100%; border: 1px solid var(--g-300); border-radius: 10px; padding: 10px 12px; font-size: 14px; outline: none; transition: border-color .2s, box-shadow .2s; background: #fff; }
@@ -73,7 +161,6 @@ export default function BankingOnePage() {
 }
 
 
-/* ----------------------------- Screen: Home ----------------------------- */
 function Home({ onConnect, onManual }: HomeProps) {
   return (
     <div className="card" role="main" aria-label="Banking Home">
@@ -94,7 +181,6 @@ function Home({ onConnect, onManual }: HomeProps) {
     </div>
   );
 }
-
 /* --------------------------- Screen: Connect ---------------------------- */
 function Connect({ onBack }: ConnectProps) {
   return (
@@ -142,62 +228,301 @@ function Connect({ onBack }: ConnectProps) {
 }
 
 /* ---------------------------- Screen: Manual ---------------------------- */
-function Manual({ onCancel }: ManualProps) {
+function Manual({ onCancel, onSaved }: ManualProps) {
+  const [accountType, setAccountType] = useState<"bank" | "credit_card">("bank");
+  const [accountName, setAccountName] = useState("");
+  const [accountCode, setAccountCode] = useState("");
+  const [currency, setCurrency] = useState("INR");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [ifsc, setIfsc] = useState("");
+  const [description, setDescription] = useState("");
+  const [openingBalance, setOpeningBalance] = useState<number | "">("");
+  const [primary, setPrimary] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (!accountName.trim()) {
+      setError("Please enter Account Name");
+      return;
+    }
+    if (!currency) {
+      setError("Please select Currency");
+      return;
+    }
+    if (accountType === "bank" && (openingBalance === "" || openingBalance === null)) {
+      setError("Opening balance is required for bank accounts.");
+      return;
+    }
+
+    const payload: Record<string, any> = {
+      account_type: accountType,
+      currency,
+      description,
+      notes: "",
+      primary,
+    };
+
+    if (accountType === "bank") {
+      Object.assign(payload, {
+        account_name: accountName,
+        account_code: accountCode,
+        account_number: accountNumber,
+        bank_name: bankName,
+        ifsc,
+        opening_balance: Number(openingBalance),
+        current_balance: null, // backend will calculate
+      });
+    } else if (accountType === "credit_card") {
+      Object.assign(payload, {
+        card_number: accountNumber,
+        card_holder_name: accountName,
+        expiry_date: null,
+        credit_limit: null,
+        issuing_bank: bankName,
+        statement_day: null,
+        payment_due_day: null,
+        opening_outstanding: null,
+        current_outstanding: null,
+      });
+    }
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("accessToken") || "";
+      const res = await fetchWithAuth("http://localhost:8000/api/banking/banking-accounts/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(JSON.stringify(data, null, 2));
+        setLoading(false);
+        return;
+      }
+
+      if (onSaved) onSaved();
+      alert("Account added successfully");
+
+      // Reset form
+      setAccountType("bank");
+      setAccountName("");
+      setAccountCode("");
+      setCurrency("INR");
+      setAccountNumber("");
+      setBankName("");
+      setIfsc("");
+      setDescription("");
+      setOpeningBalance("");
+      setPrimary(false);
+
+    } catch {
+      setError("Network error, please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="card" role="main" aria-label="Add Bank or Credit Card">
-      <h2 className="title" style={{ fontSize: 22 }}>Add Bank or Credit Card</h2>
-      <form className="form" onSubmit={(e) => e.preventDefault()}>
+      <h2 className="title" style={{ fontSize: 22 }}>
+        Add {accountType === "bank" ? "Bank" : "Credit Card"} Account
+      </h2>
+      <form className="form" onSubmit={handleSubmit}>
         <div>
           <span className="label">Select Account Type*</span>
           <div className="radio-row">
             <label className="row" style={{ gap: 8 }}>
-              <input type="radio" name="accType" defaultChecked /> Bank
+              <input
+                type="radio"
+                name="accType"
+                value="bank"
+                checked={accountType === "bank"}
+                onChange={() => setAccountType("bank")}
+              />{" "}
+              Bank
             </label>
             <label className="row" style={{ gap: 8 }}>
-              <input type="radio" name="accType" /> Credit Card
+              <input
+                type="radio"
+                name="accType"
+                value="credit_card"
+                checked={accountType === "credit_card"}
+                onChange={() => setAccountType("credit_card")}
+              />{" "}
+              Credit Card
             </label>
           </div>
         </div>
+
         <div>
           <label className="label">Account Name*</label>
-          <input className="control" type="text" placeholder="" />
+          <input
+            className="control"
+            type="text"
+            placeholder="Enter account name"
+            value={accountName}
+            onChange={(e) => setAccountName(e.target.value)}
+            required
+          />
         </div>
+
         <div>
           <label className="label">Account Code</label>
-          <input className="control" type="text" placeholder="" />
+          <input
+            className="control"
+            type="text"
+            placeholder="Enter account code"
+            value={accountCode}
+            onChange={(e) => setAccountCode(e.target.value)}
+          />
         </div>
+
         <div>
           <label className="label">Currency*</label>
-          <select className="select" defaultValue="INR" aria-label="Currency">
+          <select
+            className="select"
+            aria-label="Currency"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            required
+          >
             <option value="INR">INR</option>
             <option value="USD">USD</option>
             <option value="EUR">EUR</option>
           </select>
         </div>
-        <div>
-          <label className="label">Account Number</label>
-          <input className="control" type="text" placeholder="" />
-        </div>
-        <div>
-          <label className="label">Bank Name</label>
-          <input className="control" type="text" placeholder="" />
-        </div>
-        <div>
-          <label className="label">IFSC</label>
-          <input className="control" type="text" placeholder="" />
-        </div>
+
+        {accountType === "bank" && (
+          <>
+            <div>
+              <label className="label">Account Number</label>
+              <input
+                className="control"
+                type="text"
+                placeholder="Enter account number"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="label">Bank Name</label>
+              <input
+                className="control"
+                type="text"
+                placeholder="Enter bank name"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="label">IFSC</label>
+              <input
+                className="control"
+                type="text"
+                placeholder="Enter IFSC code"
+                value={ifsc}
+                onChange={(e) => setIfsc(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="label">Opening Balance*</label>
+              <input
+                className="control"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Enter opening balance"
+                value={openingBalance}
+                onChange={(e) =>
+                  setOpeningBalance(
+                    e.target.value === "" ? "" : Number(e.target.value)
+                  )
+                }
+                required
+              />
+            </div>
+          </>
+        )}
+
+        {accountType === "credit_card" && (
+          <>
+            {/* Add Credit Card specific inputs here if needed */}
+          </>
+        )}
+
         <div>
           <label className="label">Description</label>
-          <textarea className="textarea" />
+          <textarea
+            className="textarea"
+            placeholder="Enter description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
         </div>
-        <label className="row" style={{ gap: 10 }}>
-          <input type="checkbox" /> <span>Make this primary</span>
-        </label>
+
+        <div className="row" style={{ gap: 10 }}>
+          <input
+            type="checkbox"
+            checked={primary}
+            onChange={(e) => setPrimary(e.target.checked)}
+            id="primaryAccount"
+          />
+          <label htmlFor="primaryAccount">Make this primary</label>
+        </div>
+
+        {error && <p style={{ color: "red", marginTop: 4 }}>{error}</p>}
+
         <div className="row" style={{ gap: 12 }}>
-          <button className="btn" type="submit">Save</button>
-          <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+          <button className="btn" type="submit" disabled={loading}>
+            {loading ? "Saving..." : "Save"}
+          </button>
+          <button className="btn btn-ghost" type="button" onClick={onCancel}>
+            Cancel
+          </button>
         </div>
       </form>
     </div>
+  );
+}
+
+function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <>
+      <div
+  style={{
+    position: "fixed",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    zIndex: 1001,
+    minWidth: 380,
+    width: "90vw",
+    maxWidth: 480,
+    maxHeight: "80vh",      // Limit max height to 80% of viewport height
+    overflowY: "auto",      // Enable vertical scrolling
+    padding: "20px 24px",
+    borderRadius: 14,
+    boxShadow: "0 6px 32px rgba(0,0,0,0.13)",
+    backgroundColor: "white", // Ensure background for scroll content
+  }}
+>
+  {children}
+</div>
+
+    </>
   );
 }

@@ -55,12 +55,58 @@ type CustomerDetails = {
   tax_preference?: string;
 };
 
+type Invoice = {
+  id: number;
+  invoice_number: string;
+  invoice_date: string;
+  total_amount: string;
+  status: string;
+};
+
+type Quote = {
+  id :number;
+  quote_number: string,
+  total_amount:string,
+  quote_date:string,
+  status:string
+}
+type Proforma = {
+  id: number;
+  invoice_number: string;
+  invoice_date: string;
+  total_amount: string;
+  status: string;
+}
+
+type challans = {
+  id: number;
+  challan_number: string;
+  date: string;
+  total_amount: string;
+  status: string;
+}
+type DocumentData = {
+  count: number;
+  results: any[];
+};
+
+type Item = {
+  id: number;
+  name: string;
+  sales_description?: string;
+};
+
 export default function CustomerDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const [customer, setCustomer] = useState<CustomerDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [proformas, setProformas] = useState<Proforma[]>([]);
+  const [challans, setChallans] = useState<challans[]>([]);
 
   useEffect(() => {
     async function fetchCustomer() {
@@ -71,6 +117,42 @@ export default function CustomerDetailPage() {
         if (!res.ok) throw new Error("Failed to fetch customer data");
         const data = await res.json();
         setCustomer(data);
+
+        const resInvoices = await fetchWithAuth(
+          `https://bom-front-production.up.railway.app/api/invoices/?customer_id=${id}`
+        );
+        if (resInvoices.ok) {
+          const data: DocumentData = await resInvoices.json();
+          setInvoices(data.results);
+        }
+
+        // Quotes
+        const resQuotes = await fetchWithAuth(
+          `https://bom-front-production.up.railway.app/api/quotes/?customer_id=${id}`
+        );
+        if (resQuotes.ok) {
+          const data: DocumentData = await resQuotes.json();
+          setQuotes(data.results);
+        }
+
+        // Proforma invoices
+        const resProformas = await fetchWithAuth(
+          `https://bom-front-production.up.railway.app/api/proformainvoices/?customer_id=${id}`
+        );
+        if (resProformas.ok) {
+          const data: DocumentData = await resProformas.json();
+          setProformas(data.results);
+        }
+
+        // Delivery Challans
+        const resChallans = await fetchWithAuth(
+          `https://bom-front-production.up.railway.app/api/deliverychallans/?customer_id=${id}`
+        );
+        if (resChallans.ok) {
+          const data: DocumentData = await resChallans.json();
+          setChallans(data.results);
+        }
+
       } catch (err) {
         setError("Failed to load customer data");
       } finally {
@@ -254,8 +336,6 @@ export default function CustomerDetailPage() {
   </div>
 )}
 
-
-
       {/* Tags or associate tag */}
       {customer.tags && customer.tags.length > 0 && (
         <div className="mt-8">
@@ -280,6 +360,122 @@ export default function CustomerDetailPage() {
           <div className="text-gray-800">{customer.remarks}</div>
         </div>
       )}
+       {/* Invoices Section */}
+      <div className="mt-8">
+        <h3 className="font-semibold text-green-700 mb-2">INVOICES</h3>
+        {invoices.length > 0 ? (
+          <table className="w-full text-sm border">
+            <thead>
+              <tr className="bg-green-50 text-green-800">
+                <th className="py-1 ">Invoice #</th>
+                <th className="py-1">Date</th>
+                <th className="py-1">Amount</th>
+                <th className="py-1">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoices.map((inv) => (
+                <tr key={inv.id} className="border-b">
+                  <td className="py-2 px-4 text-center">{inv.invoice_number}</td>
+                  <td className="py-2 px-4 text-center">{inv.invoice_date}</td>
+                  <td className="py-2 px-4 text-center">{inv.total_amount}</td>
+                  <td className="py-2 px-4 text-center">{inv.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <span className="text-gray-500">No invoices found.</span>
+        )}
+      </div>
+
+      
+      {/* Quotes Section */}
+      <div className="mt-8">
+        <h3 className="font-semibold text-green-700 mb-2">QUOTES</h3>
+        {quotes.length > 0 ? (
+          <table className="w-full text-sm border">
+            <thead>
+              <tr className="bg-green-50 text-green-800">
+                <th className="py-1 ">Quote No</th>
+                <th className="py-1">Date</th>
+                <th className="py-1">Amount</th>
+                <th className="py-1">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {quotes.map((inv) => (
+                <tr key={inv.id} className="border-b">
+                  <td className="py-2 px-4 text-center">{inv.quote_number}</td>
+                  <td className="py-2 px-4 text-center">{inv.quote_date}</td>
+                  <td className="py-2 px-4 text-center">{inv.total_amount}</td>
+                  <td className="py-2 px-4 text-center">{inv.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <span className="text-gray-500">No quotes found.</span>
+        )}
+      </div>
+
+      {/* Proforma Invoices Section */}
+      <div className="mt-8">
+        <h3 className="font-semibold text-green-700 mb-2">PROFORMA INVOICES</h3>
+        {proformas.length > 0 ? (
+          <table className="w-full text-sm border">
+            <thead>
+              <tr className="bg-green-50 text-green-800">
+                <th className="py-1 ">Proforma No </th>
+                <th className="py-1">Date</th>
+                <th className="py-1">Amount</th>
+                <th className="py-1">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {proformas.map((inv) => (
+                <tr key={inv.id} className="border-b">
+                  <td className="py-2 px-4 text-center">{inv.invoice_number}</td>
+                  <td className="py-2 px-4 text-center">{inv.invoice_date}</td>
+                  <td className="py-2 px-4 text-center">{inv.total_amount}</td>
+                  <td className="py-2 px-4 text-center">{inv.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <span className="text-gray-500">No Proforma found.</span>
+        )}
+      </div>
+
+      {/* Delivery Challans Section */}
+      <div className="mt-8">
+        <h3 className="font-semibold text-green-700 mb-2">DELIVERY CHALLANS</h3>
+        {challans.length > 0 ? (
+          <table className="w-full text-sm border">
+            <thead>
+              <tr className="bg-green-50 text-green-800">
+                <th className="py-1">Challan No</th>
+                <th className="py-1">Date</th>
+                <th className="py-1">Amount</th>
+                <th className="py-1">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {challans.map((inv) => (
+                <tr key={inv.id} className="border-b">
+                  <td className="py-2 px-2 text-center">{inv.challan_number}</td>
+                  <td className="py-2 px-2 text-center">{inv.date}</td>
+                  <td className="py-2 px-2 text-center">{inv.total_amount}</td>
+                  <td className="py-2 px-2 text-center">{inv.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <span className="text-gray-500">No invoices found.</span>
+        )}
+      </div>
     </div>
   );
 }

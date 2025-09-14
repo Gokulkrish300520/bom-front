@@ -42,6 +42,10 @@ export default function ProfitLossPage() {
   const [reportBasis, setReportBasis] = useState("Accrual");
   const [compareWith, setCompareWith] = useState("None");
   const [showZeroBalance, setShowZeroBalance] = useState(true);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
+  const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
 
   const [runFilter, setRunFilter] = useState({
     time: "This Month",
@@ -66,6 +70,8 @@ export default function ProfitLossPage() {
         if (runFilter.compare !== "None") {
           params.set("compare_with", runFilter.compare);
         }
+        if (selectedCustomer) params.set("customer_id", selectedCustomer);
+        if (selectedVendor) params.set("vendor_id", selectedVendor);
 
         const res = await fetchWithAuth(
           `https://bom-front-production.up.railway.app/api/reports/profit-and-loss/?${params.toString()}`,
@@ -93,6 +99,32 @@ export default function ProfitLossPage() {
     }
     fetchReport();
   }, [runFilter]);
+
+  useEffect(() => {
+  async function fetchDropdownData() {
+    const token = localStorage.getItem("access_token") ?? "";
+
+    // Fetch customers
+    const resCustomers = await fetchWithAuth("https://bom-front-production.up.railway.app/api/customers/", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (resCustomers.ok) {
+      const data = await resCustomers.json();
+      setCustomers(data.results || []);
+    }
+
+    // Fetch vendors
+    const resVendors = await fetchWithAuth("https://bom-front-production.up.railway.app/api/vendors/", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (resVendors.ok) {
+      const data = await resVendors.json();
+      setVendors(data.results || []);
+    }
+  }
+  fetchDropdownData();
+}, []);
+
 
   // Prepare rows for main report
   const mainRows = report
@@ -256,6 +288,30 @@ export default function ProfitLossPage() {
             <option>Cash</option>
           </select>
           <select
+          value={selectedCustomer ?? ""}
+          onChange={(e) => setSelectedCustomer(e.target.value || null)}
+          className="border px-3 py-1 rounded"
+          >
+          <option value="">--Select Customers--</option>
+          {customers.map((c) => (
+          <option key={c.id} value={c.id}>
+          {c.first_name} {c.last_name}
+          </option>
+          ))}
+        </select>
+        <select
+      value={selectedVendor ?? ""}
+      onChange={(e) => setSelectedVendor(e.target.value || null)}
+      className="border px-3 py-1 rounded"
+      >
+    <option value="">--Select Vendors--</option>
+    {vendors.map((v) => (
+    <option key={v.id} value={v.id}>
+      {v.first_name} {v.last_name}
+    </option>
+    ))}
+      </select>
+          <select
             value={compareWith}
             onChange={(e) => setCompareWith(e.target.value)}
             className="border px-3 py-1 rounded"
@@ -275,9 +331,9 @@ export default function ProfitLossPage() {
         <div className="flex gap-2">
           <button
             onClick={handleRunReport}
-            className="bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-1"
+            className="bg-blue-600 text-white px-2 py-1 rounded flex items-center gap-1"
           >
-            Run Report <ChevronDownIcon className="w-4 h-4" />
+            Run Report <ChevronDownIcon className="w-7 h-3" />
           </button>
           <button
             onClick={handleExport}
