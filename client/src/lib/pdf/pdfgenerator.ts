@@ -14,9 +14,10 @@ type SalesPDFData = {
   placeOfSupply: string;
   items: {
     name: string;
-    hsn: string;
+    hsn?: string;
     qty: number;
     rate: number;
+    sales_description?: string;
   }[];
   subTotal: number;
   taxBreakup: { label: string; pct: number; amount: number }[];
@@ -67,10 +68,10 @@ export function generatePDF(data: SalesPDFData) {
   // Title + Quote No
   const rightBlockX = 210 - marginLeft - 80;
   doc.setFontSize(18);
-  doc.text(data.title, rightBlockX, marginTop + 15, { align: "left" });
+  doc.text(data.title, rightBlockX, marginTop + 15, { align: "right" });
 
   doc.setFontSize(12);
-  doc.text(`${data.title} No: ${data.documentNumber}`, rightBlockX, marginTop + 30, { align: "left" });
+  doc.text(`${data.title} No: ${data.documentNumber}`, rightBlockX, marginTop + 30, { align: "right" });
 
 
   // Divider
@@ -105,23 +106,34 @@ export function generatePDF(data: SalesPDFData) {
   // Place of supply
   yStart += 40;
   doc.setFontSize(10);
-  doc.text(`Place Of Supply:`, marginLeft, yStart);
+  doc.text(`Place Of Supply:  ${data.placeOfSupply}`, marginLeft, yStart);
 
   // Items table
+  
   autoTable(doc, {
-    startY: yStart + 10,
-    head: [["#", "Item & Description", "Qty", "Rate", "Amount"]],
-    body: data.items.map((i, idx) => [
-      idx + 1,
-      i.name,
-      i.qty.toFixed(2),
-      i.rate.toFixed(2),
-      (i.qty * i.rate).toFixed(2),
-    ]),
-    theme: "grid",
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [46, 125, 50] },
-  });
+  startY: yStart + 10,
+  head: [["#", "Item & Description", "Qty", "Rate", "Amount"]],
+  body: data.items.map((i, idx): any[] => [
+    { content: (idx + 1).toString() },
+    { content: [i.name, i.sales_description || ""] },
+    { content: i.qty.toFixed(2) },
+    { content: i.rate.toFixed(2) },
+    { content: (i.qty * i.rate).toFixed(2) },
+  ]),
+  theme: "grid",
+  styles: { fontSize: 10, cellPadding: 3 },
+  headStyles: { fillColor: [46, 125, 50] },
+  tableWidth: "auto",  // expand naturally
+  columnStyles: {
+    0: { cellWidth: 10 },   // #
+    1: { cellWidth: 90 },   // Item + Description
+    2: { cellWidth: 20 },   // Qty
+    3: { cellWidth: 30 },   // Rate
+    4: { cellWidth: 30 },   // Amount
+  }
+});
+
+
 
   let finalY = (doc as any).lastAutoTable.finalY || yStart + 20;
   const pageHeight = doc.internal.pageSize.height;
@@ -162,6 +174,7 @@ export function generatePDF(data: SalesPDFData) {
   doc.setFontSize(10);
   finalY = addTextWithWrap(doc, data.notes || "-", marginLeft, finalY + 6, 180);
 
+  
   // Bank details
   doc.setFontSize(11);
   finalY = addTextWithWrap(doc, "Bank Details:", marginLeft, finalY + 10, 180);
@@ -172,19 +185,22 @@ export function generatePDF(data: SalesPDFData) {
   finalY = addTextWithWrap(doc, "BRANCH : SALEM MAIN BRANCH", marginLeft, finalY + 2, 180);
   finalY = addTextWithWrap(doc, "IFSC : ICIC0006119", marginLeft, finalY + 2, 180);
   finalY = addTextWithWrap(doc, "Swift code: ICICINBBCTS", marginLeft, finalY + 2, 180);
+  doc.setLineWidth(0.5);
+  doc.line(marginLeft, marginTop + logoHeight + 5, 210 - marginLeft, marginTop + logoHeight + 5);
 
   // Terms
   doc.setFontSize(11);
   finalY = addTextWithWrap(doc, "Terms & Conditions", marginLeft, finalY + 10, 180);
   doc.setFontSize(10);
   finalY = addTextWithWrap(doc, data.terms || "-", marginLeft, finalY + 6, 180);
-
   // Signature
   if (finalY + 30 > pageHeight - 20) {
     doc.addPage();
     finalY = 20;
   }
   doc.setFontSize(11);
+  doc.setLineWidth(0.5);
+  doc.line(marginLeft, finalY + 20, 210 - marginLeft, finalY + 20);
   doc.text("Authorized Signature", 150, finalY + 30);
 
   // Save

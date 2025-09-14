@@ -31,7 +31,8 @@ type Customer = {
 type Item = {
   id: number;
   name: string;
-  sales_selling_price: string;  // stringified decimal from backend
+  sales_selling_price: string;
+  sales_description?: string;  // stringified decimal from backend
 };
 
 type QuoteItemRow = {
@@ -40,6 +41,7 @@ type QuoteItemRow = {
   name: string;
   qty: number;
   rate: number;
+  sales_description?: string;
 };
 
 const STORAGE_KEY = "quotes";
@@ -112,6 +114,7 @@ export default function NewQuote() {
         hsn: "-", // Add HSN if applicable
         qty: item.qty,
         rate: item.rate,
+        sales_description: item.sales_description || "",
       })),
     subTotal,
     taxBreakup: [
@@ -259,6 +262,7 @@ console.log(itemsList);
           quantity: item.qty,
           rate: item.rate,
           amount: (item.qty * item.rate).toFixed(2),
+          sales_description: item.sales_description || "",
         }))
     };
 
@@ -407,6 +411,7 @@ console.log(itemsList);
                           itemId: id,
                           name: selectedItem?.name ?? "",
                           rate: selectedItem ? Number(selectedItem.sales_selling_price) : 0,
+                          sales_description: selectedItem?.sales_description ?? "",
                         });
                       }}
                     >

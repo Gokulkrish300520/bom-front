@@ -140,7 +140,7 @@ export default function ChallanPage() {
                     <td className="p-3">{formatDate(c.date)}</td>
                     <td className="p-3 font-medium text-green-700">
                       <Link
-                        href={`/challans/${c.challan_number}`}
+                        href={`/books/sales/challans/${c.id}`}
                         className="hover:underline"
                       >
                         {c.challan_number}
