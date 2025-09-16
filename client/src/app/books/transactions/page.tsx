@@ -48,7 +48,7 @@ export default function TransactionsPage() {
   async function handleDelete(id: number) {
     if (!confirm("Delete this transaction?")) return;
     try {
-      const res = await fetchWithAuth(`http://127.0.0.1:8000/api/banking/transactions/${id}/`, {
+      const res = await fetchWithAuth(`https://bom-front-production.up.railway.app/api/banking/transactions/${id}/`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${localStorage.getItem("accessToken") || ""}` },
       });
@@ -105,13 +105,19 @@ export default function TransactionsPage() {
             ) : (
               filtered.map((t) => (
                 <tr key={t.id} className="hover:bg-green-50">
-                  <td className="border p-2 capitalize">{t.transaction_type}</td>
+                  <td className="border p-2 capitalize"><Link href={`/books/transactions/${t.id}`} className="text-green-700 mr-2">{t.transaction_type}</Link></td>
                   <td className="border p-2">{t.name}</td>
                   <td className="border p-2">{t.date}</td>
-                  <td className="border p-2">${t.amount.toFixed(2)}</td>
+                  <td className="border p-2 font-semibold ">
+                {["bank", "cash"].includes(t.destination_type) ? (
+              <span className="text-green-700">+₹{t.amount.toFixed(2)}</span>
+              ) : (
+              <span className="text-red-600">-₹{t.amount.toFixed(2)}</span>
+              )}
+              </td>
+
                   <td className="border p-2">{t.description}</td>
                   <td className="border p-2">
-                    <Link href={`/transactions/edit/${t.id}`} className="text-green-700 mr-2">Edit</Link>
                     <button className="text-red-600" onClick={() => handleDelete(t.id)}>Delete</button>
                   </td>
                 </tr>
