@@ -58,9 +58,10 @@ Authorization: Bearer <access_token>
 # Obtain JWT token
 POST http://localhost:8000/api/auth/token/
 Content-Type: application/json
+
 {
-  "username": "your_username",
-  "password": "your_password"
+  "username": "<your_username>",
+  "password": "<your_password>"
 
 }
 ### BANKING ACCOUNTS CRUD
@@ -853,10 +854,6 @@ Content-Type: application/json
   "date": "2025-08-30",
   "challan_type": "liquid_gas",
   "status": "draft",
-  "item_details": [
-    {"item_id": 1, "quantity": 2, "rate": "100.00", "amount": "200.00"},
-    {"item_id": 2, "quantity": 1, "rate": "150.00", "amount": "150.00"}
-  ],
   "delivery_challan_file_ids": [10, 11],
   "total_amount": "20000.00"
 }
@@ -903,13 +900,15 @@ Content-Type: application/json
 
 {
   "vendor_id": 1,
-  "bill_number": "BILL-2025-001",
-  "reference_number": "REF-123",
-  "status": "DRAFT",
-  "bill_date": "2025-09-01",
+  "bill_number": "BILL-2025-0026",
+  "reference_number": "REF-113",
+  "status": "PAID",
+  "bill_date": "2025-09-08",
   "due_date": "2025-09-15",
-  "notes": "First bill for vendor.",
-  "file_ids": [1]
+  "reference_number": "REF-120",
+  "notes": "First bill for vendor",
+  "total_amount": "19000.00",
+  "file_ids": [2]
 }
 
 ####

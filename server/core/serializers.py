@@ -337,6 +337,7 @@ class BillSerializer(serializers.ModelSerializer):
             "bill_number",
             "bill_date",
             "due_date",
+            "reference_number",
             "item_details",
             "total_amount",
             "status",
@@ -344,7 +345,7 @@ class BillSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
-    read_only_fields = ["id", "created_at", "vendor", "item_details"]
+    read_only_fields = ["id", "created_at", "vendor"]
 
 
 class DeliveryChallanItemSerializer(serializers.ModelSerializer):
