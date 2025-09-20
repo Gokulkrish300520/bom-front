@@ -340,6 +340,7 @@ class BillSerializer(serializers.ModelSerializer):
             "reference_number",
             "item_details",
             "total_amount",
+            "balance_due",
             "status",
             "notes",
             "created_at",

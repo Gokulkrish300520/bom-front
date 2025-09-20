@@ -118,6 +118,12 @@ class Bill(models.Model):
         decimal_places=2,
         default=0,
     )
+    balance_due = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    
     files = models.ManyToManyField(
         "CustomerDocument",
         blank=True,
