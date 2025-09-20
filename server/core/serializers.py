@@ -342,7 +342,7 @@ class BillSerializer(serializers.ModelSerializer):
             "tax",
             "total_amount",
             "balance_due",
-            "subtotal"
+            "subtotal",
             "status",
             "notes",
             "created_at",
