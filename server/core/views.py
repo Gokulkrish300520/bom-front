@@ -655,3 +655,37 @@ def send_report_email(request):
         return JsonResponse({"message": "Email sent successfully"})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+    
+    import boto3
+from django.conf import settings
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+import boto3
+
+class GeneratePresignedUrlView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        file_name = request.data.get("file_name")
+        file_type = request.data.get("file_type")
+
+        if not file_name or not file_type:
+            return Response({"error": "file_name and file_type required"}, status=400)
+
+        s3_client = boto3.client(
+            "s3",
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME,
+        )
+
+        presigned_post = s3_client.generate_presigned_post(
+            Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+            Key=file_name,
+            Fields={"Content-Type": file_type},
+            Conditions=[{"Content-Type": file_type}],
+            ExpiresIn=3600,
+        )
+
+        return Response({"url": presigned_post["url"], "fields": presigned_post["fields"]})
