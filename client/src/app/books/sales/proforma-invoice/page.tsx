@@ -16,7 +16,7 @@ type CustomerType = {
   created_at: string;
 };
 
-type ProformaStatus = "draft" | "sent" | "accepted" | "rejected";
+type ProformaStatus = "draft" | "sent" | "accepted" | "cancelled";
 
 type ProformaInvoice = {
   id: string;
@@ -38,6 +38,9 @@ export default function ProformaInvoicesPage() {
   const [page, setPage] = useState(1);
   const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
   const [prevPageUrl, setPrevPageUrl] = useState<string | null>(null);
+  const [editingStatusIds, setEditingStatusIds] = useState<Record<string, ProformaStatus>>({});
+  const statusOptions: ProformaStatus[] = ["draft", "sent", "accepted", "cancelled"];
+
 
   const baseApiUrl = "https://bom-front-production.up.railway.app/api/proformainvoices/";
 
@@ -77,6 +80,36 @@ export default function ProformaInvoicesPage() {
     }
   }
 
+  async function updateStatus(id: string) {
+  const newStatus = editingStatusIds[id];
+  if (!newStatus) return;
+
+  try {
+    const res = await fetchWithAuth(`${baseApiUrl}${id}/`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(`Failed to update status: ${JSON.stringify(err)}`);
+      return;
+    }
+    setProformas((curr) =>
+      curr.map((inv) => (inv.id === id ? { ...inv, status: newStatus } : inv))
+    );
+    setEditingStatusIds((curr) => {
+      const updated = { ...curr };
+      delete updated[id];
+      return updated;
+    });
+  } catch (err) {
+    alert("Network error updating status");
+    console.error(err);
+  }
+}
+
+
   useEffect(() => {
     loadProformas(undefined, page);
   }, [page]);
@@ -102,6 +135,11 @@ export default function ProformaInvoicesPage() {
       setPage((p) => p + 1);
     }
   };
+
+  const handleStatusChange = (id: string, newStatus: ProformaStatus) => {
+  setEditingStatusIds((curr) => ({ ...curr, [id]: newStatus }));
+  };
+
 
   if (loading) return <p>Loading proforma invoices...</p>;
   if (error) return <p className="text-red-600">{error}</p>;
@@ -131,55 +169,103 @@ export default function ProformaInvoicesPage() {
             </tr>
           </thead>
           <tbody>
-            {proformas.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="p-4 text-center text-gray-500 bg-white">
-                  No proforma invoices found
-                </td>
-              </tr>
-            ) : (
-              proformas.map((inv, idx) => (
-                <tr
-                  key={inv.id}
-                  className={`${idx % 2 ? "bg-green-100" : "bg-green-50"} border-b`}
-                >
-                  <td className="p-3">{formatDate(inv.invoice_date)}</td>
-                  <td className="p-3">
-                    <Link href={`/books/sales/proforma-invoice/${inv.id}`} className="hover:underline text-green-700 font-medium">
-                      {inv.invoice_number}
-                    </Link>
-                  </td>
-                  <td className="p-3">{inv.customer.display_name}</td>
-                  <td className="p-3">
-                    <span
-                      className={`px-2 py-1 rounded text-sm ${
-                        inv.status === "draft"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : inv.status === "sent"
-                          ? "bg-blue-100 text-blue-800"
-                          : inv.status === "accepted"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="p-3">₹{Number(inv.total_amount).toLocaleString()}</td>
-                  <td className="p-3">
-        <button
-          onClick={() => deleteProforma(inv.id)}
-          className="text-red-600 hover:text-red-800"
-          aria-label="Delete proforma invoice"
-          title="Delete proforma invoice"
-        >
-          <FaTrash />
-        </button>
+  {proformas.length === 0 ? (
+    <tr>
+      <td colSpan={6} className="p-4 text-center text-gray-500 bg-white">
+        No proforma invoices found
       </td>
-                </tr>
-              ))
+    </tr>
+  ) : (
+    proformas.map((inv, idx) => {
+      const editing = inv.id in editingStatusIds;
+      return (
+        <tr
+          key={inv.id}
+          className={`${idx % 2 ? "bg-green-100" : "bg-green-50"} border-b`}
+        >
+          <td className="p-3">{formatDate(inv.invoice_date)}</td>
+          <td className="p-3">
+            <Link href={`/books/sales/proforma-invoice/${inv.id}`} className="hover:underline text-green-700 font-medium">
+              {inv.invoice_number}
+            </Link>
+          </td>
+          <td className="p-3">{inv.customer.display_name}</td>
+          <td className="p-3">
+            {editing ? (
+              <select
+                value={editingStatusIds[inv.id]}
+                onChange={(e) => handleStatusChange(inv.id, e.target.value as ProformaStatus)}
+                className="rounded border px-2 py-1"
+              >
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span
+                className={`px-2 py-1 rounded text-sm ${
+                  inv.status === "draft"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : inv.status === "sent"
+                    ? "bg-blue-100 text-blue-800"
+                    : inv.status === "accepted"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+                }`}
+              >
+                {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
+              </span>
             )}
-          </tbody>
+          </td>
+          <td className="p-3">₹{Number(inv.total_amount).toLocaleString()}</td>
+          <td className="p-3 flex gap-2 items-center">
+            {editing ? (
+              <>
+                <button
+                  onClick={() => updateStatus(inv.id)}
+                  className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setEditingStatusIds((curr) => {
+                    const updated = { ...curr };
+                    delete updated[inv.id];
+                    return updated;
+                  })}
+                  className="px-3 py-1 border rounded text-gray-600 hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setEditingStatusIds((curr) => ({ ...curr, [inv.id]: inv.status }))}
+                  className="px-3 py-1 border rounded text-blue-600 hover:bg-blue-100"
+                  title="Edit Status"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => deleteProforma(inv.id)}
+                  className="text-red-600 hover:text-red-800"
+                  aria-label="Delete proforma invoice"
+                  title="Delete proforma invoice"
+                >
+                  <FaTrash />
+                </button>
+              </>
+            )}
+          </td>
+        </tr>
+      );
+    })
+  )}
+</tbody>
+
         </table>
       </div>
 

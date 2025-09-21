@@ -183,7 +183,7 @@ export default function InvoiceFormPage() {
   };
 
   // Save invoice handler, with POST to backend
-  const saveInvoice = async (status: "Draft" | "Paid") => {
+  const saveInvoice = async (status: "DRAFT" | "SENT") => {
     if (!selectedCustomerId) {
       alert("Please select a customer");
       return;
@@ -221,7 +221,7 @@ export default function InvoiceFormPage() {
         return;
       }
 
-      if (status === "Draft") {
+      if (status === "SENT") {
       const customerObj = customers.find((c) => c.id === selectedCustomerId);
       if (!customerObj) {
         alert("Customer data not available for PDF generation");
@@ -256,7 +256,7 @@ export default function InvoiceFormPage() {
       }
     }
 
-      alert(`Invoice ${status === "Paid" ? "Paid" : "saved as DRAFT"} successfully.`);
+      alert(`Invoice ${status === "SENT" ? "Sent" : "saved as DRAFT"} successfully.`);
       router.push("/books/sales/invoice");
     } catch (err) {
       alert("Error saving invoice.");
@@ -450,13 +450,13 @@ export default function InvoiceFormPage() {
       {/* Action Bar */}
       <div className="sticky bottom-0 flex justify-end gap-2 py-3 mt-4 border-t bg-gray-50">
         <button
-          onClick={() => saveInvoice("Draft")}
+          onClick={() => saveInvoice("DRAFT")}
           className="px-4 py-2 text-sm border rounded hover:bg-gray-100"
         >
           Save as Draft
         </button>
         <button
-          onClick={() => saveInvoice("Paid")}
+          onClick={() => saveInvoice("SENT")}
           className="px-4 py-2 text-sm text-white bg-green-600 rounded hover:bg-green-700"
         >
           Save and Send

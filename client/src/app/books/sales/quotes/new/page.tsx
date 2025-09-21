@@ -114,7 +114,7 @@ export default function NewQuote() {
         hsn: "-", // Add HSN if applicable
         qty: item.qty,
         rate: item.rate,
-        sales_description: item.sales_description || "",
+        sales_description:" ",
       })),
     subTotal,
     taxBreakup: [

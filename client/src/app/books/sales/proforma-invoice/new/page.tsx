@@ -3,10 +3,27 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
+import { generatePDF } from "@/lib/pdf/pdfgenerator";
 
 type Customer = {
   id: number;
   display_name: string;
+  billing_attention?: string;
+  billing_street1?: string;
+  billing_street2?: string;
+  billing_city?: string;
+  billing_state?: string;
+  billing_pin_code?: string;
+  billing_country?: string;
+  billing_phone?: string;
+  shipping_attention?: string;
+  shipping_street1?: string;
+  shipping_street2?: string;
+  shipping_city?: string;
+  shipping_state?: string;
+  shipping_pin_code?: string;
+  shipping_country?: string;
+  shipping_phone?: string;
 };
 
 type Item = {
@@ -102,6 +119,17 @@ export default function NewProformaInvoice() {
     }
   }, [selectedCustomerId, customers]);
 
+  function formatAddress(cust: Customer, type: "billing" | "shipping") {
+    return [
+      cust[`${type}_attention` as keyof Customer],
+      cust[`${type}_street1` as keyof Customer],
+      cust[`${type}_street2` as keyof Customer],
+      `${cust[`${type}_city` as keyof Customer]}, ${cust[`${type}_state` as keyof Customer]} ${cust[`${type}_pin_code` as keyof Customer]}`,
+      cust[`${type}_country` as keyof Customer],
+      cust[`${type}_phone` as keyof Customer] ? `Phone: ${cust[`${type}_phone` as keyof Customer]}` : null,
+    ].filter(Boolean).join("\n");
+  }
+
   // Computed totals
   const subTotal = useMemo(
     () => proformaItems.reduce((sum, item) => sum + (item.qty * item.rate), 0),
@@ -139,60 +167,92 @@ export default function NewProformaInvoice() {
   };
 
   // Save handler for proforma invoice
-  const saveInvoice = async (status: "draft" | "sent") => {
-    if (!selectedCustomerId) {
-      alert("Please select a customer");
+  const saveInvoice = async (saveStatus: "draft" | "sent") => {
+  if (!selectedCustomerId) {
+    alert("Please select a customer");
+    return;
+  }
+
+  const payload = {
+    customer_id: selectedCustomerId,
+    invoice_number: invoiceNumber,
+    reference_number: reference,
+    invoice_date: invoiceDate,
+    expiry_date: expiryDate,
+    salesperson,
+    project_name: projectName,
+    subject,
+    customer_notes: notes,
+    terms_and_conditions: terms,
+    subtotal: subTotal.toFixed(2),
+    discount: discountPct.toFixed(2),
+    tax_type: taxType,
+    tax_percentage: taxPct.toString(),
+    adjustment: adjustment.toFixed(2),
+    total_amount: total.toFixed(2),
+    status: saveStatus,
+    item_details: proformaItems
+      .filter(item => item.itemId !== null)
+      .map(item => ({
+        item_id: item.itemId,
+        quantity: item.qty,
+        rate: item.rate,
+        amount: (item.qty * item.rate).toFixed(2),
+      })),
+  };
+
+  try {
+    const res = await fetchWithAuth(
+      "https://bom-front-production.up.railway.app/api/proformainvoices/",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
+    if (!res.ok) {
+      const err = await res.json();
+      alert(`Failed to save proforma invoice: ${JSON.stringify(err)}`);
       return;
     }
 
-    const payload = {
-      customer_id: selectedCustomerId,
-      invoice_number: invoiceNumber,
-      reference_number: reference,
-      invoice_date: invoiceDate,
-      expiry_date: expiryDate,
-      salesperson,
-      project_name: projectName,
-      subject,
-      customer_notes: notes,
-      terms_and_conditions: terms,
-      subtotal: subTotal.toFixed(2),
-      discount: discountPct.toFixed(2),
-      tax_type: taxType,
-      tax_percentage: taxPct.toString(),
-      adjustment: adjustment.toFixed(2),
-      total_amount: total.toFixed(2),
-      status,
-      item_details: proformaItems
-        .filter(item => item.itemId !== null)
-        .map(item => ({
-          item_id: item.itemId,
-          quantity: item.qty,
-          rate: item.rate,
-          amount: (item.qty * item.rate).toFixed(2),
-        })),
-    };
+    if (saveStatus === "sent") {
+      const customerObj = customers.find((c) => c.id === selectedCustomerId);
+      const billTo = customerObj ? formatAddress(customerObj, "billing") : "";
+      const shipTo = customerObj ? formatAddress(customerObj, "shipping") : "";
 
-    try {
-      const res = await fetchWithAuth(
-        "https://bom-front-production.up.railway.app/api/proformainvoices/",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
-      if (!res.ok) {
-        const err = await res.json();
-        alert(`Failed to save proforma invoice: ${JSON.stringify(err)}`);
-        return;
-      }
-      router.push("/books/sales/proforma-invoice");
-    } catch (err) {
-      alert("Error saving proforma invoice.");
-      console.error(err);
+      generatePDF({
+        title: "PROFORMA",
+        documentNumber: invoiceNumber,
+        documentDate: invoiceDate,
+        expiryDate,
+        customerName,
+        billTo,
+        shipTo,
+        placeOfSupply: "",
+        items: proformaItems.map((item) => ({
+          name: item.name,
+          qty: item.qty,
+          rate: item.rate,
+          sales_description: "",
+        })),
+        subTotal,
+        taxBreakup: [{ label: taxType, pct: taxPct, amount: taxAmount }],
+        total,
+        totalInWords: `Indian Rupees ${total.toFixed(2)} Only`,
+        notes,
+        terms,
+        logo: "", // Provide logo base64 if available
+      });
     }
-  };
+
+    router.push("/books/sales/proforma-invoice");
+  } catch (err) {
+    alert("Error saving proforma invoice.");
+    console.error(err);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-green-50 p-6">
@@ -507,3 +567,4 @@ export default function NewProformaInvoice() {
     </div>
   );
 }
+

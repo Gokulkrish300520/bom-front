@@ -16,7 +16,7 @@ type CustomerType = {
   created_at: string;
 };
 
-type QuoteStatus = "draft" | "sent" | "accepted" | "rejected";
+type QuoteStatus = "draft" | "sent" | "accepted" | "rejected" | "expired";
 
 type Quote = {
   id: number;
@@ -42,6 +42,9 @@ export default function QuotesPage() {
   const [page, setPage] = useState(1);
   const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
   const [prevPageUrl, setPrevPageUrl] = useState<string | null>(null);
+  const [editingStatusIds, setEditingStatusIds] = useState<Record<number, QuoteStatus>>({});
+  const statusOptions: QuoteStatus[] = ["draft", "sent", "accepted", "rejected" , "expired"];
+
 
   const baseApiUrl = "https://bom-front-production.up.railway.app/api/quotes/";
 
@@ -77,6 +80,36 @@ export default function QuotesPage() {
     }
   };
 
+  async function updateStatus(id: number) {
+  const newStatus = editingStatusIds[id];
+  if (!newStatus) return;
+
+  try {
+    const res = await fetchWithAuth(`${baseApiUrl}${id}/`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(`Failed to update status: ${JSON.stringify(err)}`);
+      return;
+    }
+    setQuotes((curr) =>
+      curr.map((q) => (q.id === id ? { ...q, status: newStatus } : q))
+    );
+    setEditingStatusIds((curr) => {
+      const updated = { ...curr };
+      delete updated[id];
+      return updated;
+    });
+  } catch (err) {
+    alert("Network error updating status");
+    console.error(err);
+  }
+  }
+
+
   const handlePrevPage = () => {
     if (prevPageUrl) {
       loadQuotes(prevPageUrl);
@@ -90,6 +123,11 @@ export default function QuotesPage() {
       setPage((p) => p + 1);
     }
   };
+
+  const handleStatusChange = (id: number, newStatus: QuoteStatus) => {
+  setEditingStatusIds((curr) => ({ ...curr, [id]: newStatus }));
+  };
+
 
   const deleteQuote = async (id: number) => {
     if (!confirm("Are you sure you want to delete this quote?")) return;
@@ -152,50 +190,109 @@ export default function QuotesPage() {
             </tr>
           </thead>
           <tbody>
-            {quotes.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="p-4 text-center text-gray-500 bg-white">
-                  No quotes found
-                </td>
-              </tr>
+  {quotes.length === 0 ? (
+    <tr>
+      <td colSpan={8} className="p-4 text-center text-gray-500 bg-white">
+        No quotes found
+      </td>
+    </tr>
+  ) : (
+    quotes.map((q) => {
+      const editing = q.id in editingStatusIds;
+      return (
+        <tr key={q.id} className="transition border-b hover:bg-green-50">
+          <td className="px-4 py-3">{formatDate(q.quote_date)}</td>
+          <td className="px-4 py-3 font-medium text-green-700">
+            <Link href={`/books/sales/quotes/${q.id}`}>{q.quote_number}</Link>
+          </td>
+          <td className="px-4 py-3">{q.customer.display_name}</td>
+          <td className="px-4 py-3">{formatDate(q.expiry_date)}</td>
+          <td className="px-4 py-3 font-medium text-right">₹{q.total_amount}</td>
+          <td className="px-5 py-3 text-right">
+            {new Date(q.created_at).toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })}
+          </td>
+          <td className="px-4 py-3">
+            {editing ? (
+              <select
+                value={editingStatusIds[q.id]}
+                onChange={(e) =>
+                  handleStatusChange(q.id, e.target.value as QuoteStatus)
+                }
+                className="rounded border px-2 py-1"
+              >
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </option>
+                ))}
+              </select>
             ) : (
-              quotes.map((q) => (
-                <tr key={q.id} className="transition border-b hover:bg-green-50">
-                  <td className="px-4 py-3">{formatDate(q.quote_date)}</td>
-                  <td className="px-4 py-3 font-medium text-green-700">
-                    <Link href={`/books/sales/quotes/${q.id}`}>{q.quote_number}</Link>
-                  </td>
-                  <td className="px-4 py-3">{q.customer.display_name}</td>
-                  <td className="px-4 py-3">{formatDate(q.expiry_date)}</td>
-                  <td className="px-4 py-3 font-medium text-right">₹{q.total_amount}</td>
-                  <td className="px-5 py-3 text-right">
-                  {new Date(q.created_at).toLocaleTimeString("en-GB", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                  })}
-                   </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusStyle(q.status)}`}
-                    >
-                      {q.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => deleteQuote(q.id)}
-                      className="text-red-600 hover:text-red-800"
-                      aria-label="Delete quote"
-                      title="Delete quote"
-                    >
-                      <FaTrash />
-                    </button>
-                  </td>
-                </tr>
-              ))
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusStyle(
+                  q.status
+                )}`}
+              >
+                {q.status.charAt(0).toUpperCase() + q.status.slice(1)}
+              </span>
             )}
-          </tbody>
+          </td>
+          <td className="px-4 py-3 flex gap-2 items-center">
+            {editing ? (
+              <>
+                <button
+                  onClick={() => updateStatus(q.id)}
+                  className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() =>
+                    setEditingStatusIds((curr) => {
+                      const updated = { ...curr };
+                      delete updated[q.id];
+                      return updated;
+                    })
+                  }
+                  className="px-3 py-1 border rounded text-gray-600 hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() =>
+                    setEditingStatusIds((curr) => ({
+                      ...curr,
+                      [q.id]: q.status,
+                    }))
+                  }
+                  className="px-3 py-1 border rounded text-blue-600 hover:bg-blue-100"
+                  title="Edit Status"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => deleteQuote(q.id)}
+                  className="text-red-600 hover:text-red-800"
+                  aria-label="Delete quote"
+                  title="Delete quote"
+                >
+                  <FaTrash />
+                </button>
+              </>
+            )}
+          </td>
+        </tr>
+      );
+    })
+  )}
+</tbody>
+
         </table>
       </div>
 

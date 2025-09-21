@@ -66,9 +66,10 @@ export function generatePDF(data: SalesPDFData) {
   doc.addImage(LOGO_BASE64, "PNG", marginLeft, marginTop, logoWidth, logoHeight);
 
   // Title + Quote No
-  const rightBlockX = 210 - marginLeft - 80;
+  const rightBlockX = doc.internal.pageSize.getWidth() - marginLeft - 10; // 210mm - margins
   doc.setFontSize(18);
   doc.text(data.title, rightBlockX, marginTop + 15, { align: "right" });
+
 
   doc.setFontSize(12);
   doc.text(`${data.title} No: ${data.documentNumber}`, rightBlockX, marginTop + 30, { align: "right" });
@@ -76,7 +77,7 @@ export function generatePDF(data: SalesPDFData) {
 
   // Divider
   doc.setLineWidth(0.5);
-  doc.line(marginLeft, marginTop + logoHeight + 5, 210 - marginLeft, marginTop + logoHeight + 5);
+  doc.line(marginLeft, marginTop + logoHeight + 5, doc.internal.pageSize.getWidth() - marginLeft, marginTop + logoHeight + 5);
 
   // Company details
   let yStart = marginTop + logoHeight + 15;
@@ -111,100 +112,104 @@ export function generatePDF(data: SalesPDFData) {
   // Items table
   
   autoTable(doc, {
-  startY: yStart + 10,
-  head: [["#", "Item & Description", "Qty", "Rate", "Amount"]],
-  body: data.items.map((i, idx): any[] => [
-    { content: (idx + 1).toString() },
-    { content: [i.name, i.sales_description || ""] },
-    { content: i.qty.toFixed(2) },
-    { content: i.rate.toFixed(2) },
-    { content: (i.qty * i.rate).toFixed(2) },
-  ]),
-  theme: "grid",
-  styles: { fontSize: 10, cellPadding: 3 },
-  headStyles: { fillColor: [46, 125, 50] },
-  tableWidth: "auto",  // expand naturally
-  columnStyles: {
-    0: { cellWidth: 10 },   // #
-    1: { cellWidth: 90 },   // Item + Description
-    2: { cellWidth: 20 },   // Qty
-    3: { cellWidth: 30 },   // Rate
-    4: { cellWidth: 30 },   // Amount
-  }
-});
+    startY: yStart + 10,
+    head: [["#", "Item & Description", "Qty", "Rate", "Amount"]],
+    body: data.items.map((i, idx): any[] => [
+      { content: (idx + 1).toString() },
+      {
+        content: [
+          i.name.toUpperCase(),
+          i.sales_description || "",
+        ],
+      },
+      { content: i.qty.toFixed(2) },
+      { content: i.rate.toFixed(2) },
+      { content: (i.qty * i.rate).toFixed(2) },
+    ]),
+    theme: "grid",
+    styles: { fontSize: 10, cellPadding: 3, overflow: "linebreak" },
+    headStyles: { fillColor: [46, 125, 50] },
+    tableWidth: "auto",
+    columnStyles: {
+      0: { cellWidth: 10 },
+      1: { cellWidth: 90, cellPadding: 4 }, // Leave padding for description wrap. Overflow set.
+      2: { cellWidth: 20 },
+      3: { cellWidth: 30 },
+      4: { cellWidth: 30 },
+    },
+  });
 
 
 
   let finalY = (doc as any).lastAutoTable.finalY || yStart + 20;
   const pageHeight = doc.internal.pageSize.height;
+  const bottomMargin = 20;
+
+  const neededHeight = 20 + 20 * data.taxBreakup.length + 40; // approx space needed for subtotal + taxes + total + buffer
+  if (finalY + neededHeight > pageHeight - bottomMargin) {
+    doc.addPage();
+    finalY = marginTop;
+  }
 
   // Totals
   doc.setFontSize(11);
-  if (finalY + 10 > pageHeight - 20) {
-    doc.addPage();
-    finalY = 20;
-  }
   doc.text(`Sub Total: ${data.subTotal.toFixed(2)}`, 150, finalY + 10);
 
   data.taxBreakup.forEach((t, i) => {
-    let y = finalY + 20 + i * 10;
-    if (y > pageHeight - 20) {
-      doc.addPage();
-      y = 20;
-    }
+    const y = finalY + 20 + i * 10;
     doc.text(`${t.label} (${t.pct}%): ${t.amount.toFixed(2)}`, 150, y);
-    finalY = y;
   });
 
   doc.setFontSize(12);
-  if (finalY + 20 > pageHeight - 20) {
-    doc.addPage();
-    finalY = 20;
-  }
-  doc.text(`Total INR ${data.total.toFixed(2)}`, 150, finalY + 20);
-  finalY += 20;
+  doc.text(`Total INR ${data.total.toFixed(2)}`, 150, finalY + 20 + data.taxBreakup.length * 10);
+  finalY += 30 + data.taxBreakup.length * 10;
 
   // Total in words
   doc.setFontSize(10);
-  finalY = addTextWithWrap(doc, `Total In Words: ${data.totalInWords}`, marginLeft, finalY + 10, 180);
+  finalY = addTextWithWrap(doc, `Total In Words: ${data.totalInWords}`, marginLeft, finalY + 10, doc.internal.pageSize.getWidth() - marginLeft * 2);
 
   // Notes
   doc.setFontSize(11);
-  finalY = addTextWithWrap(doc, "Notes", marginLeft, finalY + 10, 180);
+  finalY = addTextWithWrap(doc, "Notes", marginLeft, finalY + 10, doc.internal.pageSize.getWidth() - marginLeft * 2);
   doc.setFontSize(10);
-  finalY = addTextWithWrap(doc, data.notes || "-", marginLeft, finalY + 6, 180);
+  finalY = addTextWithWrap(doc, data.notes || "-", marginLeft, finalY + 6, doc.internal.pageSize.getWidth() - marginLeft * 2);
 
-  
-  // Bank details
+  // Bank details box with border
   doc.setFontSize(11);
-  finalY = addTextWithWrap(doc, "Bank Details:", marginLeft, finalY + 10, 180);
-  doc.setFontSize(10);
-  finalY = addTextWithWrap(doc, "NAME : GLONIX ELECTRONICS PRIVATE LIMITED", marginLeft, finalY + 2, 180);
-  finalY = addTextWithWrap(doc, "AC NO : 611905056215", marginLeft, finalY + 2, 180);
-  finalY = addTextWithWrap(doc, "BANK : ICICI BANK", marginLeft, finalY + 2, 180);
-  finalY = addTextWithWrap(doc, "BRANCH : SALEM MAIN BRANCH", marginLeft, finalY + 2, 180);
-  finalY = addTextWithWrap(doc, "IFSC : ICIC0006119", marginLeft, finalY + 2, 180);
-  finalY = addTextWithWrap(doc, "Swift code: ICICINBBCTS", marginLeft, finalY + 2, 180);
-  doc.setLineWidth(0.5);
-  doc.line(marginLeft, marginTop + logoHeight + 5, 210 - marginLeft, marginTop + logoHeight + 5);
+  finalY += 10;
+  const bankX = marginLeft;
+  const bankY = finalY;
+  const bankWidth = doc.internal.pageSize.getWidth() - marginLeft * 2;
+  const bankHeight = 60; // Adjust height as needed based on lines
+  doc.rect(bankX, bankY, bankWidth, bankHeight);
 
-  // Terms
-  doc.setFontSize(11);
-  finalY = addTextWithWrap(doc, "Terms & Conditions", marginLeft, finalY + 10, 180);
+  finalY = addTextWithWrap(doc, "Bank Details:", bankX + 3, bankY + 8, bankWidth - 6);
   doc.setFontSize(10);
-  finalY = addTextWithWrap(doc, data.terms || "-", marginLeft, finalY + 6, 180);
-  // Signature
-  if (finalY + 30 > pageHeight - 20) {
+  finalY = addTextWithWrap(doc, "NAME : GLONIX ELECTRONICS PRIVATE LIMITED", bankX + 3, finalY + 2, bankWidth - 6);
+  finalY = addTextWithWrap(doc, "AC NO : 611905056215", bankX + 3, finalY + 2, bankWidth - 6);
+  finalY = addTextWithWrap(doc, "BANK : ICICI BANK", bankX + 3, finalY + 2, bankWidth - 6);
+  finalY = addTextWithWrap(doc, "BRANCH : SALEM MAIN BRANCH", bankX + 3, finalY + 2, bankWidth - 6);
+  finalY = addTextWithWrap(doc, "IFSC : ICIC0006119", bankX + 3, finalY + 2, bankWidth - 6);
+  finalY = addTextWithWrap(doc, "Swift code: ICICINBBCTS", bankX + 3, finalY + 2, bankWidth - 6);
+
+  // Terms & Conditions
+  doc.setFontSize(11);
+  finalY = addTextWithWrap(doc, "Terms & Conditions", marginLeft, finalY + 10, doc.internal.pageSize.getWidth() - marginLeft * 2);
+  doc.setFontSize(10);
+  finalY = addTextWithWrap(doc, data.terms || "-", marginLeft, finalY + 6, doc.internal.pageSize.getWidth() - marginLeft * 2);
+
+  // Signature line with extra spacing above line
+  if (finalY + 30 > pageHeight - bottomMargin) {
     doc.addPage();
-    finalY = 20;
+    finalY = marginTop;
   }
   doc.setFontSize(11);
   doc.setLineWidth(0.5);
-  doc.line(marginLeft, finalY + 20, 210 - marginLeft, finalY + 20);
-  doc.text("Authorized Signature", 150, finalY + 30);
+  finalY += 15; // spacing above line
+  doc.line(marginLeft, finalY, doc.internal.pageSize.getWidth() - marginLeft, finalY);
+  finalY += 30; // spacing between line and text
+  doc.text("Authorized Signature", 150, finalY);
 
-  // Save
+  // Save file
   doc.save(`${data.title}-${data.documentNumber}.pdf`);
-
 }
-
