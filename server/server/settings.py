@@ -42,6 +42,7 @@ ALLOWED_HOSTS = [
     'bpm-production.up.railway.app',
     'bom-front-production.up.railway.app',
     'bom-front-production-140a.up.railway.app',
+    'web-production-6baf3.up.railway.app'
 ]
 
 
@@ -87,6 +88,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://bom-front.vercel.app",
     "https://bom-front-production.up.railway.app",
     "https://bom-front-production-140a.up.railway.app",
+    "http://web-production-6baf3.up.railway.app"
     # Add other addresses if needed
 ]
 
@@ -171,6 +173,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://bom-front-production.up.railway.app",
     "https://bom-front-production-140a.up.railway.app",
     "https://bom-front-production-140a.up.railway.app",
+    "http://web-production-6baf3.up.railway.app"
 ]
 
 
@@ -238,32 +241,6 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'boto3': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-        'botocore': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-        'django': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-    },
-}
 
 
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
