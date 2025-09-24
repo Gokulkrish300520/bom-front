@@ -49,8 +49,8 @@ export default function BillEditPage() {
     (async () => {
       try {
         const [vRes, iRes] = await Promise.all([
-          fetchWithAuth("https://bom-front-production.up.railway.app/api/vendors"),
-          fetchWithAuth("https://bom-front-production.up.railway.app/api/items"),
+          fetchWithAuth("https://web-production-6baf3.up.railway.app/api/vendors"),
+          fetchWithAuth("https://web-production-6baf3.up.railway.app/api/items"),
         ]);
         if (vRes.ok) setVendors((await vRes.json()).results || []);
         if (iRes.ok) setItems((await iRes.json()).results || []);
@@ -65,7 +65,7 @@ export default function BillEditPage() {
     setLoading(true);
     (async () => {
       try {
-        const res = await fetchWithAuth(`https://bom-front-production.up.railway.app/api/bills/${billId}`);
+        const res = await fetchWithAuth(`https://web-production-6baf3.up.railway.app/api/bills/${billId}`);
         if (!res.ok) throw new Error("Failed to fetch bill");
         const data: Bill = await res.json();
         setBill(data);
@@ -169,7 +169,7 @@ export default function BillEditPage() {
 
     try {
       const token = localStorage.getItem("authToken") || "";
-      const url = billId ? `https://bom-front-production.up.railway.app/api/bills/${billId}/` : "https://bom-front-production.up.railway.app/api/bills/";
+      const url = billId ? `https://web-production-6baf3.up.railway.app/api/bills/${billId}/` : "https://bom-front-production.up.railway.app/api/bills/";
       const method = billId ? "PUT" : "POST";
 
       const res = await fetch(url, {

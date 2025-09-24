@@ -112,14 +112,14 @@ export default function CustomerDetailPage() {
     async function fetchCustomer() {
       try {
         const res = await fetchWithAuth(
-          `https://bom-front-production.up.railway.app/api/customers/${id}/`
+          `https://web-production-6baf3.up.railway.app/api/customers/${id}/`
         );
         if (!res.ok) throw new Error("Failed to fetch customer data");
         const data = await res.json();
         setCustomer(data);
 
         const resInvoices = await fetchWithAuth(
-          `https://bom-front-production.up.railway.app/api/invoices/?customer_id=${id}`
+          `https://web-production-6baf3.up.railway.app/api/invoices/?customer_id=${id}`
         );
         if (resInvoices.ok) {
           const data: DocumentData = await resInvoices.json();
@@ -128,7 +128,7 @@ export default function CustomerDetailPage() {
 
         // Quotes
         const resQuotes = await fetchWithAuth(
-          `https://bom-front-production.up.railway.app/api/quotes/?customer_id=${id}`
+          `https://web-production-6baf3.up.railway.app/api/quotes/?customer_id=${id}`
         );
         if (resQuotes.ok) {
           const data: DocumentData = await resQuotes.json();
@@ -137,7 +137,7 @@ export default function CustomerDetailPage() {
 
         // Proforma invoices
         const resProformas = await fetchWithAuth(
-          `https://bom-front-production.up.railway.app/api/proformainvoices/?customer_id=${id}`
+          `https://web-production-6baf3.up.railway.app/api/proformainvoices/?customer_id=${id}`
         );
         if (resProformas.ok) {
           const data: DocumentData = await resProformas.json();
@@ -146,7 +146,7 @@ export default function CustomerDetailPage() {
 
         // Delivery Challans
         const resChallans = await fetchWithAuth(
-          `https://bom-front-production.up.railway.app/api/deliverychallans/?customer_id=${id}`
+          `https://web-production-6baf3.up.railway.app/api/deliverychallans/?customer_id=${id}`
         );
         if (resChallans.ok) {
           const data: DocumentData = await resChallans.json();

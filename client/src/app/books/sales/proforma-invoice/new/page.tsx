@@ -78,7 +78,7 @@ export default function NewProformaInvoice() {
   useEffect(() => {
     async function loadCustomers() {
       try {
-        const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/customers/");
+        const res = await fetchWithAuth("https://web-production-6baf3.up.railway.app/api/customers/");
         if (!res.ok) throw new Error("Failed to fetch customers");
         const data = await res.json();
         setCustomers(data.results || []);
@@ -96,7 +96,7 @@ export default function NewProformaInvoice() {
   useEffect(() => {
     async function loadItems() {
       try {
-        const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/items/");
+        const res = await fetchWithAuth("https://web-production-6baf3.up.railway.app/api/items/");
         if (!res.ok) throw new Error("Failed to fetch items");
         const data = await res.json();
         setItemsList(data.results || []);
@@ -203,7 +203,7 @@ export default function NewProformaInvoice() {
 
   try {
     const res = await fetchWithAuth(
-      "https://bom-front-production.up.railway.app/api/proformainvoices/",
+      "https://web-production-6baf3.up.railway.app/api/proformainvoices/",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

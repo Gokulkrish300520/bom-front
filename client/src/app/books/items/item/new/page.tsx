@@ -54,7 +54,7 @@ export default function NewItemPage() {
   useEffect(() => {
     async function fetchVendors() {
       try {
-        const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/vendors/");
+        const res = await fetchWithAuth("https://web-production-6baf3.up.railway.app/api/vendors/");
         if (!res.ok) throw new Error("Failed to load vendors");
         const data = await res.json();
         setVendors(data.results || []);
@@ -135,7 +135,7 @@ export default function NewItemPage() {
 
     try {
       setLoading(true);
-      const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/items/", {
+      const res = await fetchWithAuth("https://web-production-6baf3.up.railway.app/api/items/", {
         method: "POST",
         body: JSON.stringify(payload),
       });

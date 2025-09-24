@@ -74,7 +74,7 @@ export default function ProfitLossPage() {
         if (selectedVendor) params.set("vendor_id", selectedVendor);
 
         const res = await fetchWithAuth(
-          `https://bom-front-production.up.railway.app/api/reports/profit-and-loss/?${params.toString()}`,
+          `https://web-production-6baf3.up.railway.app/api/reports/profit-and-loss/?${params.toString()}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -105,7 +105,7 @@ export default function ProfitLossPage() {
     const token = localStorage.getItem("access_token") ?? "";
 
     // Fetch customers
-    const resCustomers = await fetchWithAuth("https://bom-front-production.up.railway.app/api/customers/", {
+    const resCustomers = await fetchWithAuth("https://web-production-6baf3.up.railway.app/api/customers/", {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (resCustomers.ok) {
@@ -114,7 +114,7 @@ export default function ProfitLossPage() {
     }
 
     // Fetch vendors
-    const resVendors = await fetchWithAuth("https://bom-front-production.up.railway.app/api/vendors/", {
+    const resVendors = await fetchWithAuth("https://web-production-6baf3.up.railway.app/api/vendors/", {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (resVendors.ok) {
@@ -225,7 +225,7 @@ export default function ProfitLossPage() {
         basis: report.basis,
       };
       const res = await fetchWithAuth(
-        "https://bom-front-production.up.railway.app/api/api/send-report-email/",
+        "https://web-production-6baf3.up.railway.app/api/api/send-report-email/",
         {
           method: "POST",
           headers: {

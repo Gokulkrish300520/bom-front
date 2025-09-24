@@ -656,7 +656,7 @@ def send_report_email(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
     
-    import boto3
+import boto3
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response

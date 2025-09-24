@@ -51,7 +51,7 @@ export default function BillEditPage() {
 
     async function loadBill() {
       try {
-        const res = await fetchWithAuth(`https://bom-front-production.up.railway.app/api/bills/${billId}/`);
+        const res = await fetchWithAuth(`https://web-production-6baf3.up.railway.app/api/bills/${billId}/`);
         if (res.ok) {
           const data = await res.json();
           setBill(data);

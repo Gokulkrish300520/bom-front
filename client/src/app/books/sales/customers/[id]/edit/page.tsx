@@ -147,7 +147,7 @@ export default function EditCustomerPage() {
       setIsLoading(true);
       try {
         const res = await fetchWithAuth(
-          `https://bom-front-production.up.railway.app/api/customers/${id}/`
+          `https://web-production-6baf3.up.railway.app/api/customers/${id}/`
         );
         if (res.ok) {
           const data = await res.json();
@@ -386,7 +386,7 @@ export default function EditCustomerPage() {
 
     try {
       const res = await fetchWithAuth(
-        `https://bom-front-production.up.railway.app/api/customers/${id}/`,
+        `https://web-production-6baf3.up.railway.app/api/customers/${id}/`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

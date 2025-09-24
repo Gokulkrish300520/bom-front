@@ -65,7 +65,7 @@ export default function EditQuotePage() {
       setError("");
       try {
         const res = await fetchWithAuth(
-          `https://bom-front-production.up.railway.app/api/quotes/${id}/`
+          `https://web-production-6baf3.up.railway.app/api/quotes/${id}/`
         );
         if (!res.ok) throw new Error(`Failed to fetch quote: ${res.status}`);
         const data = await res.json();
@@ -157,7 +157,7 @@ export default function EditQuotePage() {
     };
 
     try {
-      const res = await fetchWithAuth(`https://bom-front-production.up.railway.app/api/quotes/${id}/`, {
+      const res = await fetchWithAuth(`https://web-production-6baf3.up.railway.app/api/quotes/${id}/`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

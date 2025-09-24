@@ -14,8 +14,6 @@ type CustomerType = {
 
 type ChallanStatus = "draft" | "issued" | "dispatched" | "delivered" | "cancelled" | "returned";
 
-type InvoiceStatus = "DRAFT" | "UNPAID" | "PAID" | "CANCELLED" | "PARTIAL" ;
-
 type Challan = {
   id: string;
   customer: CustomerType;
@@ -25,10 +23,6 @@ type Challan = {
   delivery_date?: string;
   status: ChallanStatus;
   notes?: string;
-  related_invoice?: {
-    id: string;
-    status: InvoiceStatus;
-  };
 };
 
 export default function ChallanPage() {
@@ -44,30 +38,15 @@ export default function ChallanPage() {
 
   // Editable statuses
   const [editingChallanStatusIds, setEditingChallanStatusIds] = useState<Record<string, ChallanStatus>>({});
-  const [editingInvoiceStatusIds, setEditingInvoiceStatusIds] = useState<Record<string, InvoiceStatus>>({});
-
+  
   const challanStatusOptions: ChallanStatus[] = ["draft", "issued", "dispatched", "delivered", "cancelled", "returned"];
-  const invoiceStatusOptions: InvoiceStatus[] = ["DRAFT", "UNPAID", "PAID", "CANCELLED", "PARTIAL"];
 
-  useEffect(() => {
-    async function loadInvoices() {
-      try {
-        const res = await fetchWithAuth("https://bom-front-production.up.railway.app/api/invoices/");
-        if (!res.ok) throw new Error("Failed to fetch invoices");
-        const data = await res.json();
-        setInvoices(data.results || []);
-      } catch (err) {
-        console.error("Failed to load invoices", err);
-      }
-    }
-    loadInvoices();
-  }, []);
 
   async function loadChallans(url?: string, pageNumber = 1) {
     setLoading(true);
     setError("");
     try {
-      const apiUrl = url || `https://bom-front-production.up.railway.app/api/deliverychallans/?page=${pageNumber}`;
+      const apiUrl = url || `https://web-production-6baf3.up.railway.app/api/deliverychallans/?page=${pageNumber}`;
       const res = await fetchWithAuth(apiUrl);
       if (!res.ok) throw new Error("Failed to fetch challans");
       const data = await res.json();
@@ -120,7 +99,7 @@ export default function ChallanPage() {
     const newStatus = editingChallanStatusIds[id];
     if (!newStatus) return;
     try {
-      const res = await fetchWithAuth(`https://bom-front-production.up.railway.app/api/deliverychallans/${id}/`, {
+      const res = await fetchWithAuth(`https://web-production-6baf3.up.railway.app/api/deliverychallans/${id}/`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -142,31 +121,6 @@ export default function ChallanPage() {
     }
   }
 
-  async function updateInvoiceStatus(id: string) {
-    const newStatus = editingInvoiceStatusIds[id];
-    if (!newStatus) return;
-    try {
-      const res = await fetchWithAuth(`https://bom-front-production.up.railway.app/api/invoices/${id}/`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        alert("Failed to update invoice status: " + JSON.stringify(err));
-        return;
-      }
-      setInvoices((curr) => curr.map((inv) => (inv.id === id ? { ...inv, status: newStatus } : inv)));
-      setEditingInvoiceStatusIds((curr) => {
-        const copy = { ...curr };
-        delete copy[id];
-        return copy;
-      });
-    } catch (err) {
-      alert("Network error updating invoice status");
-      console.error(err);
-    }
-  }
 
   const handlePrevPage = () => {
     if (prevPageUrl) loadChallans(prevPageUrl);
@@ -201,7 +155,6 @@ export default function ChallanPage() {
               <th className="px-4 py-3 text-left">Reference #</th>
               <th className="px-4 py-3 text-left">Customer</th>
               <th className="px-4 py-3 text-left">Status</th>
-              <th className="px-4 py-3 text-left">Invoice Status</th>
             </tr>
           </thead>
           <tbody>
@@ -214,9 +167,6 @@ export default function ChallanPage() {
             ) : (
               challans.map((challan) => {
                 const editingChallan = challan.id in editingChallanStatusIds;
-                const relatedInvoice = invoices.find((inv) => inv.customer.id === challan.customer.id);
-                const editingInvoice = relatedInvoice && relatedInvoice.id in editingInvoiceStatusIds;
-
                 return (
                   <tr key={challan.id} className="transition border-b hover:bg-green-50">
                     <td className="px-4 py-3">{formatDate(challan.date)}</td>
@@ -276,64 +226,6 @@ export default function ChallanPage() {
                             Edit
                           </button>
                         </>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {relatedInvoice ? (
-                        editingInvoice ? (
-                          <>
-                            <select
-                              value={editingInvoiceStatusIds[relatedInvoice.id]}
-                              onChange={(e) =>
-                                setEditingInvoiceStatusIds((curr) => ({
-                                  ...curr,
-                                  [relatedInvoice.id]: e.target.value as InvoiceStatus,
-                                }))
-                              }
-                              className="border border-green-400 rounded px-2 py-1"
-                            >
-                              {invoiceStatusOptions.map((status) => (
-                                <option key={status} value={status}>
-                                  {status}
-                                </option>
-                              ))}
-                            </select>
-                            <button onClick={() => updateInvoiceStatus(relatedInvoice.id)} className="ml-2 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">
-                              Save
-                            </button>
-                            <button
-                              onClick={() =>
-                                setEditingInvoiceStatusIds((curr) => {
-                                  const copy = { ...curr };
-                                  delete copy[relatedInvoice.id];
-                                  return copy;
-                                })
-                              }
-                              className="ml-2 px-3 py-1 border rounded text-gray-600 hover:bg-gray-100"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(relatedInvoice.status)}`}>
-                              {relatedInvoice.status}
-                            </span>
-                            <button
-                              onClick={() =>
-                                setEditingInvoiceStatusIds((curr) => ({
-                                  ...curr,
-                                  [relatedInvoice.id]: relatedInvoice.status,
-                                }))
-                              }
-                              className="ml-2 px-3 py-1 border rounded text-blue-600 hover:bg-blue-100"
-                            >
-                              Edit
-                            </button>
-                          </>
-                        )
-                      ) : (
-                        "-"
                       )}
                     </td>
                   </tr>
