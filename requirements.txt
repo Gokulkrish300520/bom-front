@@ -12,6 +12,7 @@ xlsxwriter
 django-filter
 boto3
 django-storages
+weasyprint
 
 
 
