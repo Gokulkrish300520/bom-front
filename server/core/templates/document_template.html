@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ data.document_title }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .address-block {
+            width: 48%;
+            display: inline-block;
+            vertical-align: top;
+        }
+        .document-info {
+            float: right;
+            text-align: right;
+            margin-top: -20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        .total-section {
+            width: 30%;
+            float: right;
+            margin-top: 20px;
+        }
+        .total-section td {
+            border: none;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>EARLY CIRCUIT</h1>
+        <p>Single-Window Electronic Solutions</p>
+        <p>GLONIX ELECTRONICS PRIVATE LIMITED</p>
+        <p>Plot No.54, 2nd Floor, Door No.SF1,</p>
+        <p>Anna nagar 2nd Street, Tansi nagar, Velachery,</p>
+        <p>Chennai-600 042.</p>
+        <p>GSTIN: 33AAHCGO729N2ZG</p>
+    </div>
+
+    <div class="document-info">
+        <h3>{{ data.document_title }}</h3>
+        <p>
+            {% if data.document_type == 'quote' %}
+                Quote#
+            {% elif data.document_type == 'proforma' %}
+                Proforma#
+            {% else %}
+                Invoice#
+            {% endif %}: {{ data.document_number }}
+        </p>
+        <p>Date: {{ data.document_date }}</p>
+    </div>
+
+    <div class="address-block">
+        <h3>Bill To</h3>
+        <p>{{ data.bill_to.name }}</p>
+        <p>{{ data.bill_to.address }}</p>
+        <p>{{ data.bill_to.city }}, {{ data.bill_to.state }} {{ data.bill_to.zip }}</p>
+    </div>
+
+    <div class="address-block">
+        <h3>Ship To</h3>
+        <p>{{ data.ship_to.name }}</p>
+        <p>{{ data.ship_to.address }}</p>
+        <p>{{ data.ship_to.city }}, {{ data.ship_to.state }} {{ data.ship_to.zip }}</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Item & Description</th>
+                <th>HSN/SAC</th>
+                <th>Qty</th>
+                <th>Rate</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in data.items %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ item.description }}</td>
+                <td>{{ item.hsn_sac }}</td>
+                <td>{{ item.qty }}</td>
+                <td>{{ item.rate }}</td>
+                <td>{{ item.amount }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="total-section">
+        <table>
+            <tr>
+                <td>Sub Total</td>
+                <td>{{ data.sub_total }}</td>
+            </tr>
+            <tr>
+                <td>IGST (18%)</td>
+                <td>{{ data.igst_amount }}</td>
+            </tr>
+            <tr>
+                <td><strong>Total</strong></td>
+                <td><strong>₹{{ data.total }}</strong></td>
+            </tr>
+        </table>
+    </div>
+
+    <div style="clear:both; margin-top: 20px;">
+        <p>Total in Words: {{ data.total_in_words }}</p>
+    </div>
+    
+    <div class="notes-section">
+        <h3>Notes</h3>
+        <ul>
+            {% for note in data.notes %}
+            <li>{{ note }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+</body>
+</html>

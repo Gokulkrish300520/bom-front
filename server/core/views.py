@@ -689,3 +689,64 @@ class GeneratePresignedUrlView(APIView):
         )
 
         return Response({"url": presigned_post["url"], "fields": presigned_post["fields"]})
+    
+from django.shortcuts import render
+from django.http import HttpResponse, HttpResponseBadRequest
+from django.template.loader import render_to_string
+from django.views.decorators.csrf import csrf_exempt
+from weasyprint import HTML, CSS
+import json
+import os
+
+@csrf_exempt
+def generate_document_pdf(request):
+    """
+    Generates a PDF from a generic HTML template based on the document type.
+    Expects a POST request with 'document_type' and 'document_data' in the body.
+    """
+    if request.method != 'POST':
+        return HttpResponseBadRequest("Only POST requests are allowed.")
+
+    try:
+        data = json.loads(request.body)
+        document_type = data.get('document_type', '').lower()
+        document_data = data.get('document_data', {})
+    except (json.JSONDecodeError, KeyError):
+        return HttpResponseBadRequest("Invalid JSON format. 'document_type' and 'document_data' are required.")
+
+    # A simple mapping for titles and filenames
+    doc_map = {
+        'quote': 'Quotation',
+        'proforma': 'Proforma Invoice',
+        'invoice': 'Invoice',
+        'delivery_challan': 'Delivery Challan'
+    }
+
+    if document_type not in doc_map:
+        return HttpResponseBadRequest("Invalid document type provided.")
+
+    template_name = 'document_template.html'
+    template_path = os.path.join('core', 'templates', template_name)
+
+    # Context data for the template
+    context = {
+        'document_type': document_type,
+        'document_title': doc_map[document_type],
+        'data': document_data
+    }
+
+    try:
+        # Render the HTML template with the dynamic context
+        html_string = render_to_string(template_name, context)
+
+        # Use WeasyPrint to create the PDF from the HTML string
+        pdf_file = HTML(string=html_string).write_pdf()
+
+        # Create a downloadable HTTP response
+        filename = f"{doc_map[document_type].replace(' ', '_')}_{document_data.get('document_number', 'N/A')}.pdf"
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    except Exception as e:
+        return HttpResponse(f"Error generating PDF: {e}", status=500)
+

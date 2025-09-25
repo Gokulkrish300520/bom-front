@@ -4,7 +4,11 @@ from .models import Quote
 
 class QuoteFilter(django_filters.FilterSet):
     customer_id = django_filters.NumberFilter(field_name="customer_id")
+    start_date = django_filters.DateFilter(field_name="quote_date", lookup_expr='gte')
+    end_date = django_filters.DateFilter(field_name="quote_date", lookup_expr='lte')
+    company_name = django_filters.CharFilter(field_name="customer__display_name", lookup_expr='icontains')
+    status = django_filters.ChoiceFilter(field_name="status", choices=Quote._meta.get_field('status').choices)
 
     class Meta:
         model = Quote
-        fields = ["customer_id"]
+        fields = ["customer_id", "start_date", "end_date", "company_name", "status"]

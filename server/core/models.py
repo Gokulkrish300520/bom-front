@@ -59,6 +59,12 @@ class BillItem(models.Model):
         max_digits=12,
         decimal_places=2,
     )
+    deal_no = models.CharField(
+        max_length=50,
+        unique=True,
+        blank=True,
+        help_text="Unique deal number for tracking this purchased item batch."
+    )
 
     def __str__(self) -> str:
         """String representation of BillItem."""
@@ -506,6 +512,7 @@ class Item(models.Model):
 
     name = models.CharField(max_length=255)
     unit = models.CharField(max_length=10, choices=UNIT_CHOICES, default="Nos")
+    hsn_code = models.CharField(max_length=20, null=True, blank=True)
 
     # Sales Information
     manage_sales_info = models.BooleanField(default=False)
@@ -916,6 +923,11 @@ class InvoiceItem(DocumentItemBase):
         on_delete=models.CASCADE,
     )
     invoice_item_number = models.PositiveIntegerField(null=True, blank=True)
+    deal_no = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Deal number referencing the purchase deal for tracking sold item history."
+    )
 
     class Meta:
         unique_together = ("invoice", "invoice_item_number")

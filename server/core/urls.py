@@ -3,7 +3,7 @@
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenBlacklistView
 from .views import send_report_email
-from .views import GeneratePresignedUrlView
+from .views import GeneratePresignedUrlView,generate_document_pdf
 from django.conf.urls.static import static
 from django.conf import settings
 
@@ -73,4 +73,5 @@ urlpatterns = [
     path("auth/logout/", TokenBlacklistView.as_view(), name="token_blacklist"),
     path('api/send-report-email/', send_report_email, name='send_report_email'),
     path("generate-presigned-url/", GeneratePresignedUrlView.as_view(), name="generate-presigned-url"),
+    path('api/generate-pdf/', generate_document_pdf, name='generate_pdf'),
 ]

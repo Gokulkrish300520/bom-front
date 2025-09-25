@@ -133,6 +133,7 @@ class ItemSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "unit",
+            "hsn_code",
             "manage_sales_info",
             "sales_selling_price",
             "sales_account",
@@ -360,7 +361,7 @@ class DeliveryChallanItemSerializer(serializers.ModelSerializer):
         source="item",
         write_only=True,  # pylint: disable=no-member
     )
-
+    hsn_code = serializers.CharField(source="item.hsn_code", read_only=True)
     delivery_challan_item_number = serializers.IntegerField(read_only=True)
 
     class Meta:  # pylint: disable=too-few-public-methods
@@ -371,13 +372,14 @@ class DeliveryChallanItemSerializer(serializers.ModelSerializer):
             "id",
             "item",
             "item_id",
+            "hsn_code",
             "quantity",
             "rate",
             "amount",
             "delivery_challan_item_number",
         ]
 
-    read_only_fields = ["id", "item", "amount", "delivery_challan_item_number"]
+    read_only_fields = ["id", "item", "amount", "delivery_challan_item_number","hsn_code"]
 
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
@@ -391,6 +393,7 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
     )
 
     invoice_item_number = serializers.IntegerField(read_only=True)
+    hsn_code = serializers.CharField(source="item.hsn_code", read_only=True)
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta options for InvoiceItemSerializer."""
@@ -400,13 +403,14 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
             "id",
             "item",
             "item_id",
+            "hsn_code",
             "quantity",
             "rate",
             "amount",
             "invoice_item_number",
         ]
 
-    read_only_fields = ["id", "item", "amount", "invoice_item_number"]
+    read_only_fields = ["id", "item", "amount", "invoice_item_number", "hsn_code"]
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -669,7 +673,7 @@ class QuoteItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = QuoteItem
-        fields = ["quote_item_number", "item_id", "quantity", "rate", "amount"]
+        fields = ["quote_item_number", "item_id","hsn_code", "quantity", "rate", "amount"]
         read_only_fields = ["quote_item_number", "amount"]
 
 
@@ -771,15 +775,15 @@ class ProformaInvoiceItemSerializer(serializers.ModelSerializer):
         source="item",
         write_only=True,  # pylint: disable=no-member
     )
-
+    hsn_code = serializers.CharField(source="item.hsn_code", read_only=True)
     # ...existing code...
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta options for ProformaInvoiceItemSerializer."""
 
         model = ProformaInvoiceItem
-        fields = ["id", "item", "item_id", "quantity", "rate", "amount"]
+        fields = ["id", "item", "item_id", "hsn_code","quantity", "rate", "amount"]
 
-    read_only_fields = ["id", "item", "amount"]
+    read_only_fields = ["id", "item", "amount","hsn_code"]
 
 
 class ProformaInvoiceSerializer(serializers.ModelSerializer):
