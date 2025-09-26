@@ -665,7 +665,7 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 class QuoteItemSerializer(serializers.ModelSerializer):
     """Serializer for QuoteItem model."""
-
+    hsn_code = serializers.CharField(source="item.hsn_code", read_only=True)
     item_id = serializers.PrimaryKeyRelatedField(
         queryset=Item.objects.all(), source="item"
     )
@@ -674,7 +674,7 @@ class QuoteItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuoteItem
         fields = ["quote_item_number", "item_id","hsn_code", "quantity", "rate", "amount"]
-        read_only_fields = ["quote_item_number", "amount"]
+        read_only_fields = ["quote_item_number", "amount","hsn_code"]
 
 
 class QuoteSerializer(serializers.ModelSerializer):

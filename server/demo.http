@@ -60,8 +60,8 @@ POST http://localhost:8000/api/auth/token/
 Content-Type: application/json
 
 {
-  "username": "<your_username>",
-  "password": "<your_password>"
+  "username": "Gokul",
+  "password": "Gokul@2005"
 
 }
 ### BANKING ACCOUNTS CRUD
@@ -668,7 +668,7 @@ Authorization: Bearer <access_token>
 ####
 # Create quote (all fields, with items)
 POST http://localhost:8000/api/quotes/
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4OTAwOTM0LCJpYXQiOjE3NTg5MDAzMzQsImp0aSI6ImExYmVmYzU2MTU5ZjQ3NjZiZWZlYjk2YzJmYmEwM2U1IiwidXNlcl9pZCI6IjEifQ.8QmClu9hPNWzdKM1ryJDWmcCg3nBujBBG3KZMgpaMEA
 Content-Type: application/json
 
 {
@@ -689,8 +689,7 @@ Content-Type: application/json
   "adjustment": "-100.00",
   "total_amount": "9500.00",
   "item_details": [
-    {"quote_item_number": 1, "item_id": 1, "quantity": 2, "rate": "5000.00", "amount": "10000.00"},
-    {"quote_item_number": 2, "item_id": 2, "quantity": 1, "rate": "1000.00", "amount": "1000.00"}
+    { "item_id": 3, "quantity": 2, "rate": "5000.00", "amount": "10000.00"}
   ]
 }
 
