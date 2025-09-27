@@ -428,13 +428,12 @@ Authorization: Bearer <access_token>
 
 # List invoices
 GET http://localhost:8000/api/invoices/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4OTUwOTcwLCJpYXQiOjE3NTg5NTAzNzAsImp0aSI6ImFlNTFlNjRmNjMxZDRkNTU5NzUyZjY2YzNiNWJmNjZiIiwidXNlcl9pZCI6IjEifQ.bT47YXhzdGvkUVJhsalpUvOLobKBijVfJ1jeENXrGOg
-
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4OTgyOTI0LCJpYXQiOjE3NTg5ODIzMjQsImp0aSI6ImU2MjJiZjc3ZGM4MzQ2MzU4NzVjMDUyY2RlNGYzZmE3IiwidXNlcl9pZCI6IjEifQ.gCcz42AKNZXVNOLtqew8n8vp2RdB-UCJOirOwAO9fBA
 ####
 
 # Create invoice with attached files (both attached_file_ids and invoice_file_ids)
 POST http://localhost:8000/api/invoices/
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4OTgyOTI0LCJpYXQiOjE3NTg5ODIzMjQsImp0aSI6ImU2MjJiZjc3ZGM4MzQ2MzU4NzVjMDUyY2RlNGYzZmE3IiwidXNlcl9pZCI6IjEifQ.gCcz42AKNZXVNOLtqew8n8vp2RdB-UCJOirOwAO9fBA
 Content-Type: application/json
 
 {

@@ -59,12 +59,6 @@ class BillItem(models.Model):
         max_digits=12,
         decimal_places=2,
     )
-    deal_no = models.CharField(
-        max_length=50,
-        unique=True,
-        blank=True,
-        help_text="Unique deal number for tracking this purchased item batch."
-    )
 
     def __str__(self) -> str:
         """String representation of BillItem."""
@@ -104,6 +98,13 @@ class Bill(models.Model):
         choices=STATUS_CHOICES,
         default="DRAFT",
     )
+    
+    deal_no = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Deal number referencing the purchase deal for tracking sold item history."
+    )
+    
     bill_date = models.DateField(db_index=True)
     due_date = models.DateField()
     notes = models.TextField(
@@ -681,6 +682,11 @@ class Quote(models.Model):
         ],
         default="draft",
     )
+    deal_no = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Deal number referencing the purchase deal for tracking sold item history."
+    )
     quote_files = models.ManyToManyField(
         "CustomerDocument",
         blank=True,
@@ -752,6 +758,11 @@ class ProformaInvoice(models.Model):
     reference_number = models.CharField(max_length=50, blank=True)
     invoice_date = models.DateField()
     expiry_date = models.DateField()
+    deal_no = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Deal number referencing the purchase deal for tracking sold item history."
+    )
     salesperson = models.CharField(max_length=100, blank=True)
     project_name = models.CharField(max_length=255, blank=True)
     subject = models.CharField(max_length=255, blank=True)
@@ -863,6 +874,11 @@ class DeliveryChallan(models.Model):
         max_length=20,
         choices=CHALLAN_TYPE_CHOICES,
         default="others",
+    )
+    deal_no = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Deal number referencing the purchase deal for tracking sold item history."
     )
     STATUS_CHOICES = [
         ("draft", "Draft"),
