@@ -923,11 +923,6 @@ class InvoiceItem(DocumentItemBase):
         on_delete=models.CASCADE,
     )
     invoice_item_number = models.PositiveIntegerField(null=True, blank=True)
-    deal_no = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="Deal number referencing the purchase deal for tracking sold item history."
-    )
 
     class Meta:
         unique_together = ("invoice", "invoice_item_number")
@@ -970,6 +965,11 @@ class Invoice(models.Model):
     )
     invoice_number = models.CharField(max_length=50, unique=True)
     order_number = models.CharField(max_length=50, blank=True)
+    deal_no = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Deal number referencing the purchase deal for tracking sold item history."
+    )
     invoice_date = models.DateField(db_index=True)
     customer_notes = models.TextField(blank=True)
     terms_and_conditions = models.TextField(blank=True)

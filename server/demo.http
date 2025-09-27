@@ -322,16 +322,15 @@ GET http://localhost:8000/api/vendors/
 Authorization: Bearer <access_token>
 
 # List quotes for a specific customer
-GET http://localhost:8000/api/quotes/?customer_id=1
-Authorization: Bearer <access_token>
-
-####
-
+GET http://localhost:8000/api/quotes/?company="Mestrominds"
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4OTQ5Mjg4LCJpYXQiOjE3NTg5NDg2ODgsImp0aSI6ImI3ZmYxMGFhNTc5ODQzMGFiZTYwZDFjMGNlZjcxMjZiIiwidXNlcl9pZCI6IjEifQ.PzgcZD1HtF55zsiO09iN0tezvVVXgPxzJarUvyE2TFI
 # Create vendor (all fields)
 
 # List invoices for a specific customer
 GET http://localhost:8000/api/invoices/?customer_id=1
 Authorization: Bearer <access_token>
+
+
 POST http://localhost:8000/api/vendors/
 Authorization: Bearer <access_token>
 Content-Type: application/json
