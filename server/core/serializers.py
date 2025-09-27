@@ -561,7 +561,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "customer_id",
             "invoice_number",
             "order_number",
-            "deal_no"
+            "deal_no",
             "invoice_date",
             "due_date",
             "status",

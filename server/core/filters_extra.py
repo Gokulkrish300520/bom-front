@@ -22,8 +22,8 @@ class InvoiceFilter(django_filters.FilterSet):
     customer_id = django_filters.NumberFilter(field_name="customer_id")
     start_date = django_filters.DateFilter(field_name="invoice_date", lookup_expr='gte')
     end_date = django_filters.DateFilter(field_name="invoice_date", lookup_expr='lte')
-    deal_no = django_filters.CharFilter(field_name="item_details__deal_no", lookup_expr='exact')
-    company_name = django_filters.CharFilter(field_name="customer__display_name", lookup_expr='icontains')
+    deal_no = django_filters.CharFilter(field_name="deal_no", lookup_expr='exact')
+    company_name = django_filters.CharFilter(field_name="customer__company_name", lookup_expr='icontains')
     status = django_filters.ChoiceFilter(field_name="status", choices=Invoice.STATUS_CHOICES)
 
     class Meta:
