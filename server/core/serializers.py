@@ -18,60 +18,51 @@ from .models import (
 )
 from rest_framework import serializers
 from .inventory_management_models import (
-    InventoryManagement,
-    InventoryItemDetail,
+    InventoryManagement
 )
 
 
-class InventoryItemDetailSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = InventoryItemDetail
-        fields = [
-            "id",
-            "description",
-            "quantity",
-            "adjustment",
-            "amount",
-        ]
-
+from rest_framework import serializers
 
 class InventoryManagementSerializer(serializers.ModelSerializer):
-    item_details = InventoryItemDetailSerializer(many=True, required=False)
+    adjusted_item = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all())
+    created_by = serializers.ReadOnlyField(source="created_by.username")  #adjust as needed
 
     class Meta:
         model = InventoryManagement
         fields = [
             "id",
-            "item_name",
-            "unit",
-            "type",
-            "hsn_code",
-            "description",
-            "selling_price",
-            "purchase_price",
-            "tax",
-            "item_details",
+            "adjusted_item",
+            "added_restocked_quantity",
+            "old_selling_price",
+            "updated_selling_price",
+            "old_purchase_price",
+            "updated_purchase_price",
+            "created_by",
+            "created_at",
         ]
+        read_only_fields = ["old_selling_price", "old_purchase_price", "created_by", "created_at"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Dynamically set queryset for adjusted_item to avoid circular imports
+        self.fields['adjusted_item'].queryset = InventoryManagement._meta.get_field('adjusted_item').related_model.objects.all()
+
+    def validate_added_restocked_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Restocked quantity must be positive.")
+        return value
 
     def create(self, validated_data):
-        item_details_data = validated_data.pop("item_details", [])
-        inventory = InventoryManagement.objects.create(**validated_data)
-        for detail_data in item_details_data:
-            InventoryItemDetail.objects.create(
-                inventory=inventory, **detail_data)
-        return inventory
+        item = validated_data['adjusted_item']
+        # Set old prices from item before saving adjustment for audit trail
+        validated_data['old_selling_price'] = item.sales_selling_price
+        validated_data['old_purchase_price'] = item.purchase_cost_price
+        user = self.context['request'].user if 'request' in self.context else None
+        if user and not user.is_anonymous:
+            validated_data['created_by'] = user
+        return super().create(validated_data)
 
-    def update(self, instance, validated_data):
-        item_details_data = validated_data.pop("item_details", None)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        if item_details_data is not None:
-            instance.item_details.all().delete()
-            for detail_data in item_details_data:
-                InventoryItemDetail.objects.create(
-                    inventory=instance, **detail_data)
-        return instance
 
 
 """Serializers for core Django models."""

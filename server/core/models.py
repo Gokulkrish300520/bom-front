@@ -905,23 +905,6 @@ class DeliveryChallan(models.Model):
         )
 
 
-class InventoryAdjustment(models.Model):
-    """Model representing an inventory adjustment entry."""
-
-    item = models.ForeignKey(
-        Item, related_name="inventory_adjustments", on_delete=models.CASCADE
-    )
-    adjustment_number = models.CharField(max_length=50, unique=True)
-    date = models.DateField()
-    quantity = models.IntegerField()
-    reason = models.CharField(max_length=255, blank=True)
-    notes = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Adjustment {self.adjustment_number} - " f"{self.item.name}"
-
-
 class InvoiceItem(DocumentItemBase):
     def save(self, *args, **kwargs):
         if self.pk:

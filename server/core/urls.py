@@ -17,7 +17,6 @@ from .views import (
     QuoteViewSet,
     ProformaInvoiceViewSet,
     DeliveryChallanViewSet,
-    InventoryAdjustmentViewSet,
     BillViewSet,
     CustomerDocumentViewSet,
     ProfitAndLossReportView,
@@ -49,11 +48,6 @@ router.register(
     r"deliverychallans",
     DeliveryChallanViewSet,
     basename="deliverychallan",
-)
-router.register(
-    r"inventoryadjustments",
-    InventoryAdjustmentViewSet,
-    basename="inventoryadjustment",
 )
 router.register(r"files", CustomerDocumentViewSet, basename="file")
 

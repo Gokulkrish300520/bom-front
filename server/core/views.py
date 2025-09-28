@@ -3,7 +3,6 @@ from .serializers import (
     CustomerDocumentSerializer,
     CustomerSerializer,
     DeliveryChallanSerializer,
-    InventoryAdjustmentSerializer,
     InvoiceSerializer,
     ItemSerializer,
     PaymentSerializer,
@@ -23,7 +22,6 @@ from .models import (
     Customer,
     CustomerDocument,
     DeliveryChallan,
-    InventoryAdjustment,
     Invoice,
     Item,
     Payment,
@@ -56,15 +54,6 @@ class InventoryManagementViewSet(viewsets.ModelViewSet):
     queryset = InventoryManagement.objects.all()
     serializer_class = InventoryManagementSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-
-# pylint: disable=no-member, import-outside-toplevel, import-self,
-#   redefined-outer-name
-"""Views for core Django REST API endpoints."""
-# Standard library imports
-# Third-party imports
-# Local imports
-
 
 class BalanceSheetReportView(APIView):
     """View for generating balance sheet reports."""
@@ -407,20 +396,6 @@ class DeliveryChallanViewSet(
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = DeliveryChallanFilter
-
-
-class InventoryAdjustmentViewSet(
-    viewsets.ModelViewSet
-):  # pylint: disable=too-many-ancestors
-    """ViewSet for managing Inventory Adjustments."""
-
-    queryset = InventoryAdjustment.objects.all().order_by(
-        "-created_at"
-    )  # pylint: disable=no-member,too-many-ancestors
-    serializer_class = InventoryAdjustmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    #
 
 
 class ProfitAndLossReportView(APIView):

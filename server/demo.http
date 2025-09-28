@@ -3,28 +3,23 @@
 
 # List inventory management records
 GET http://localhost:8000/api/inventory-management/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4OTg4MTQ3LCJpYXQiOjE3NTg5ODc1NDcsImp0aSI6Ijk3Y2M2YWQxNGQ5MTQwYmJiY2NhM2FmZmJjMjVkNzFhIiwidXNlcl9pZCI6IjEifQ.J1ls5rnVofB1yuQFAByK8Ikke4Y49FVJ-TI9lkIj7jo
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5MDc4NTk3LCJpYXQiOjE3NTkwNzc5OTcsImp0aSI6IjI4NGZmODFkODE4OTRiNGNhMWRiNTY2ODMzYjBjYWMzIiwidXNlcl9pZCI6IjEifQ.s72LHfkRTvCN8aCd080HaHj9o3y_2ZQZ9C8-4OJlKXA
 
 ####
 # Create inventory management record
 POST http://localhost:8000/api/inventory-management/
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5MDc5MDAyLCJpYXQiOjE3NTkwNzg0MDIsImp0aSI6ImUzNjA2MDU4YWY4YTRiYjc4OGI3NjQ4NTkwZDkyMzRiIiwidXNlcl9pZCI6IjEifQ.Hhj7Zizjncgdwcqbw1KB7HR0X5Kn6H6qt0JK9tRS2Ys
 Content-Type: application/json
 
 {
-  "item_name": "Test Item",
-  "unit": "Nos",
-  "type": "Goods",
-  "hsn_code": "1234",
-  "description": "Test description",
-  "selling_price": "100.00",
-  "purchase_price": "80.00",
-  "tax": "18%",
-  "item_details": [
-    {"description": "Batch 1", "quantity": "10.00", "adjustment": "0.00", "amount": "1000.00"},
-    {"description": "Batch 2", "quantity": "5.00", "adjustment": "1.00", "amount": "500.00"}
-  ]
+  "adjusted_item": 1,
+  "added_restocked_quantity": 100.00,
+  "old_selling_price": 20000.00,
+  "updated_selling_price": 25000.00,
+  "old_purchase_price": 1600.00,
+  "updated_purchase_price": 17000.00
 }
+
 
 ####
 # Retrieve inventory management record
@@ -512,12 +507,27 @@ Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiY
 
 # Create item (basic)
 POST http://localhost:8000/api/items/
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5MDc4ODAyLCJpYXQiOjE3NTkwNzgyMDIsImp0aSI6IjM1MDdkM2JlZGQ4MzQ0MDI5ZWVhNDA1MmZhZDM4OWI1IiwidXNlcl9pZCI6IjEifQ.0uSQXF7HBukf_IYK1C7z8jDjqkIu4_9EI8gtRH1yoFk
 Content-Type: application/json
 
 {
-  "name": "Item 1",
-  "unit": "Nos"
+  "name": "Iphone",
+  "unit": "Nos",
+  "hsn_code": "45445455",
+  "item_no": "I-412417",
+  "manage_sales_info": true,
+  "sales_selling_price": "20000.00",
+  "sales_account": "Sales",
+  "sales_description": "4K Dolby Vision video recording at 24 fps, 25 fps, 30 fps or 60 fps\n1080p Dolby Vision video recording at 25 fps, 30 fps or 60 fps\n720p Dolby Vision video recording at 30 fps\nCinematic mode up to 4K Dolby Vision at 30 fps",
+  "manage_purchase_info": true,
+  "purchase_cost_price": "2000.00",
+  "purchase_account": "Cost of Goods Sold",
+  "purchase_description": "nil",
+  "preferred_vendor": 1,
+  "track_inventory": true,
+  "opening_stock": "200.00",
+  "opening_stock_rate_per_unit": "20000.00",
+  "reorder_point": "10.00"
 }
 
 # Create item (with sales info)
