@@ -26,6 +26,7 @@ from rest_framework import serializers
 
 class InventoryManagementSerializer(serializers.ModelSerializer):
     adjusted_item = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all())
+    adjusted_item_name = serializers.CharField(source='adjusted_item.name', read_only=True)
     created_by = serializers.ReadOnlyField(source="created_by.username")  #adjust as needed
 
     class Meta:
@@ -33,6 +34,7 @@ class InventoryManagementSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "adjusted_item",
+            "adjusted_item_name",
             "added_restocked_quantity",
             "old_selling_price",
             "updated_selling_price",
