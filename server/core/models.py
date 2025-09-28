@@ -514,6 +514,7 @@ class Item(models.Model):
     name = models.CharField(max_length=255)
     unit = models.CharField(max_length=10, choices=UNIT_CHOICES, default="Nos")
     hsn_code = models.CharField(max_length=20, null=True, blank=True)
+    item_no = models.CharField(max_length=20, null=True, blank=True)
 
     # Sales Information
     manage_sales_info = models.BooleanField(default=False)
@@ -539,8 +540,8 @@ class Item(models.Model):
 
     # Inventory Tracking
     track_inventory = models.BooleanField(default=False)
-    inventory_account = models.CharField(max_length=100, blank=True)
-    inventory_valuation_method = models.CharField(max_length=50, blank=True)
+    # inventory_account = models.CharField(max_length=100, blank=True)
+    # inventory_valuation_method = models.CharField(max_length=50, blank=True)
     opening_stock = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )

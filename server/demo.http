@@ -3,7 +3,7 @@
 
 # List inventory management records
 GET http://localhost:8000/api/inventory-management/
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4OTg4MTQ3LCJpYXQiOjE3NTg5ODc1NDcsImp0aSI6Ijk3Y2M2YWQxNGQ5MTQwYmJiY2NhM2FmZmJjMjVkNzFhIiwidXNlcl9pZCI6IjEifQ.J1ls5rnVofB1yuQFAByK8Ikke4Y49FVJ-TI9lkIj7jo
 
 ####
 # Create inventory management record
@@ -506,7 +506,7 @@ Authorization: Bearer <access_token>
 
 # List items
 GET http://localhost:8000/api/items/
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5MDYxMzQ0LCJpYXQiOjE3NTkwNjA3NDQsImp0aSI6IjcwN2Y3NDQzMGUwMTRmMmFhNDA4OWI3MmJlMjI4MTE4IiwidXNlcl9pZCI6IjEifQ.Oiz_vkinNxtZlAZoJYbyxFLcRpzwObkpoBX3c7mG_9k
 
 ####
 
@@ -892,18 +892,21 @@ Authorization: Bearer <access_token>
 ####
 # Create bill (basic fields, with file association)
 POST http://localhost:8000/api/bills/
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5MDQ3MTMxLCJpYXQiOjE3NTkwNDY1MzEsImp0aSI6IjU2ZTU1MWZkYmQ3YTRiMWNhYTg0Y2ZlZTA2YzJlMWY5IiwidXNlcl9pZCI6IjEifQ.NXxcSqaQuDWXSGnoY1gidIzNJe94bX0MnXHyveJwo88
 Content-Type: application/json
 
 {
   "vendor_id": 1,
-  "bill_number": "BILL-2025-0026",
-  "reference_number": "REF-113",
+  "bill_number": "BILL-2025-0027",
+  "reference_number": "REF-123",
   "status": "PAID",
   "bill_date": "2025-09-08",
   "due_date": "2025-09-15",
-  "reference_number": "REF-120",
+  "reference_number": "REF-121",
   "notes": "First bill for vendor",
+  "item_details": [
+    {"item_id": 3, "quantity": 2, "rate": "5000.00", "amount": "10000.00"}
+  ],
   "total_amount": "19000.00",
   "file_ids": [2]
 }
@@ -933,7 +936,7 @@ Authorization: Bearer <access_token>
 
 # List inventory adjustments
 GET http://localhost:8000/api/inventory-adjustments/
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4OTg4MTQ3LCJpYXQiOjE3NTg5ODc1NDcsImp0aSI6Ijk3Y2M2YWQxNGQ5MTQwYmJiY2NhM2FmZmJjMjVkNzFhIiwidXNlcl9pZCI6IjEifQ.J1ls5rnVofB1yuQFAByK8Ikke4Y49FVJ-TI9lkIj7jo
 
 ####
 # Create inventory adjustment

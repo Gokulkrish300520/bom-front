@@ -29,6 +29,7 @@ class InventoryManagement(models.Model):
         max_digits=12, decimal_places=2, null=True, blank=True
     )
     tax = models.CharField(max_length=4, choices=TAX_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class InventoryItemDetail(models.Model):

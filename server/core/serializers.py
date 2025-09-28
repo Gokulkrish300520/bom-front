@@ -134,6 +134,7 @@ class ItemSerializer(serializers.ModelSerializer):
             "name",
             "unit",
             "hsn_code",
+            "item_no",
             "manage_sales_info",
             "sales_selling_price",
             "sales_account",
@@ -144,9 +145,8 @@ class ItemSerializer(serializers.ModelSerializer):
             "purchase_description",
             "preferred_vendor",
             "track_inventory",
-            "inventory_account",
-            "inventory_valuation_method",
             "opening_stock",
+            "current_stock",
             "opening_stock_rate_per_unit",
             "reorder_point",
             "created_at",
@@ -173,14 +173,6 @@ class ItemSerializer(serializers.ModelSerializer):
                     "This field is required when managing purchase info."
                 )
         if data.get("track_inventory"):
-            if not data.get("inventory_account"):
-                errors["inventory_account"] = (
-                    "This field is required when tracking inventory."
-                )
-            if not data.get("inventory_valuation_method"):
-                errors["inventory_valuation_method"] = (
-                    "This field is required when tracking inventory."
-                )
             if data.get("opening_stock") is None:
                 errors["opening_stock"] = (
                     "This field is required when tracking inventory."
@@ -305,7 +297,6 @@ class BillItemSerializer(serializers.ModelSerializer):
             "bill",
             "item",
             "item_id",
-            "description",
             "quantity",
             "rate",
             "amount",
@@ -325,7 +316,7 @@ class BillSerializer(serializers.ModelSerializer):
         write_only=True,
     )
     item_details = BillItemSerializer(
-        many=True, read_only=True, source="billitem_set")
+        many=True, write_only=True, source="billitem_set")
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta options for BillSerializer."""
