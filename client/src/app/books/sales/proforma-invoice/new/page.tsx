@@ -216,35 +216,36 @@ export default function NewProformaInvoice() {
       return;
     }
 
-    if (saveStatus === "sent") {
-      const customerObj = customers.find((c) => c.id === selectedCustomerId);
-      const billTo = customerObj ? formatAddress(customerObj, "billing") : "";
-      const shipTo = customerObj ? formatAddress(customerObj, "shipping") : "";
+    // Uncomment and use PDF generation and navigation if needed
+    // if (saveStatus === "sent") {
+    //   const customerObj = customers.find((c) => c.id === selectedCustomerId);
+    //   const billTo = customerObj ? formatAddress(customerObj, "billing") : "";
+    //   const shipTo = customerObj ? formatAddress(customerObj, "shipping") : "";
 
-      generatePDF({
-        title: "PROFORMA",
-        documentNumber: invoiceNumber,
-        documentDate: invoiceDate,
-        expiryDate,
-        customerName,
-        billTo,
-        shipTo,
-        placeOfSupply: "",
-        items: proformaItems.map((item) => ({
-          name: item.name,
-          qty: item.qty,
-          rate: item.rate,
-          sales_description: "",
-        })),
-        subTotal,
-        taxBreakup: [{ label: taxType, pct: taxPct, amount: taxAmount }],
-        total,
-        totalInWords: `Indian Rupees ${total.toFixed(2)} Only`,
-        notes,
-        terms,
-        logo: "", // Provide logo base64 if available
-      });
-    }
+    //   generatePDF({
+    //     title: "PROFORMA",
+    //     documentNumber: invoiceNumber,
+    //     documentDate: invoiceDate,
+    //     expiryDate,
+    //     customerName,
+    //     billTo,
+    //     shipTo,
+    //     placeOfSupply: "",
+    //     items: proformaItems.map((item) => ({
+    //       name: item.name,
+    //       qty: item.qty,
+    //       rate: item.rate,
+    //       sales_description: "",
+    //     })),
+    //     subTotal,
+    //     taxBreakup: [{ label: taxType, pct: taxPct, amount: taxAmount }],
+    //     total,
+    //     totalInWords: `Indian Rupees ${total.toFixed(2)} Only`,
+    //     notes,
+    //     terms,
+    //     logo: "", // Provide logo base64 if available
+    //   });
+    // }
 
     router.push("/books/sales/proforma-invoice");
   } catch (err) {

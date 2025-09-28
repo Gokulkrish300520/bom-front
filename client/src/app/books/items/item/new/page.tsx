@@ -27,9 +27,7 @@ export default function NewItemPage() {
   const [form, setForm] = useState({
     name: "",
     unit: "",
-    description: "",
-    price: "",
-    sku: "",
+    hsn_code: "",
     // sales info
     sales_selling_price: "",
     sales_account: "Sales",
@@ -87,11 +85,16 @@ export default function NewItemPage() {
       setError("Unit is required");
       return;
     }
+    if(!form.hsn_code.trim()) {
+      setError("HSN is required");
+      return;
+    }
 
     // Compose payload conditionally based on checkboxes
     const payload: any = {
       name: form.name,
       unit: form.unit,
+      hsn_code: form.hsn_code,
       
     };
 
@@ -190,6 +193,18 @@ export default function NewItemPage() {
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="block font-medium text-gray-700">
+              HSN/SAC<span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="hsn_code"
+              value={form.hsn_code}
+              onChange={handleChange}
+              className="w-full p-2 mt-2 border border-black rounded-lg focus:ring-2 focus:ring-green-500"
+            />
           </div>
         </div>
 

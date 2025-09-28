@@ -4,7 +4,7 @@ import Link from "next/link";
 export default function ReportsPage() {
   const reports = [
     { name: "Profit and Loss", href: "/books/reports/profit-loss" },
-    { name: "Balance Sheet", href: "/books/reports/balancesheet" },
+    // { name: "Balance Sheet", href: "/books/reports/balancesheet" },
   ];
 
   return (

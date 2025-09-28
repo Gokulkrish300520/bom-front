@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import React from 'react';
 import { useEffect, useMemo, useState } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
-import { generatePDF } from "@/lib/pdf/pdfgenerator";
+import { generateAndDownloadDocument } from '@/lib/document_generator';
 
 
 type Customer = {
@@ -31,6 +32,7 @@ type Customer = {
 type Item = {
   id: number;
   name: string;
+  hsn_code: string;
   sales_selling_price: string;
   sales_description?: string;  // stringified decimal from backend
 };
@@ -38,6 +40,7 @@ type Item = {
 type QuoteItemRow = {
   id: string;
   itemId: number | null;
+  hsn_code?: string;
   name: string;
   qty: number;
   rate: number;
@@ -92,47 +95,53 @@ export default function NewQuote() {
   ].filter(Boolean).join("\n");
 }
 
-  const downloadQuote = () => {
-    if (!customer) return;
+//   const getQuoteDocumentData = () => {
+//     if (!customer) return null;
 
-  const billingAddress = formatAddress(customer, "billing");
-  const shippingAddress = formatAddress(customer, "shipping");
-  // Prepare data, map from your state variables accordingly.
-  const pdfData = {
-    title: "Quote",
-    documentNumber: quoteNumber,
-    documentDate: quoteDate,
-    expiryDate: expiryDate ?? "-",
-    customerName: customer.display_name,
-    billTo: billingAddress,         // Adjust as needed
-    shipTo: shippingAddress,         // Adjust as needed
-    placeOfSupply: "Chennai",     // Example, bind dynamically if available
-    items: quoteItems
-      .filter(item => item.itemId !== null)
-      .map(item => ({
-        name: item.name,
-        hsn: "-", // Add HSN if applicable
-        qty: item.qty,
-        rate: item.rate,
-        sales_description:" ",
-      })),
-    subTotal,
-    taxBreakup: [
-      {
-        label: taxType,
-        pct: taxPct,
-        amount: taxAmount,
-      }
-    ],
-    total,
-    totalInWords: "", // You can integrate a number-to-words utility if needed
-    notes,
-    terms,
-    logo: undefined, // Pass base64 string if you want a logo
-  };
+//   const billingAddress = formatAddress(customer, "billing");
+//   const shippingAddress = formatAddress(customer, "shipping");
+//   // Prepare data, map from your state variables accordingly.
+//   return {
+//     document_number: quoteNumber,
+//     document_date: quoteDate,
+//     expiry_date: expiryDate ?? "-",
+//     customer_name: customer.display_name,
+//     bill_to: billingAddress,         // Adjust as needed
+//     ship_to: shippingAddress,         // Adjust as needed
+//     place_of_supply: "Chennai",     // Example, bind dynamically if available
+//     items: quoteItems
+//       .filter(item => item.itemId !== null)
+//       .map(item => ({
+//         name: item.name,
+//         hsn: "-", // Add HSN if applicable
+//         qty: item.qty,
+//         rate: item.rate,
+//         sales_description: item.sales_description || " ",
+//       })),
+//     sub_total: subTotal.toFixed(2),
+//     tax_breakup: [
+//       {
+//         label: taxType,
+//         pct: taxPct,
+//         amount: taxAmount.toFixed(2),
+//       }
+//     ],
+//     total: total.toFixed(2),
+//     total_in_words: "", // You can integrate a number-to-words utility if needed
+//     notes,
+//     terms,
+//     logo: undefined, // Pass base64 string if you want a logo
+//   };
+// };
 
-  generatePDF(pdfData);
-};
+// const handleDownload = () => {
+//     const data = getQuoteDocumentData();
+//     if (data) {
+//         generateAndDownloadDocument('quote', data);
+//     } else {
+//         alert("Please select a customer to download the quote.");
+//     }
+// };
 
 
   // Load customers
@@ -277,9 +286,6 @@ console.log(itemsList);
         alert(`Failed to save quote: ${JSON.stringify(err)}`);
         return;
       }
-       if (status === "sent") {
-      downloadQuote();  // Trigger PDF download here
-    }
       router.push("/books/sales/quotes");
     } catch (err) {
       alert("Error saving quote.");
@@ -391,6 +397,7 @@ console.log(itemsList);
             <thead className=" text-green-900 bg-green-100">
               <tr>
                 <th className="p-2 text-left">Item</th>
+                <th className="p-2 text-left">Hsn code</th>
                 <th className="p-2 text-left">Quantity</th>
                 <th className="p-2 text-left">Rate</th>
                 <th className="p-2 text-left">Amount</th>
@@ -410,6 +417,7 @@ console.log(itemsList);
                         updateRow(item.id, {
                           itemId: id,
                           name: selectedItem?.name ?? "",
+                          hsn_code: selectedItem?.hsn_code ?? "",
                           rate: selectedItem ? Number(selectedItem.sales_selling_price) : 0,
                           sales_description: selectedItem?.sales_description ?? "",
                         });
@@ -421,6 +429,9 @@ console.log(itemsList);
                       ))}
                     </select>
                   </td>
+                  <td className="p-3 text-left text-gray-700 font-medium text-sm">
+                      {item.hsn_code || "—"}
+                    </td>
                   <td className="p-2">
                     <input
                       type="number"
@@ -510,12 +521,16 @@ console.log(itemsList);
           </button>
           <button
             onClick={() => saveQuote("sent")}
-            
             className="px-4 py-2 text-white bg-green-600 rounded-lg shadow hover:bg-green-700"
           >
             Save and Send
           </button>
-
+          {/* <button
+            onClick={handleDownload}
+            className="px-4 py-2 text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700"
+          >
+            Download PDF
+          </button> */}
           <button onClick={() => router.push("/books/sales/quotes")} className="px-4 py-2 border rounded-lg hover:bg-red-100">
             Cancel
           </button>

@@ -156,9 +156,9 @@ export default function ProformaInvoicesPage() {
         </Link>
       </div>
 
-      <div className="overflow-hidden shadow rounded-xl">
-        <table className="w-full border-collapse">
-          <thead className="text-green-900 bg-green-200">
+      <div className="overflow-hidden bg-white border border-green-100 shadow-sm rounded-xl">
+        <table className="w-full text-sm">
+          <thead className="bg-green-200 text-green-900">
             <tr>
               <th className="p-3 text-left">Date</th>
               <th className="p-3 text-left">Invoice Number</th>
@@ -181,7 +181,7 @@ export default function ProformaInvoicesPage() {
       return (
         <tr
           key={inv.id}
-          className={`${idx % 2 ? "bg-green-100" : "bg-green-50"} border-b`}
+          className="transition border-b hover:bg-green-50"
         >
           <td className="p-3">{formatDate(inv.invoice_date)}</td>
           <td className="p-3">

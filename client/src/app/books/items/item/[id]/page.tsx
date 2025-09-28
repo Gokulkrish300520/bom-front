@@ -13,6 +13,7 @@ type Item = {
   id: number;
   name: string;
   unit: string;
+  hsn_code: string;
   manage_sales_info: boolean;
   sales_selling_price?: string;
   sales_account?: string;
@@ -100,6 +101,10 @@ export default function ItemDetailPage() {
           <div>
             <span className="text-gray-700">Unit:</span>{" "}
             <span className="text-gray-900">{item.unit}</span>
+          </div>
+          <div>
+            <span className="text-gray-700">HSN / SAC:</span>{" "}
+            <span className="text-gray-900">{item.hsn_code}</span>
           </div>
           <div>
             <span className="text-gray-700">Created At:</span>{" "}

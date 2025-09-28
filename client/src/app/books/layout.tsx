@@ -67,12 +67,12 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
         { name: "Inventory Adjustments", href: "/books/items/inventory" },
       ],
     },
-    {
-      name: "Banking",
-      icon: <Banknote size={18} />,
-      subItems: [],
-      href: "/books/banking",
-    },
+    // {
+    //   name: "Banking",
+    //   icon: <Banknote size={18} />,
+    //   subItems: [],
+    //   href: "/books/banking",
+    // },
     {
       name: "Sales",
       icon: <FileText size={18} />,
@@ -123,7 +123,9 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
       {/* Sidebar */}
       <div className="flex flex-col w-64 bg-white border-r border-gray-200">
         <div className="px-4 py-2 border-b border-green-700">
-          <h1 className="text-lg font-semibold text-green-600">Books</h1>
+          <Link href="/books" className="text-lg font-semibold text-green-600 cursor-pointer">
+            Books
+          </Link>
         </div>
 
         {/* Menu */}

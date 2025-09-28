@@ -17,6 +17,7 @@ type ContactPerson = {
 type Item = {
   id: number;
   name: string;
+  hsn_code?: string;
   sales_description?: string;
 };
 
@@ -135,6 +136,15 @@ export default function QuoteDetailPage() {
     fetchQuote();
   }, [id]);
 
+  function getGSTNumber(customFields: {[key: string]: string} | undefined): string | null {
+  if (!customFields) return null;
+  const keys = Object.keys(customFields).map(k => k.toLowerCase().replace(/\s+/g, ""));
+  const gstKey = keys.find(k => k.includes("gst"));
+  if (!gstKey) return null;
+  return customFields[Object.keys(customFields)[keys.indexOf(gstKey)]] || null;
+}
+
+
   if (loading) return <p>Loading quote details...</p>;
   if (error || !quote)
     return <p className="text-red-600">{error || "Quote not found"}</p>;
@@ -169,8 +179,14 @@ export default function QuoteDetailPage() {
         </div>
         <div className="text-sm mt-4">
           Company: {quote.customer.company_name} <br />
+        </div>
+        <div className="text-sm mt-4">
           Type: {quote.customer.customer_type === "business" ? "Business" : "Individual"}
         </div>
+        <div className="text-sm mt-4">
+  GST Number: {getGSTNumber(quote.customer.custom_fields) ?? "N/A"}
+</div>
+
       </div>
 
       {/* Quote Details */}
@@ -280,6 +296,7 @@ export default function QuoteDetailPage() {
             <thead>
               <tr className="text-green-800 bg-green-50">
                 <th className="py-1 font-medium">Item Name</th>
+                <th className="py-1 font-medium">HSN NO</th>
                 <th className="py-1 font-medium">Description</th>
                 <th className="py-1 font-medium">Quantity</th>
                 <th className="py-1 font-medium">Rate</th>
@@ -293,6 +310,7 @@ export default function QuoteDetailPage() {
               return (
               <tr key={idx} className="border-b">
               <td className="text-center align-middle">{item?.name || "..."}</td>
+              <td className="text-center align-middle">{item?.hsn_code || "N/A"}</td>
               <td className="text-center align-middle">{item?.sales_description || "N/A"}</td>
               <td className="text-center align-middle">{detail.quantity}</td>
               <td className="text-center align-middle">{detail.rate}</td>

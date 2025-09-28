@@ -44,6 +44,7 @@ export default function ItemsPage() {
 
       // Remove deleted item from local state
       setItems((prev) => prev.filter((item) => item.id !== id));
+      router.push('/books/items/item'); // Navigate back to items list
     } catch (err) {
       alert(err instanceof Error ? err.message : "Unknown error");
     }
@@ -78,6 +79,7 @@ export default function ItemsPage() {
               <tr className="font-semibold text-green-900 bg-green-200">
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Purchase Description</th>
+                <th className="px-4 py-3">HSN/SAC</th>
                 <th className="px-4 py-3">Purchase Rate</th>
                 <th className="px-4 py-3">Rate</th>
                 <th className="px-4 py-3">Stock on Hand</th>
@@ -94,6 +96,7 @@ export default function ItemsPage() {
                   >
                   <td className="px-4 py-3 font-medium text-green-700">{item.name}</td>
                   <td className="px-4 py-3">{item.purchase_description || "-"}</td>
+                  <td className="px-4 py-3">{item.hsn_code || "-"}</td>
                   <td className="px-4 py-3">
                     {item.purchase_cost_price != null
                       ? `₹${Number(item.purchase_cost_price).toFixed(2)}`
@@ -104,11 +107,14 @@ export default function ItemsPage() {
                   </td>
                   <td className="px-4 py-3">{item.opening_stock ?? "-"}</td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="p-2 text-red-600 rounded hover:bg-red-100"
-                      title="Delete item"
-                    >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // Stops triggering row's onClick
+                      handleDelete(item.id);
+                    }}
+                    className="p-2 text-red-600 rounded hover:bg-red-100"
+                    title="Delete item"
+                  >
                       <Trash2 size={18} />
                     </button>
                   </td>
