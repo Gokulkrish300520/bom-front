@@ -9,12 +9,14 @@ from .serializers import (
     ProformaInvoiceSerializer,
     QuoteSerializer,
     VendorSerializer,
+    DealSerializer
 )
 from .filters_extra import (
     InvoiceFilter,
     ProformaInvoiceFilter,
     DeliveryChallanFilter,
     BillFilter,
+    DealFilter
 )
 from .filters import QuoteFilter
 from .models import (
@@ -28,7 +30,9 @@ from .models import (
     ProformaInvoice,
     Quote,
     Vendor,
+    Deal,
 )
+from django.db.models import F
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -49,7 +53,18 @@ from django.http import JsonResponse
 
 # ...existing code...
 
+class DealViewSet(viewsets.ModelViewSet):
+    queryset = Deal.objects.all()
+    serializer_class = DealSerializer
+    permission_classes = [IsAuthenticated]
 
+    # Optional: filter deals by customer via query param
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        customer_id = self.request.query_params.get('customer_id')
+        if customer_id is not None:
+            queryset = queryset.filter(customer__id=customer_id)
+        return queryset
 class InventoryManagementViewSet(viewsets.ModelViewSet):
     queryset = InventoryManagement.objects.all()
     serializer_class = InventoryManagementSerializer
@@ -278,6 +293,12 @@ class BillViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = BillFilter
+    
+class DealViewSet(viewsets.ModelViewSet):
+    queryset = Deal.objects.all()
+    serializer_class = DealSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = DealFilter
 
 
 class CustomerViewSet(
@@ -332,6 +353,22 @@ class ItemViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
     )  # pylint: disable=no-member,too-many-ancestors
     serializer_class = ItemSerializer
     permission_classes = [permissions.IsAuthenticated]
+    
+class ItemStock(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        low_stock_items = Item.objects.annotate(
+            stock_diff=F('opening_stock') - F('current_stock')
+        ).filter(stock_diff__lt=F('reorder_point'))
+
+        print(f"Low stock items count: {low_stock_items.count()}")
+        for item in low_stock_items:
+            print(f"Item: {item.name}, Stock diff: {item.stock_diff}")
+
+        serializer = ItemSerializer(low_stock_items, many=True)
+        return Response(serializer.data)
+
 
 
 class PaymentViewSet(

@@ -3,6 +3,8 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
+from datetime import date, timedelta
+from django.utils import timezone
 
 
 class DailySummary(models.Model):
@@ -67,84 +69,6 @@ class BillItem(models.Model):
             f"for Bill "
             f"{self.bill.bill_number}"  # pylint: disable=no-member
         )
-
-
-class Bill(models.Model):
-    """Model representing a Bill issued by a Vendor."""
-
-    # ...existing code...
-
-    STATUS_CHOICES = [
-        ("PAID", "Paid"),
-        ("UNPAID", "Unpaid"),
-        ("PARTIAL", "Partial"),
-        ("DRAFT", "Draft"),
-    ]
-    vendor = models.ForeignKey(
-        "Vendor",
-        related_name="bills",
-        on_delete=models.CASCADE,
-    )
-    bill_number = models.CharField(
-        max_length=50,
-        unique=True,
-    )
-    reference_number = models.CharField(
-        max_length=50,
-        blank=True,
-    )
-    status = models.CharField(
-        max_length=10,
-        choices=STATUS_CHOICES,
-        default="DRAFT",
-    )
-    
-    deal_no = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="Deal number referencing the purchase deal for tracking sold item history."
-    )
-    
-    bill_date = models.DateField(db_index=True)
-    due_date = models.DateField()
-    notes = models.TextField(
-        blank=True,
-    )
-    subtotal = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-    )
-    tax = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-    )
-    total_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-    )
-    balance_due = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-    )
-    
-    files = models.ManyToManyField(
-        "CustomerDocument",
-        blank=True,
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-
-    def __str__(self) -> str:
-        """String representation of Bill."""
-        return (
-            f"Bill {self.bill_number} - {self.vendor.display_name}"
-        )  # pylint: disable=no-member
-
 
 class Customer(models.Model):
     def save(self, *args, **kwargs):
@@ -400,6 +324,86 @@ class ContactPerson(models.Model):
         """String representation of ContactPerson."""
         return f"{self.first_name} {self.last_name} ({self.email})"
 
+class Deal(models.Model):
+    deal_no = models.CharField(max_length=10, unique=True)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="deals")
+    start_date = models.DateField(blank=True, null=True)
+    end_date = models.DateField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return self.deal_no
+    
+class Bill(models.Model):
+    """Model representing a Bill issued by a Vendor."""
+
+    # ...existing code...
+
+    STATUS_CHOICES = [
+        ("PAID", "Paid"),
+        ("UNPAID", "Unpaid"),
+        ("PARTIAL", "Partial"),
+        ("DRAFT", "Draft"),
+    ]
+    vendor = models.ForeignKey(
+        "Vendor",
+        related_name="bills",
+        on_delete=models.CASCADE,
+    )
+    bill_number = models.CharField(
+        max_length=50,
+        unique=True,
+    )
+    reference_number = models.CharField(
+        max_length=50,
+        blank=True,
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default="DRAFT",
+    )
+    
+    deal = models.ForeignKey(Deal, on_delete=models.CASCADE, related_name="bills")
+    
+    bill_date = models.DateField(db_index=True)
+    due_date = models.DateField()
+    notes = models.TextField(
+        blank=True,
+    )
+    subtotal = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    tax = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    total_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    balance_due = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    
+    files = models.ManyToManyField(
+        "CustomerDocument",
+        blank=True,
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    def __str__(self) -> str:
+        """String representation of Bill."""
+        return (
+            f"Bill {self.bill_number} - {self.vendor.display_name}"
+        )  # pylint: disable=no-member
 
 class Vendor(models.Model):
     def save(self, *args, **kwargs):
@@ -683,11 +687,7 @@ class Quote(models.Model):
         ],
         default="draft",
     )
-    deal_no = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="Deal number referencing the purchase deal for tracking sold item history."
-    )
+    deal = models.ForeignKey(Deal, on_delete=models.CASCADE, related_name="quotes")
     quote_files = models.ManyToManyField(
         "CustomerDocument",
         blank=True,
@@ -759,11 +759,7 @@ class ProformaInvoice(models.Model):
     reference_number = models.CharField(max_length=50, blank=True)
     invoice_date = models.DateField()
     expiry_date = models.DateField()
-    deal_no = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="Deal number referencing the purchase deal for tracking sold item history."
-    )
+    deal = models.ForeignKey(Deal, on_delete=models.CASCADE, related_name="proforma_invoices")
     salesperson = models.CharField(max_length=100, blank=True)
     project_name = models.CharField(max_length=255, blank=True)
     subject = models.CharField(max_length=255, blank=True)
@@ -876,11 +872,7 @@ class DeliveryChallan(models.Model):
         choices=CHALLAN_TYPE_CHOICES,
         default="others",
     )
-    deal_no = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="Deal number referencing the purchase deal for tracking sold item history."
-    )
+    deal = models.ForeignKey(Deal, on_delete=models.CASCADE, related_name="delivery_challans")
     STATUS_CHOICES = [
         ("draft", "Draft"),
         ("issued", "Issued"),
@@ -965,11 +957,7 @@ class Invoice(models.Model):
     )
     invoice_number = models.CharField(max_length=50, unique=True)
     order_number = models.CharField(max_length=50, blank=True)
-    deal_no = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="Deal number referencing the purchase deal for tracking sold item history."
-    )
+    deal = models.ForeignKey(Deal, on_delete=models.CASCADE, related_name="invoices")
     invoice_date = models.DateField(db_index=True)
     customer_notes = models.TextField(blank=True)
     terms_and_conditions = models.TextField(blank=True)

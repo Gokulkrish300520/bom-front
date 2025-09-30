@@ -15,6 +15,7 @@ from .models import (
     Quote,
     QuoteItem,
     Vendor,
+    Deal
 )
 from rest_framework import serializers
 from .inventory_management_models import (
@@ -23,6 +24,7 @@ from .inventory_management_models import (
 
 
 from rest_framework import serializers
+
 
 class InventoryManagementSerializer(serializers.ModelSerializer):
     adjusted_item = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all())
@@ -310,6 +312,8 @@ class BillSerializer(serializers.ModelSerializer):
     )
     item_details = BillItemSerializer(
         many=True, write_only=True, source="billitem_set")
+    deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
+    deal_id = serializers.PrimaryKeyRelatedField(queryset=Deal.objects.all(), source='deal', write_only=True)
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta options for BillSerializer."""
@@ -322,6 +326,7 @@ class BillSerializer(serializers.ModelSerializer):
             "bill_number",
             "bill_date",
             "deal_no",
+            "deal_id",
             "due_date",
             "reference_number",
             "item_details",
@@ -535,6 +540,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
         write_only=True,
     )
     item_details = InvoiceItemSerializer(many=True)
+    deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
+    deal_id = serializers.PrimaryKeyRelatedField(queryset=Deal.objects.all(), source='deal', write_only=True)
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta options for InvoiceSerializer."""
@@ -547,6 +554,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "invoice_number",
             "order_number",
             "deal_no",
+            "deal_id",
             "invoice_date",
             "due_date",
             "status",
@@ -683,6 +691,9 @@ class QuoteSerializer(serializers.ModelSerializer):
         required=False,
     )
     quote_files = CustomerDocumentSerializer(many=True, read_only=True)
+    
+    deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
+    deal_id = serializers.PrimaryKeyRelatedField(queryset=Deal.objects.all(), source='deal', write_only=True)
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta options for QuoteSerializer."""
@@ -694,6 +705,7 @@ class QuoteSerializer(serializers.ModelSerializer):
             "customer_id",
             "quote_number",
             "deal_no",
+            "deal_id",
             "reference_number",
             "quote_date",
             "expiry_date",
@@ -806,6 +818,8 @@ class ProformaInvoiceSerializer(serializers.ModelSerializer):
         write_only=True,
     )
     item_details = ProformaInvoiceItemSerializer(many=True)
+    deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
+    deal_id = serializers.PrimaryKeyRelatedField(queryset=Deal.objects.all(), source='deal', write_only=True)
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta options for ProformaInvoiceSerializer."""
@@ -817,6 +831,7 @@ class ProformaInvoiceSerializer(serializers.ModelSerializer):
             "customer_id",
             "invoice_number",
             "deal_no",
+            "deal_id",
             "reference_number",
             "invoice_date",
             "expiry_date",
@@ -930,6 +945,8 @@ class DeliveryChallanSerializer(serializers.ModelSerializer):
         required=False,
         default="draft",
     )
+    deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
+    deal_id = serializers.PrimaryKeyRelatedField(queryset=Deal.objects.all(), source='deal', write_only=True)
 
     """Serializer for DeliveryChallan model."""
 
@@ -943,6 +960,7 @@ class DeliveryChallanSerializer(serializers.ModelSerializer):
             "customer_id",
             "challan_number",
             "deal_no",
+            "deal_id",
             "reference_number",
             "date",
             "challan_type",
@@ -1008,3 +1026,12 @@ class DeliveryChallanSerializer(serializers.ModelSerializer):
 
 class InventoryAdjustmentSerializer(serializers.ModelSerializer):
     """Serializer for InventoryAdjustment model."""
+    
+class DealSerializer(serializers.ModelSerializer):
+    customer = CustomerSerializer(read_only=True)
+    customer_id = serializers.PrimaryKeyRelatedField(queryset=Customer.objects.all(),source='customer', write_only=True)
+
+    class Meta:
+        model = Deal
+        fields = ['id', 'deal_no', 'customer', 'customer_id','start_date', 'end_date', 'created_at']
+        read_only_fields = ['id', 'created_at']

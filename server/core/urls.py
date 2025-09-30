@@ -22,16 +22,20 @@ from .views import (
     ProfitAndLossReportView,
     BalanceSheetReportView,
     InventoryManagementViewSet,
+    ItemStock
 )
+from .views import DealViewSet
 
 
 router = DefaultRouter()
+
 
 router.register(
     r"inventory-management",
     InventoryManagementViewSet,
     basename="inventorymanagement",
 )
+router.register(r'deals', DealViewSet)
 router.register(r"customers", CustomerViewSet, basename="customer")
 router.register(r"vendors", VendorViewSet, basename="vendor")
 router.register(r"items", ItemViewSet, basename="item")
@@ -52,6 +56,7 @@ router.register(
 router.register(r"files", CustomerDocumentViewSet, basename="file")
 
 urlpatterns = [
+    path("items/low_stock/", ItemStock.as_view(), name='low_stock_items'),
     path("", include(router.urls)),
     path("banking/", include("server.core.banking.urls")),
     path(

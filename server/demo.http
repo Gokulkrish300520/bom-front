@@ -3,12 +3,12 @@
 
 # List inventory management records
 GET http://localhost:8000/api/inventory-management/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5MDg1MzI3LCJpYXQiOjE3NTkwODQ3MjcsImp0aSI6IjY4ZDg3ZWVkOTg3ZjQ4ZTNhZmM1YzcwY2M0N2I4ODI4IiwidXNlcl9pZCI6IjEifQ.jAzC2API4z77XeSn_1DhBqXruk68J-_q_7jVTkLu59I
+Authorization: Bearer <access_token>
 
 ####
 # Create inventory management record
 POST http://localhost:8000/api/inventory-management/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5MDc5MDAyLCJpYXQiOjE3NTkwNzg0MDIsImp0aSI6ImUzNjA2MDU4YWY4YTRiYjc4OGI3NjQ4NTkwZDkyMzRiIiwidXNlcl9pZCI6IjEifQ.Hhj7Zizjncgdwcqbw1KB7HR0X5Kn6H6qt0JK9tRS2Ys
+Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
@@ -55,9 +55,22 @@ POST http://localhost:8000/api/auth/token/
 Content-Type: application/json
 
 {
-  "username": "Gokul",
-  "password": "Gokul@2005"
+  "username":  "<your_username>",
+  "password": "<your_password>"
 
+}
+
+###
+
+#Deal_no GET operations
+POST http://localhost:8000/api/deals/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "customer_id": 2,
+  "start_date": "2025-09-01",
+  "end_date": "2025-12-31"
 }
 ### BANKING ACCOUNTS CRUD
 # List banking accounts
@@ -226,7 +239,7 @@ Content-Type: application/json
   "last_name": "Doe",
   "company_name": "Acme Corp",
   "display_name": "Acme Corp (John Doe)",
-  "email": "john.doe@acme.com",
+  "email": "john.die@acme.com",
   "work_phone": "1234567890",
   "mobile": "9876543210",
   "pan": "ABCDE1234F",
@@ -315,10 +328,12 @@ Authorization: Bearer <access_token>
 # List vendors
 GET http://localhost:8000/api/vendors/
 Authorization: Bearer <access_token>
+####
 
 # List quotes for a specific customer
-GET http://localhost:8000/api/quotes/?company="Mestrominds"
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4OTQ5Mjg4LCJpYXQiOjE3NTg5NDg2ODgsImp0aSI6ImI3ZmYxMGFhNTc5ODQzMGFiZTYwZDFjMGNlZjcxMjZiIiwidXNlcl9pZCI6IjEifQ.PzgcZD1HtF55zsiO09iN0tezvVVXgPxzJarUvyE2TFI
+GET http://localhost:8000/api/quotes/?deal_no=D-9153984
+Authorization: Bearer <access_token>
+####
 # Create vendor (all fields)
 
 # List invoices for a specific customer
@@ -332,7 +347,7 @@ Content-Type: application/json
 
 
 # List proforma invoices for a specific customer
-GET http://localhost:8000/api/proforma-invoices/?customer_id=1
+GET http://localhost:8000/api/quotes/?customer_id=1
 Authorization: Bearer <access_token>
 {
   "vendor_type": "business",
@@ -423,24 +438,28 @@ Authorization: Bearer <access_token>
 
 # List invoices
 GET http://localhost:8000/api/invoices/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4OTgyOTI0LCJpYXQiOjE3NTg5ODIzMjQsImp0aSI6ImU2MjJiZjc3ZGM4MzQ2MzU4NzVjMDUyY2RlNGYzZmE3IiwidXNlcl9pZCI6IjEifQ.gCcz42AKNZXVNOLtqew8n8vp2RdB-UCJOirOwAO9fBA
+Authorization: Bearer <access_token>
 ####
 
 # Create invoice with attached files (both attached_file_ids and invoice_file_ids)
 POST http://localhost:8000/api/invoices/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4OTgyOTI0LCJpYXQiOjE3NTg5ODIzMjQsImp0aSI6ImU2MjJiZjc3ZGM4MzQ2MzU4NzVjMDUyY2RlNGYzZmE3IiwidXNlcl9pZCI6IjEifQ.gCcz42AKNZXVNOLtqew8n8vp2RdB-UCJOirOwAO9fBA
+Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
   "customer_id": 1,
+  "deal_id": 1,
   "invoice_number": "INV-2025-002",
   "order_number": "ORD-124",
   "invoice_date": "2025-09-04",
+  "item_details": [
+    {"item_id": 1, "quantity": 2, "rate": "5000.00", "amount": "10000.00"}
+],
   "customer_notes": "Thank you for your business.",
   "terms_and_conditions": "Payment due in 30 days.",
   "total_amount": "15500.00",
-  "attached_file_ids": [4, 5],
-  "invoice_file_ids": [1, 2, 3]
+  "attached_file_ids": [1],
+  "invoice_file_ids": [1]
 }
 
 ####
@@ -450,34 +469,34 @@ GET http://localhost:8000/api/invoices/1/
 Authorization: Bearer <access_token>
 
 # Response example:
-# {
-#   "id": 1,
-#   "customer": { ... },
-#   "invoice_number": "INV-2025-001",
-#   "order_number": "ORD-123",
-#   "invoice_date": "2025-08-30",
-#   "due_date": "2025-09-15",
-#   "status": "UNPAID",
-#   "item_details": [
-#     {"id": 1, "item": { ... }, "quantity": 2, "rate": "5000.00", "amount": "10000.00", "invoice_item_number": 1},
-#     {"id": 2, "item": { ... }, "quantity": 1, "rate": "1000.00", "amount": "1000.00", "invoice_item_number": 2}
-#   ],
-#   "customer_notes": "Thank you for your business.",
-#   "terms_and_conditions": "Payment due in 30 days.",
-#   "subtotal_amount": "11000.00",
-#   "gst_amount": "1980.00",
-#   "total_amount": "12980.00",
-#   "attached_files": [
-#     {"id": 4, "file": "/media/customer_documents/file4.pdf", "uploaded_at": "..."},
-#     {"id": 5, "file": "/media/customer_documents/file5.pdf", "uploaded_at": "..."}
-#   ],
-#   "invoice_files": [
-#     {"id": 1, "file": "/media/customer_documents/file1.pdf", "uploaded_at": "..."},
-#     {"id": 2, "file": "/media/customer_documents/file2.pdf", "uploaded_at": "..."},
-#     {"id": 3, "file": "/media/customer_documents/file3.pdf", "uploaded_at": "..."}
-#   ],
-#   "created_at": "2025-08-30T10:00:00Z"
-# }
+{
+"id": 1,
+"customer": { ... },
+"invoice_number": "INV-2025-001",
+"order_number": "ORD-123",
+"invoice_date": "2025-08-30",
+"due_date": "2025-09-15",
+"status": "UNPAID",
+"item_details": [
+{"id": 1, "item": { ... }, "quantity": 2, "rate": "5000.00", "amount": "10000.00", "invoice_item_number": 1},
+{"id": 2, "item": { ... }, "quantity": 1, "rate": "1000.00", "amount": "1000.00", "invoice_item_number": 2}
+],
+"customer_notes": "Thank you for your business.",
+"terms_and_conditions": "Payment due in 30 days.",
+"subtotal_amount": "11000.00",
+"gst_amount": "1980.00",
+"total_amount": "12980.00",
+"attached_files": [
+{"id": 4, "file": "/media/customer_documents/file4.pdf", "uploaded_at": "..."},
+{"id": 5, "file": "/media/customer_documents/file5.pdf", "uploaded_at": "..."}
+   ],
+   "invoice_files": [
+     {"id": 1, "file": "/media/customer_documents/file1.pdf", "uploaded_at": "..."},
+     {"id": 2, "file": "/media/customer_documents/file2.pdf", "uploaded_at": "..."},
+     {"id": 3, "file": "/media/customer_documents/file3.pdf", "uploaded_at": "..."}
+   ],
+   "created_at": "2025-08-30T10:00:00Z"
+ }
 
 ####
 # Update invoice (partial or full, can update attached_file_ids and invoice_file_ids)
@@ -500,14 +519,13 @@ Authorization: Bearer <access_token>
 ### ITEMS CRUD
 
 # List items
-GET http://localhost:8000/api/items/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5MDYxMzQ0LCJpYXQiOjE3NTkwNjA3NDQsImp0aSI6IjcwN2Y3NDQzMGUwMTRmMmFhNDA4OWI3MmJlMjI4MTE4IiwidXNlcl9pZCI6IjEifQ.Oiz_vkinNxtZlAZoJYbyxFLcRpzwObkpoBX3c7mG_9k
-
+GET http://localhost:8000/api/items/low_stock
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5MjE5NzkyLCJpYXQiOjE3NTkyMTkxOTIsImp0aSI6ImMyOGZkMzEzZmE5OTQ0NTRiODlmMDIzMmZiODliNGJhIiwidXNlcl9pZCI6IjEifQ.L2_boi5JXLZmn2LAJ3QqWoCkIKqbHcDXcaMrvqnc3fU
 ####
 
 # Create item (basic)
 POST http://localhost:8000/api/items/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5MDc4ODAyLCJpYXQiOjE3NTkwNzgyMDIsImp0aSI6IjM1MDdkM2JlZGQ4MzQ0MDI5ZWVhNDA1MmZhZDM4OWI1IiwidXNlcl9pZCI6IjEifQ.0uSQXF7HBukf_IYK1C7z8jDjqkIu4_9EI8gtRH1yoFk
+Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
@@ -676,7 +694,7 @@ Authorization: Bearer <access_token>
 ####
 # Create quote (all fields, with items)
 POST http://localhost:8000/api/quotes/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4OTAwOTM0LCJpYXQiOjE3NTg5MDAzMzQsImp0aSI6ImExYmVmYzU2MTU5ZjQ3NjZiZWZlYjk2YzJmYmEwM2U1IiwidXNlcl9pZCI6IjEifQ.8QmClu9hPNWzdKM1ryJDWmcCg3nBujBBG3KZMgpaMEA
+Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
@@ -902,7 +920,7 @@ Authorization: Bearer <access_token>
 ####
 # Create bill (basic fields, with file association)
 POST http://localhost:8000/api/bills/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5MDQ3MTMxLCJpYXQiOjE3NTkwNDY1MzEsImp0aSI6IjU2ZTU1MWZkYmQ3YTRiMWNhYTg0Y2ZlZTA2YzJlMWY5IiwidXNlcl9pZCI6IjEifQ.NXxcSqaQuDWXSGnoY1gidIzNJe94bX0MnXHyveJwo88
+Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
@@ -946,9 +964,9 @@ Authorization: Bearer <access_token>
 
 # List inventory adjustments
 GET http://localhost:8000/api/inventory-adjustments/
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4OTg4MTQ3LCJpYXQiOjE3NTg5ODc1NDcsImp0aSI6Ijk3Y2M2YWQxNGQ5MTQwYmJiY2NhM2FmZmJjMjVkNzFhIiwidXNlcl9pZCI6IjEifQ.J1ls5rnVofB1yuQFAByK8Ikke4Y49FVJ-TI9lkIj7jo
+Authorization: Bearer <access_token>
 
-####
+###
 # Create inventory adjustment
 POST http://localhost:8000/api/inventory-adjustments/
 Authorization: Bearer <access_token>
