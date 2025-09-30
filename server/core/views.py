@@ -54,9 +54,9 @@ from django.http import JsonResponse
 # ...existing code...
 
 class DealViewSet(viewsets.ModelViewSet):
-    queryset = Deal.objects.all()
+    queryset = Deal.objects.all().order_by('id')
     serializer_class = DealSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     # Optional: filter deals by customer via query param
     def get_queryset(self):
