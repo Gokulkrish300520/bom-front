@@ -359,7 +359,7 @@ class ItemStock(APIView):
 
     def get(self, request):
         low_stock_items = Item.objects.annotate(
-            stock_diff=F('opening_stock') - F('current_stock')
+            stock_diff=F('opening_stock') + F('current_stock')
         ).filter(stock_diff__lt=F('reorder_point'))
 
         print(f"Low stock items count: {low_stock_items.count()}")
