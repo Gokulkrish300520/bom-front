@@ -72,7 +72,7 @@ type ProformaInvoice = {
   id: number;
   customer: Customer;
   invoice_number: string;
-  reference_number: string;
+  deal_no: string;
   invoice_date: string;
   expiry_date: string;
   salesperson: string;
@@ -135,9 +135,12 @@ export default function ProformaInvoiceDetailPage() {
           Back
         </button>
       </div>
+      <h6 className="text-xl font-semibold text-green-800">
+          Deal No: {proforma.deal_no}
+        </h6>
 
       {/* Customer Info */}
-      <div className="mb-6">
+      <div className="mb-6 mt-4">
         <h3 className="font-semibold text-green-700 mb-2">Customer Info</h3>
         <div className="flex gap-6 flex-wrap">
           <div className="flex items-center gap-2 text-green-700">
@@ -163,10 +166,6 @@ export default function ProformaInvoiceDetailPage() {
       <div className="mt-6">
         <h3 className="font-semibold text-green-700 mb-2">Proforma Invoice Details</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-          <div>
-            <span className="text-gray-700">Reference Number:</span>{" "}
-            <span className="text-gray-900">{proforma.reference_number}</span>
-          </div>
           <div>
             <span className="text-gray-700">Invoice Date:</span>{" "}
             <span className="text-gray-900">{proforma.invoice_date}</span>

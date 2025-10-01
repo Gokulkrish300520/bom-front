@@ -89,9 +89,14 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
       icon: <ShoppingCart size={18} />,
       subItems: [
         { name: "Vendors", href: "/books/purchase/vendors" },
-        { name: "Bills", href: "/books/purchase/bills" },
+        { name: "GST", href: "/books/purchase/gst" },
+        { name: "Non-GST", href: "/books/purchase/non-gst" },
+        { name: "Freight", href: "/books/purchase/freight" },
+        { name: "Import Bills", href: "/books/purchase/import_bills" },
+        { name: "Duty", href: "/books/purchase/duty" },
+        {name:"Purchase Orders", href:"/books/purchase/bill_order"},
       ],
-    },
+},
     {
       name: "Transactions",
       icon: <Repeat size={18} />,

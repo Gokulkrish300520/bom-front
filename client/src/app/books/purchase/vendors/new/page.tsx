@@ -63,6 +63,21 @@ const CURRENCY_OPTIONS = [
   "ZAR - South African Rand",
 ];
 
+const STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand",
+  "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+  "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan",
+  "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh",
+  "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh",
+  "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir",
+  "Ladakh", "Lakshadweep", "Puducherry"
+];
+
+const COUNTRIES = [
+  "India", "United States", "United Kingdom", "Australia", "Canada", "Singapore", "Germany"
+];
+
 const PAYMENT_TERMS = ["Due on Receipt", "Net 7", "Net 15", "Net 30", "Net 45"];
 
 export default function NewVendorPage() {
@@ -611,13 +626,38 @@ export default function NewVendorPage() {
               <h3 className="mb-4 text-lg font-semibold text-green-700">
                 Billing Address
               </h3>
+              <div className="mb-3">
+        <label className="block mb-1 font-medium text-green-800">Country/Region</label>
+        <select
+          className={inputBase}
+          value={billing.country}
+          onChange={e => updateAddress("billing", "country")(e.target.value)}
+        >
+          <option value="">Select</option>
+          {COUNTRIES.map((country) => (
+            <option key={country} value={country}>{country}</option>
+          ))}
+        </select>
+      </div>
+      {/* State */}
+      <div className="mb-3">
+        <label className="block mb-1 font-medium text-green-800">State</label>
+        <select
+          className={inputBase}
+          value={billing.state}
+          onChange={e => updateAddress("billing", "state")(e.target.value)}
+        >
+          <option value="">Select</option>
+          {STATES.map((state) => (
+            <option key={state} value={state}>{state}</option>
+          ))}
+        </select>
+      </div>
               {[
                 { label: "Attention", field: "attention" as const },
-                { label: "Country/Region", field: "country" as const, isSelect: true },
                 { label: "Street 1", field: "street1" as const },
                 { label: "Street 2", field: "street2" as const },
                 { label: "City", field: "city" as const },
-                { label: "State", field: "state" as const, isSelect: true },
                 { label: "Pin Code", field: "pinCode" as const },
                 { label: "Phone", field: "phone" as const },
                 { label: "Fax Number", field: "fax" as const },
@@ -626,17 +666,6 @@ export default function NewVendorPage() {
                   <label className="block mb-1 font-medium text-green-800">
                     {row.label}
                   </label>
-                  {row.isSelect ? (
-                    <select
-                      className={inputBase}
-                      value={billing[row.field]}
-                      onChange={(e) =>
-                        updateAddress("billing", row.field)(e.target.value)
-                      }
-                    >
-                      <option value="">Select</option>
-                    </select>
-                  ) : (
                     <input
                       type="text"
                       className={inputBase}
@@ -646,7 +675,6 @@ export default function NewVendorPage() {
                         updateAddress("billing", row.field)(e.target.value)
                       }
                     />
-                  )}
                 </div>
               ))}
             </div>
@@ -663,13 +691,39 @@ export default function NewVendorPage() {
                   <FaCopy /> ( Copy billing address )
                 </button>
               </h3>
+              {/* Country/Region */}
+            <div className="mb-3">
+              <label className="block mb-1 font-medium text-green-800">Country/Region</label>
+              <select
+                className={inputBase}
+                value={shipping.country}
+                onChange={e => updateAddress("shipping", "country")(e.target.value)}
+              >
+                <option value="">Select</option>
+                {COUNTRIES.map((country) => (
+                  <option key={country} value={country}>{country}</option>
+                ))}
+              </select>
+            </div>
+            {/* State */}
+            <div className="mb-3">
+              <label className="block mb-1 font-medium text-green-800">State</label>
+              <select
+                className={inputBase}
+                value={shipping.state}
+                onChange={e => updateAddress("shipping", "state")(e.target.value)}
+              >
+                <option value="">Select</option>
+                {STATES.map((state) => (
+                  <option key={state} value={state}>{state}</option>
+                ))}
+              </select>
+            </div>
               {[
                 { label: "Attention", field: "attention" as const },
-                { label: "Country/Region", field: "country" as const, isSelect: true },
                 { label: "Street 1", field: "street1" as const },
                 { label: "Street 2", field: "street2" as const },
                 { label: "City", field: "city" as const },
-                { label: "State", field: "state" as const, isSelect: true },
                 { label: "Pin Code", field: "pinCode" as const },
                 { label: "Phone", field: "phone" as const },
                 { label: "Fax Number", field: "fax" as const },
@@ -678,17 +732,7 @@ export default function NewVendorPage() {
                   <label className="block mb-1 font-medium text-green-800">
                     {row.label}
                   </label>
-                  {row.isSelect ? (
-                    <select
-                      className={inputBase}
-                      value={shipping[row.field]}
-                      onChange={(e) =>
-                        updateAddress("shipping", row.field)(e.target.value)
-                      }
-                    >
-                      <option value="">Select</option>
-                    </select>
-                  ) : (
+  
                     <input
                       type="text"
                       className={inputBase}
@@ -698,7 +742,6 @@ export default function NewVendorPage() {
                         updateAddress("shipping", row.field)(e.target.value)
                       }
                     />
-                  )}
                 </div>
               ))}
             </div>
@@ -734,9 +777,9 @@ export default function NewVendorPage() {
                         >
                           <option value=""></option>
                           <option value="dr">Dr</option>
-  <option value="mr">Mr</option>
-  <option value="ms">Ms</option>
-  <option value="mrs">Mrs</option>
+                          <option value="mr">Mr</option>
+                          <option value="ms">Ms</option>
+                          <option value="mrs">Mrs</option>
                         </select>
                       </td>
                       <td className="px-3 py-2">

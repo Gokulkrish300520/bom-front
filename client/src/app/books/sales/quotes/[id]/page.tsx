@@ -145,7 +145,9 @@ export default function QuoteDetailPage() {
 }
 
 
-  if (loading) return <p>Loading quote details...</p>;
+  if (loading) return <div className="text-center p-6 text-green-700 font-semibold">
+          Loading Quote Details...
+        </div>
   if (error || !quote)
     return <p className="text-red-600">{error || "Quote not found"}</p>;
 

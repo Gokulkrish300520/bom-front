@@ -405,7 +405,9 @@ export default function EditCustomerPage() {
     }
   }
 
-  if (isLoading) return <div className="p-6">Loading...</div>;
+  if (isLoading) return <div className="text-center p-6 text-green-700 font-semibold">
+          Loading Customer Editing...
+        </div>
 
   return (
     <div className="min-h-screen p-6 bg-green-50 sm:p-8">

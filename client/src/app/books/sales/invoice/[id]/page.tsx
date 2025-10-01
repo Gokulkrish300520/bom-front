@@ -72,6 +72,7 @@ type InvoiceItemDetail = {
 type Invoice = {
   id: number;
   customer: Customer;
+  deal_no: string;
   invoice_number: string;
   order_number: string;
   invoice_date: string;
@@ -129,9 +130,12 @@ export default function InvoiceDetailPage() {
           Back
         </button>
       </div>
+      <h5 className="text-xl font-semibold text-green-800">
+         Deal No: {invoice.deal_no}
+        </h5>
 
       {/* Associated Customer Info */}
-      <div className="mb-6">
+      <div className="mb-6 mt-4">
         <h3 className="font-semibold text-green-700 mb-2">Customer Info</h3>
         <div className="flex gap-6">
           <div className="flex items-center gap-2 text-green-700">

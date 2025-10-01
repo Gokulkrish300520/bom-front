@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import React from 'react';
 import { useEffect, useMemo, useState } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
-import { generateAndDownloadDocument } from '@/lib/document_generator';
 
 
 type Customer = {
@@ -33,9 +32,10 @@ type Item = {
   id: number;
   name: string;
   hsn_code: string;
+  sales_description?: string;
   sales_selling_price: string;
-  sales_description?: string;  // stringified decimal from backend
 };
+
 
 type QuoteItemRow = {
   id: string;
@@ -47,26 +47,28 @@ type QuoteItemRow = {
   sales_description?: string;
 };
 
+
 const STORAGE_KEY = "quotes";
+
 
 export default function NewQuote() {
   const router = useRouter();
 
-  // Customers fetched from API
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [customerFetchError, setCustomerFetchError] = useState("");
 
-  // Items fetched from API
   const [itemsList, setItemsList] = useState<Item[]>([]);
   const [loadingItems, setLoadingItems] = useState(true);
+  const currentYear = new Date().getFullYear();
 
-  // Form state
+  // Form states
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | "">("");
   const [customerName, setCustomerName] = useState("");
   const [quoteNumber, setQuoteNumber] = useState("Q-" + (Math.floor(Date.now() / 1000) % 100000));
-  const [reference, setReference] = useState("REF-" + (Math.floor(Date.now() / 1000) % 10000000));
+  const [dealno, setDealno] = useState("D-" + (Math.floor(Date.now() / 1000) % 10000000));
+  const [lastDealId, setLastDealId] = useState(0);
   const [quoteDate, setQuoteDate] = useState(new Date().toISOString().slice(0, 10));
   const [expiryDate, setExpiryDate] = useState("");
   const [salesperson, setSalesperson] = useState("");
@@ -83,68 +85,28 @@ export default function NewQuote() {
   const [taxPct, setTaxPct] = useState(0);
   const [taxType, setTaxType] = useState<"TDS" | "TCS">("TDS");
   const [adjustment, setAdjustment] = useState(0);
-  
+
   function formatAddress(cust: Customer, type: "billing" | "shipping") {
-  return [
-    cust[`${type}_attention`],
-    cust[`${type}_street1`],
-    cust[`${type}_street2`],
-    `${cust[`${type}_city`]}, ${cust[`${type}_state`]} ${cust[`${type}_pin_code`]}`,
-    cust[`${type}_country`],
-    cust[`${type}_phone`] ? `Phone: ${cust[`${type}_phone`]}` : null,
-  ].filter(Boolean).join("\n");
-}
+    return [
+      cust[`${type}_attention`],
+      cust[`${type}_street1`],
+      cust[`${type}_street2`],
+      `${cust[`${type}_city`]}, ${cust[`${type}_state`]} ${cust[`${type}_pin_code`]}`,
+      cust[`${type}_country`],
+      cust[`${type}_phone`] ? `Phone: ${cust[`${type}_phone`]}` : null,
+    ].filter(Boolean).join("\n");
+  }
 
-//   const getQuoteDocumentData = () => {
-//     if (!customer) return null;
+  useEffect(() => {
+    const storedId = localStorage.getItem(`lastDealId-${currentYear}`);
+    setLastDealId(storedId ? Number(storedId) : 0);
+  }, [currentYear]);
 
-//   const billingAddress = formatAddress(customer, "billing");
-//   const shippingAddress = formatAddress(customer, "shipping");
-//   // Prepare data, map from your state variables accordingly.
-//   return {
-//     document_number: quoteNumber,
-//     document_date: quoteDate,
-//     expiry_date: expiryDate ?? "-",
-//     customer_name: customer.display_name,
-//     bill_to: billingAddress,         // Adjust as needed
-//     ship_to: shippingAddress,         // Adjust as needed
-//     place_of_supply: "Chennai",     // Example, bind dynamically if available
-//     items: quoteItems
-//       .filter(item => item.itemId !== null)
-//       .map(item => ({
-//         name: item.name,
-//         hsn: "-", // Add HSN if applicable
-//         qty: item.qty,
-//         rate: item.rate,
-//         sales_description: item.sales_description || " ",
-//       })),
-//     sub_total: subTotal.toFixed(2),
-//     tax_breakup: [
-//       {
-//         label: taxType,
-//         pct: taxPct,
-//         amount: taxAmount.toFixed(2),
-//       }
-//     ],
-//     total: total.toFixed(2),
-//     total_in_words: "", // You can integrate a number-to-words utility if needed
-//     notes,
-//     terms,
-//     logo: undefined, // Pass base64 string if you want a logo
-//   };
-// };
+  useEffect(() => {
+    const newDealno = `D-${currentYear}-${String(lastDealId + 1).padStart(2, "0")}`;
+    setDealno(newDealno);
+  }, [lastDealId, currentYear]);
 
-// const handleDownload = () => {
-//     const data = getQuoteDocumentData();
-//     if (data) {
-//         generateAndDownloadDocument('quote', data);
-//     } else {
-//         alert("Please select a customer to download the quote.");
-//     }
-// };
-
-
-  // Load customers
   useEffect(() => {
     async function loadCustomers() {
       try {
@@ -153,7 +115,7 @@ export default function NewQuote() {
         const data = await res.json();
         setCustomers(data.results || []);
         setCustomerFetchError("");
-      } catch (e) {
+      } catch {
         setCustomerFetchError("Failed to load customers");
       } finally {
         setLoadingCustomers(false);
@@ -162,7 +124,6 @@ export default function NewQuote() {
     loadCustomers();
   }, []);
 
-  // Load items
   useEffect(() => {
     async function loadItems() {
       try {
@@ -170,48 +131,45 @@ export default function NewQuote() {
         if (!res.ok) throw new Error("Failed to fetch items");
         const data = await res.json();
         setItemsList(data.results || []);
-      } catch (e) {
-        console.error("Failed to load items", e);
+      } catch {
+        // handle error if desired
       } finally {
         setLoadingItems(false);
       }
     }
     loadItems();
   }, []);
-console.log(itemsList);
 
-    useEffect(() => {
-  if (!selectedCustomerId) {
-    setCustomer(null);
-    setCustomerName("");
-    return;
-  }
-  async function fetchCustomerDetails() {
-    try {
-      const res = await fetchWithAuth(`https://web-production-6baf3.up.railway.app/api/customers/${selectedCustomerId}/`);
-      if (!res.ok) throw new Error("Failed to fetch customer details");
-      const data = await res.json();
-      setCustomer(data);
-      setCustomerName(data.display_name);
-    } catch (e) {
-      console.error("Error loading customer details", e);
+  useEffect(() => {
+    if (!selectedCustomerId) {
       setCustomer(null);
+      setCustomerName("");
+      return;
     }
-  }
-  fetchCustomerDetails();
-}, [selectedCustomerId]);
 
-  // Keep customerName synced with selectedCustomerId
+    async function fetchCustomerDetails() {
+      try {
+        const res = await fetchWithAuth(`https://web-production-6baf3.up.railway.app/api/customers/${selectedCustomerId}/`);
+        if (!res.ok) throw new Error("Failed to fetch customer details");
+        const data = await res.json();
+        setCustomer(data);
+        setCustomerName(data.display_name);
+      } catch {
+        setCustomer(null);
+      }
+    }
+    fetchCustomerDetails();
+  }, [selectedCustomerId]);
+
   useEffect(() => {
     if (!selectedCustomerId) {
       setCustomerName("");
-    } else {
-      const cust = customers.find(c => c.id === selectedCustomerId);
-      setCustomerName(cust?.display_name ?? "");
+      return;
     }
+    const cust = customers.find(c => c.id === selectedCustomerId);
+    setCustomerName(cust?.display_name ?? "");
   }, [selectedCustomerId, customers]);
 
-  // Computed totals
   const subTotal = useMemo(() => {
     return quoteItems.reduce((sum, item) => sum + (item.qty * item.rate), 0);
   }, [quoteItems]);
@@ -225,7 +183,6 @@ console.log(itemsList);
 
   const total = useMemo(() => subTotal - discountAmount + taxAmount + adjustment, [subTotal, discountAmount, taxAmount, adjustment]);
 
-  // Handlers
   const addRow = () => {
     setQuoteItems(curr => [...curr, { id: crypto.randomUUID(), itemId: null, name: "", qty: 1, rate: 0 }]);
   };
@@ -238,60 +195,84 @@ console.log(itemsList);
     setQuoteItems(curr => curr.map(row => row.id === id ? { ...row, ...patch } : row));
   };
 
-  // Save quote handler
-  const saveQuote = async (status: "draft" | "sent") => {
+  async function saveQuote(status: 'draft' | 'sent') {
     if (!selectedCustomerId) {
       alert("Please select a customer");
       return;
     }
+    if (!dealno) {
+      alert("Please enter deal number");
+      return;
+    }
+    if (!quoteDate || !expiryDate) {
+      alert("Please enter start and end date");
+      return;
+    }
 
-    // Prepare payload matching Django model expectations
-    const payload = {
-      customer_id: selectedCustomerId,
-      quote_number: quoteNumber,
-      reference_number: reference,
-      quote_date: quoteDate,
-      expiry_date: expiryDate,
-      salesperson,
-      project_name: projectName,
-      subject,
-      customer_notes: notes,
-      terms_and_conditions: terms,
-      subtotal: subTotal.toFixed(2),
-      discount: discountPct.toFixed(2),
-      tax_type: taxType,
-      tax_percentage: taxPct.toString(),
-      adjustment: adjustment.toFixed(2),
-      total_amount: total.toFixed(2),
-      status,
-      item_details: quoteItems
-        .filter(item => item.itemId !== null)
-        .map(item => ({
-          item_id: item.itemId,
+    try {
+      // Post deal info first
+      const dealRes = await fetchWithAuth("https://web-production-6baf3.up.railway.app/api/deals/", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_id: selectedCustomerId, deal_no: dealno, start_date: quoteDate, end_date: expiryDate })
+      });
+
+      if (!dealRes.ok) {
+        const err = await dealRes.json();
+        alert(`Failed to create deal: ${JSON.stringify(err)}`);
+        return;
+      }
+
+      const dealData = await dealRes.json();
+
+      // Post quote with deal_id returned by backend
+      const payload = {
+        customer_id: selectedCustomerId,
+        deal_id: dealData.id,
+        quote_number: quoteNumber,
+        quote_date: quoteDate,
+        expiry_date: expiryDate,
+        salesperson,
+        project_name: projectName,
+        subject,
+        customer_notes: notes,
+        terms: terms,
+        subtotal: subTotal.toFixed(2),
+        discount: discountPct.toFixed(2),
+        tax_type: taxType,
+        tax_percentage: taxPct.toString(),
+        adjustment: adjustment,
+        total_amount: total.toFixed(2),
+        status,
+        item_details: quoteItems.filter(item => item.itemId).map(item => ({
+          item_id: item.itemId!,
           quantity: item.qty,
           rate: item.rate,
           amount: (item.qty * item.rate).toFixed(2),
-          sales_description: item.sales_description || "",
-        }))
-    };
+          sales_description: item.sales_description ?? '',
+        })),
+      };
 
-    try {
-      const res = await fetchWithAuth("https://web-production-6baf3.up.railway.app/api/quotes/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const quoteRes = await fetchWithAuth("https://web-production-6baf3.up.railway.app/api/quotes/", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
-      if (!res.ok) {
-        const err = await res.json();
+
+      if (!quoteRes.ok) {
+        const err = await quoteRes.json();
         alert(`Failed to save quote: ${JSON.stringify(err)}`);
         return;
       }
+
+      alert("Quote saved successfully");
       router.push("/books/sales/quotes");
-    } catch (err) {
-      alert("Error saving quote.");
-      console.error(err);
+
+    } catch (error) {
+      alert("An error occurred. Please try again.");
+      console.error(error);
     }
-  };
+  }
 
 
   return (
@@ -331,11 +312,11 @@ console.log(itemsList);
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
           <div>
-            <label className="block font-medium text-green-700 mb-1">Reference Number</label>
+            <label className="block font-medium text-green-700 mb-1">Deal No</label>
             <input
               type="text"
-              value={reference}
-              onChange={e => setReference(e.target.value)}
+              value={dealno}
+              onChange={e => setDealno(e.target.value)}
               className="w-full border border-green-300 rounded px-3 py-2"
             />
           </div>

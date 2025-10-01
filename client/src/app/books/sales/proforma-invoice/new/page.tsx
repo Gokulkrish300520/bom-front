@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
-import { generatePDF } from "@/lib/pdf/pdfgenerator";
 
 type Customer = {
   id: number;
@@ -40,6 +39,11 @@ type ProformaItemRow = {
   rate: number;
 };
 
+type DealType = {
+  id: number;
+  deal_no: string;
+};
+
 export default function NewProformaInvoice() {
   const router = useRouter();
 
@@ -47,6 +51,8 @@ export default function NewProformaInvoice() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [customerFetchError, setCustomerFetchError] = useState("");
+  const [customerDeals, setCustomerDeals] = useState<DealType[]>([]);
+  const [selectedDealId, setSelectedDealId] = useState<number | "">("");
 
   // Items fetched from API
   const [itemsList, setItemsList] = useState<Item[]>([]);
@@ -73,6 +79,30 @@ export default function NewProformaInvoice() {
   const [taxPct, setTaxPct] = useState(0);
   const [taxType, setTaxType] = useState<"TDS" | "TCS">("TDS");
   const [adjustment, setAdjustment] = useState(0);
+
+  useEffect(() => {
+  if (!selectedCustomerId) {
+    setCustomerDeals([]);
+    setSelectedDealId("");
+    return;
+  }
+  async function loadCustomerDeals() {
+    try {
+      const res = await fetchWithAuth(
+        `https://web-production-6baf3.up.railway.app/api/deals/?customer_id=${selectedCustomerId}`
+      );
+      const data = await res.json();
+      setCustomerDeals(data.results || []);
+      setSelectedDealId(""); // reset
+    } catch (err) {
+      setCustomerDeals([]);
+      setSelectedDealId("");
+    }
+  }
+  loadCustomerDeals();
+}, [selectedCustomerId]);
+
+  
 
   // Load customers
   useEffect(() => {
@@ -176,7 +206,7 @@ export default function NewProformaInvoice() {
   const payload = {
     customer_id: selectedCustomerId,
     invoice_number: invoiceNumber,
-    reference_number: reference,
+    deal_id : selectedDealId || null,
     invoice_date: invoiceDate,
     expiry_date: expiryDate,
     salesperson,
@@ -216,36 +246,6 @@ export default function NewProformaInvoice() {
       return;
     }
 
-    // Uncomment and use PDF generation and navigation if needed
-    // if (saveStatus === "sent") {
-    //   const customerObj = customers.find((c) => c.id === selectedCustomerId);
-    //   const billTo = customerObj ? formatAddress(customerObj, "billing") : "";
-    //   const shipTo = customerObj ? formatAddress(customerObj, "shipping") : "";
-
-    //   generatePDF({
-    //     title: "PROFORMA",
-    //     documentNumber: invoiceNumber,
-    //     documentDate: invoiceDate,
-    //     expiryDate,
-    //     customerName,
-    //     billTo,
-    //     shipTo,
-    //     placeOfSupply: "",
-    //     items: proformaItems.map((item) => ({
-    //       name: item.name,
-    //       qty: item.qty,
-    //       rate: item.rate,
-    //       sales_description: "",
-    //     })),
-    //     subTotal,
-    //     taxBreakup: [{ label: taxType, pct: taxPct, amount: taxAmount }],
-    //     total,
-    //     totalInWords: `Indian Rupees ${total.toFixed(2)} Only`,
-    //     notes,
-    //     terms,
-    //     logo: "", // Provide logo base64 if available
-    //   });
-    // }
 
     router.push("/books/sales/proforma-invoice");
   } catch (err) {
@@ -300,21 +300,26 @@ export default function NewProformaInvoice() {
               className="w-full border border-green-300 rounded px-3 py-2"
             />
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          {customerDeals.length > 0 && (
           <div>
             <label className="block font-medium text-green-700 mb-1">
-              Reference Number
+              Deal No
             </label>
-            <input
-              type="text"
-              value={reference}
-              onChange={e => setReference(e.target.value)}
+            <select
+              value={selectedDealId}
+              onChange={e => setSelectedDealId(Number(e.target.value))}
               className="w-full border border-green-300 rounded px-3 py-2"
-            />
+            >
+              <option value="">Select Deal</option>
+              {customerDeals.map(deal => (
+                <option key={deal.id} value={deal.id}>
+                  {deal.deal_no}
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="grid grid-cols-2 gap-6">
+        )}
+        <div></div>
             <div>
               <label className="block font-medium text-green-700 mb-1">
                 Invoice Date
@@ -337,7 +342,6 @@ export default function NewProformaInvoice() {
                 className="w-full border border-green-300 rounded px-3 py-2"
               />
             </div>
-          </div>
           <div>
             <label className="block font-medium text-green-700 mb-1">
               Salesperson

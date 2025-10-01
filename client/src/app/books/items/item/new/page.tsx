@@ -28,6 +28,7 @@ export default function NewItemPage() {
     name: "",
     unit: "",
     hsn_code: "",
+    item_no:"",
     // sales info
     sales_selling_price: "",
     sales_account: "Sales",
@@ -48,6 +49,11 @@ export default function NewItemPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  
+  const generateMockEciNo = () => {
+    const randomNum = Math.floor(100000 + Math.random() * 900000);
+    return `I-${randomNum}`;
+  };
 
   useEffect(() => {
     async function fetchVendors() {
@@ -63,6 +69,13 @@ export default function NewItemPage() {
     fetchVendors();
   }, []);
 
+  useEffect(() => {
+    setForm((prev) => ({
+      ...prev,
+      item_no: generateMockEciNo(),
+    }));
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -73,7 +86,8 @@ export default function NewItemPage() {
     else if (field === "managePurchaseInfo") setManagePurchaseInfo(checked);
     else if (field === "trackInventory") setTrackInventory(checked);
   };
-
+  
+  
   const handleSave = async () => {
     setError("");
 
@@ -89,12 +103,17 @@ export default function NewItemPage() {
       setError("HSN is required");
       return;
     }
+    if(!form.item_no.trim()) {
+      setError("HSN is required");
+      return;
+    }
 
     // Compose payload conditionally based on checkboxes
     const payload: any = {
       name: form.name,
       unit: form.unit,
       hsn_code: form.hsn_code,
+      item_no: form.item_no,
       
     };
 
@@ -205,6 +224,20 @@ export default function NewItemPage() {
               onChange={handleChange}
               className="w-full p-2 mt-2 border border-black rounded-lg focus:ring-2 focus:ring-green-500"
             />
+          </div>
+          <div>
+            <label className="block font-medium text-gray-700">
+              ECI_NO<span className="text-red-500">*</span>
+            </label>
+            {/* 3. FIX: Changed name/value to item_no and disabled the input */}
+            <input
+            type="text"
+            name="item_no"
+            value={form.item_no}
+            onChange={handleChange}
+            disabled // user cannot edit manually, but value will be posted
+            className="w-full p-2 mt-2 border border-black rounded-lg focus:ring-2 focus:ring-green-500"
+          />
           </div>
         </div>
 
@@ -339,35 +372,7 @@ export default function NewItemPage() {
               <p className="mb-4 text-sm text-gray-500">
                 You cannot enable/disable inventory tracking once you've created transactions for this item
               </p>
-
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
-                  <label className="block font-medium text-gray-700">Inventory Account</label>
-                  <select
-                    name="inventory_account"
-                    value={form.inventory_account}
-                    onChange={handleChange}
-                    className="w-full p-2 mt-2 border  border-black rounded-lg focus:ring-2 focus:ring-green-500"
-                  >
-                    <option value="">Select an account</option>
-                    <option value="Inventory">Inventory</option>
-                    {/* Add more accounts as you like */}
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-medium text-gray-700">Inventory Valuation Method</label>
-                  <select
-                    name="inventory_valuation_method"
-                    value={form.inventory_valuation_method}
-                    onChange={handleChange}
-                    className="w-full p-2 mt-2 border  border-black rounded-lg focus:ring-2 focus:ring-green-500"
-                  >
-                    <option value="">Select Method</option>
-                    <option value="FIFO">FIFO</option>
-                    <option value="LIFO">LIFO</option>
-                    {/* Add more methods if needed */}
-                  </select>
-                </div>
                 <div>
                   <label className="block font-medium text-gray-700">Opening Stock</label>
                   <input
@@ -416,7 +421,7 @@ export default function NewItemPage() {
             onClick={handleSave}
             className="px-6 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
           >
-            {loading ? "Saving..." : "Save"}
+            {loading ? "Updating..." : "Save Adjustment"}
           </button>
         </div>
       </div>

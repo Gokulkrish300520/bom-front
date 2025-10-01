@@ -162,7 +162,9 @@ export default function CustomerDetailPage() {
     fetchCustomer();
   }, [id]);
 
-  if (loading) return <p>Loading customer details...</p>;
+  if (loading) return <div className="text-center p-6 text-green-700 font-semibold">
+          Loading Customer Details...
+        </div>
   if (error || !customer)
     return <p className="text-red-600">{error || "Customer not found"}</p>;
 

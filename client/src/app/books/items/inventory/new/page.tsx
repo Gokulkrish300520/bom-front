@@ -1,191 +1,285 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { fetchWithAuth } from "@/auth/tokenservice";
 
-type Row = {
-  description: string;
-  qty: number;
-  adjustment: number;
-  amount: number;
+const ITEMS_API = "https://web-production-6baf3.up.railway.app/api/items/";
+const ITEM_DETAIL_API = (id: number) =>
+  `https://web-production-6baf3.up.railway.app/api/items/${id}`;
+
+type Item = {
+  id: number;
+  name: string;
+  unit: string;
+  hsn_code: string;
+  reorder_point: number | null;
+  sales_description: string | null;
+  available_qty: number;
+  selling_price: number;
+  purchase_price: number;
 };
 
-export default function NewItemPage() {
+export default function InventoryAdjustmentPage() {
   const router = useRouter();
-  const [rows, setRows] = useState<Row[]>([
-    { description: "", qty: 1, adjustment: 0, amount: 0 },
-  ]);
+  const [items, setItems] = useState<Item[]>([]);
+  const [selectedId, setSelectedId] = useState<number | "">("");
+  const [selected, setSelected] = useState<Item | null>(null);
+  const [newSellingPrice, setNewSellingPrice] = useState<number | "">("");
+  const [newPurchasePrice, setNewPurchasePrice] = useState<number | "">("");
+  const [updatedBy, setUpdatedBy] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [addQty, setAddQty] = useState<string | number>("");
+  const convertToNumber = (value: string | number | null | undefined): number => {
+  if (value === null || value === undefined || value === "") return 0;
+  const num = Number(value);
+  return isNaN(num) ? 0 : num;
+};
 
-  const addRow = () => {
-    setRows([...rows, { description: "", qty: 1, adjustment: 0, amount: 0 }]);
-  };
 
-  // ✅ Use keyof Row instead of string
-  const updateRow = <K extends keyof Row>(index: number, field: K, value: Row[K]) => {
-    const updated = [...rows];
-    updated[index][field] = value;
-    setRows(updated);
+
+  // Fetch items list and map API fields to frontend model
+  useEffect(() => {
+    fetchWithAuth(ITEMS_API)
+      .then((res) => res.json())
+      .then((data) => {
+        const mappedItems = data.results.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          unit: item.unit,
+          sales_description: item.sales_description,
+          reorder_point: item.reorder_point,
+          hsn_code: item.hsn_code,
+          available_qty: Number(item.opening_stock),
+          selling_price: Number(item.sales_selling_price),
+          purchase_price: Number(item.purchase_cost_price),
+        }));
+        setItems(mappedItems);
+      });
+  }, []);
+
+  // Fetch selected item details and map
+  useEffect(() => {
+    if (selectedId) {
+      fetchWithAuth(ITEM_DETAIL_API(selectedId))
+        .then((res) => res.json())
+        .then((item: any) => {
+          const mappedItem: Item = {
+            id: item.id,
+            name: item.name,
+            unit: item.unit,
+            sales_description: item.sales_description,
+            reorder_point: item.reorder_point,
+            hsn_code: item.hsn_code,
+            available_qty: convertToNumber(item.opening_stock),
+            selling_price: convertToNumber(item.sales_selling_price),
+            purchase_price: convertToNumber(item.purchase_cost_price),
+          };
+          setSelected(mappedItem);
+        });
+    } else {
+      setSelected(null);
+    }
+  }, [selectedId]);
+
+  const handleSubmit = async () => {
+    if (!selected) return;
+
+    setLoading(true);
+
+
+    const qtyToAdd = addQty === "" ? 0 : Number(addQty);
+    const payload: Record<string, any> = {
+      add_qty: qtyToAdd,
+      updated_by: updatedBy,
+    };
+
+    if (newSellingPrice !== "") payload.selling_price = newSellingPrice;
+    if (newPurchasePrice !== "") payload.purchase_price = newPurchasePrice;
+
+
+    setLoading(false);
+
+    try {
+          const payload = {
+      adjusted_item: selectedId,                                 // must be number (item ID)
+      added_restocked_quantity: addQty === "" ? 0 : Number(addQty),
+      old_selling_price: selected ? convertToNumber(selected.selling_price) : 0,
+      updated_selling_price: newSellingPrice === "" 
+        ? (selected ? convertToNumber(selected.selling_price) : 0) 
+        : Number(newSellingPrice),
+      old_purchase_price: selected ? convertToNumber(selected.purchase_price) : 0,
+      updated_purchase_price: newPurchasePrice === "" 
+        ? (selected ? convertToNumber(selected.purchase_price) : 0) 
+        : Number(newPurchasePrice),
+    };
+
+
+      const response = await fetchWithAuth("https://web-production-6baf3.up.railway.app/api/inventory-management/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        setSuccess(true);
+        setTimeout(() => {
+          setSuccess(false);
+          router.push("/books/items/inventory");
+        }, 1200);
+      } else {
+        alert("Error updating inventory. Please try again.");
+      }
+    } catch (error) {
+      setLoading(false);
+      alert("Network error: " + error);
+    }
   };
 
   return (
     <div className="min-h-screen p-6 bg-green-50">
-      {/* Form Container */}
-      <div className="p-6 bg-white shadow-md rounded-xl">
-        <h2 className="mb-4 text-2xl font-semibold text-green-700">New Item</h2>
+      <div className="p-6 bg-white shadow-md rounded-xl max-w-xxl mx-auto">
+        <h2 className="mb-4 text-2xl font-semibold text-green-700">Inventory Adjustment</h2>
 
-        {/* Item Details */}
-        <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-green-700">Item Name</label>
-            <input
-              type="text"
-              className="w-full p-2 mt-1 border rounded-lg focus:ring-2 focus:ring-green-500"
-              placeholder="Enter item name"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-green-700">Unit</label>
-            <select className="w-full p-2 mt-1 border rounded-lg focus:ring-2 focus:ring-green-500">
-              <option>Select unit</option>
-              <option>Nos</option>
-              <option>Kgs</option>
-              <option>Liters</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-green-700">Type</label>
-            <select className="w-full p-2 mt-1 border rounded-lg focus:ring-2 focus:ring-green-500">
-              <option>Goods</option>
-              <option>Service</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-green-700">HSN Code</label>
-            <input
-              type="text"
-              className="w-full p-2 mt-1 border rounded-lg focus:ring-2 focus:ring-green-500"
-              placeholder="Enter HSN code"
-            />
-          </div>
-        </div>
-
-        {/* Description */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-green-700">Description</label>
-          <textarea
-            className="w-full p-2 mt-1 border rounded-lg focus:ring-2 focus:ring-green-500"
-            rows={3}
-            placeholder="Enter description"
-          ></textarea>
-        </div>
-
-        {/* Item Table */}
-        <h3 className="mb-2 text-lg font-semibold text-green-700">Item Details</h3>
-        <table className="w-full mb-4 border rounded-lg">
-          <thead className="bg-green-100">
-            <tr>
-              <th className="p-2 text-left border">Description</th>
-              <th className="p-2 text-left border">Qty</th>
-              <th className="p-2 text-left border">Adjustment</th>
-              <th className="p-2 text-left border">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, index) => (
-              <tr key={index} className="border-t">
-                <td className="p-2 border">
-                  <input
-                    type="text"
-                    value={row.description}
-                    onChange={(e) => updateRow(index, "description", e.target.value)}
-                    className="w-full p-1 border rounded focus:ring-2 focus:ring-green-500"
-                    placeholder="Item description"
-                  />
-                </td>
-                <td className="p-2 border">
-                  <input
-                    type="number"
-                    value={row.qty}
-                    onChange={(e) => updateRow(index, "qty", Number(e.target.value))}
-                    className="w-20 p-1 border rounded focus:ring-2 focus:ring-green-500"
-                  />
-                </td>
-                <td className="p-2 border">
-                  <input
-                    type="number"
-                    value={row.adjustment}
-                    onChange={(e) => updateRow(index, "adjustment", Number(e.target.value))}
-                    className="w-24 p-1 border rounded focus:ring-2 focus:ring-green-500"
-                  />
-                </td>
-                <td className="p-2 border">
-                  <input
-                    type="number"
-                    value={row.amount}
-                    onChange={(e) => updateRow(index, "amount", Number(e.target.value))}
-                    className="w-28 p-1 border rounded focus:ring-2 focus:ring-green-500"
-                  />
-                </td>
-              </tr>
+        {/* Item Selection */}
+        <div className="mb-4">
+          <label className="block mb-1 text-sm font-medium text-green-700">
+            Select Item
+          </label>
+          <select
+            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value === "" ? "" : Number(e.target.value))}
+          >
+            <option value="">Choose an item</option>
+            {items.map((item) => (
+              <option value={item.id} key={item.id}>
+                {item.name}
+              </option>
             ))}
-          </tbody>
-        </table>
-
-        <button
-          onClick={addRow}
-          className="flex items-center mb-6 text-green-600 hover:text-green-800"
-        >
-          <Plus className="w-5 h-5 mr-1" />
-          Add Row
-        </button>
-
-        {/* Pricing Section */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-green-700">Selling Price</label>
-            <input
-              type="number"
-              className="w-full p-2 mt-1 border rounded-lg focus:ring-2 focus:ring-green-500"
-              placeholder="Enter selling price"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-green-700">Purchase Price</label>
-            <input
-              type="number"
-              className="w-full p-2 mt-1 border rounded-lg focus:ring-2 focus:ring-green-500"
-              placeholder="Enter purchase price"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-green-700">Tax</label>
-            <select className="w-full p-2 mt-1 border rounded-lg focus:ring-2 focus:ring-green-500">
-              <option>18%</option>
-              <option>12%</option>
-              <option>5%</option>
-              <option>0%</option>
-            </select>
-          </div>
+          </select>
         </div>
 
-        {/* Submit Buttons */}
-        <div className="flex justify-end mt-8 space-x-3">
+        {/* Show details only if item is selected */}
+        {selected && (
+          <div className="mb-6 p-4 rounded-lg bg-green-100">
+            <div className="mb-4">
+                <div className="text-xs font-semibold text-green-600">Product Description</div>
+                <div className="text-green-900">{selected.sales_description}</div>
+              </div>
+            <div className="grid grid-cols-2 gap-4 mb-2">
+              <div>
+                <div className="text-xs font-semibold text-green-600">HSN Code</div>
+                <div className="text-green-900">{selected.hsn_code}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-green-600">Unit</div>
+                <div className="text-green-900">{selected.unit}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-green-600">Available Qty</div>
+                <div className="text-green-900">{selected.available_qty}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-green-600">Reorder_point</div>
+                <div className="text-green-900">{selected.reorder_point}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-green-600">Selling Price</div>
+                <div className="text-green-900">{selected.selling_price}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-green-600">Purchase Price</div>
+                <div className="text-green-900">{selected.purchase_price}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Adjustment Form */}
+        {selected && (
+          <>
+            
+            <div className="mb-4">
+              <label className="block mb-1 text-sm font-medium text-green-700">Add Restocked Quantity</label>
+              <input
+              type="number"
+              min={0}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+              value={addQty}
+              onChange={(e) => setAddQty(e.target.value === "" ? "" : Number(e.target.value))}
+              placeholder="Enter quantity to add"
+            />
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 text-sm font-medium text-green-700">
+                Updated Selling Price
+              </label>
+              <input
+                type="number"
+                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                value={newSellingPrice}
+                onChange={(e) =>
+                  setNewSellingPrice(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                placeholder={`Current: ${selected.selling_price}`}
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 text-sm font-medium text-green-700">
+                Updated Purchase Price
+              </label>
+              <input
+                type="number"
+                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                value={newPurchasePrice}
+                onChange={(e) =>
+                  setNewPurchasePrice(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                placeholder={`Current: ${selected.purchase_price}`}
+              />
+            </div>
+            <div className="mb-6">
+              <label className="block mb-1 text-sm font-medium text-green-700">Updated By</label>
+              <input
+                type="text"
+                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                value={updatedBy}
+                onChange={(e) => setUpdatedBy(e.target.value)}
+                placeholder="Enter your name"
+              />
+            </div>
+          </>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3">
           <button
             onClick={() => router.push("/books/items/inventory")}
             className="px-4 py-2 border rounded-lg hover:bg-green-50"
+            disabled={loading}
           >
             Cancel
           </button>
-          <button className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700">
-            Save Item
+          <button
+            onClick={handleSubmit}
+            disabled={
+              loading ||
+              !selected ||
+              (!addQty && newSellingPrice === "" && newPurchasePrice === "")
+            }
+            className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
+          >
+            {loading ? "Updating..." : "Save Adjustment"}
           </button>
         </div>
+
+        {success && (
+          <div className="mt-4 text-green-700 font-semibold">
+            Inventory updated successfully!
+          </div>
+        )}
       </div>
     </div>
   );

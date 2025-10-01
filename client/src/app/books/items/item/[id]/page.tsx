@@ -67,8 +67,9 @@ export default function ItemDetailPage() {
     fetchItem();
   }, [id]);
 
-  if (loading) return <p>Loading item details...</p>;
-  if (error || !item) return <p className="text-red-600">{error || "Item not found"}</p>;
+  if (loading) return <div className="p-6 text-green-700 font-semibold">Loading item details...</div>;
+
+  if (error || !item) return <div className="p-6 text-red-600 font-semibold">Error: {error}</div>;
   
   const preferredVendor = vendors.find(v => v.id === item.preferred_vendor);
 

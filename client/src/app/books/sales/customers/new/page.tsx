@@ -118,7 +118,6 @@ export default function NewCustomerPage() {
   const [currency, setCurrency] = useState("INR - Indian Rupee");
   const [openingBalance, setOpeningBalance] = useState<number>(0);
   const [paymentTerms, setPaymentTerms] = useState("Due on Receipt");
-  const [documents, setDocuments] = useState<File[]>([]);
 
   // ----- Address -----
   const [billing, setBilling] = useState<Address>({
@@ -176,14 +175,6 @@ export default function NewCustomerPage() {
 
   // =================== Handlers ===================
 
-  function onDocsSelected(e: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || []);
-    const withinLimit = files
-      .filter((f) => f.size <= 10 * 1024 * 1024)
-      .slice(0, 10);
-    setDocuments((prev) => [...prev, ...withinLimit].slice(0, 10));
-    e.target.value = "";
-  }
 
   async function uploadFile(file: File, token: string) {
     const formData = new FormData();
@@ -199,10 +190,6 @@ export default function NewCustomerPage() {
     return await res.json(); // { id, file }
   }
 
-
-  const removeDoc = (idx: number) => {
-    setDocuments((prev) => prev.filter((_, i) => i !== idx));
-  };
 
   const copyBillingToShipping = () => {
     setShipping({ ...billing });
@@ -280,10 +267,6 @@ export default function NewCustomerPage() {
         return;
       }
 
-      const uploadedDocs = await Promise.all(
-        documents.map((file) => uploadFile(file, token))
-      );
-      const fileIds = uploadedDocs.map((d) => d.id);
 
     if (!validate()) return;
 
@@ -311,7 +294,6 @@ export default function NewCustomerPage() {
       currency: currency.split(" - ")[0], // e.g. "INR"
       opening_balance: openingBalance.toFixed(2), // string with two decimals
       payment_terms: paymentTerms.toLowerCase().replace(/\s/g, "_"), // e.g. "net_30"
-      file_ids: fileIds,
       billing_attention: billing.attention.trim(),
       billing_country: billing.country.trim(),
       billing_street1: billing.street1.trim(),
@@ -604,49 +586,6 @@ export default function NewCustomerPage() {
               </select>
             </div>
 
-            {/* Documents */}
-            <div>
-              <label className="block mb-1 font-medium text-green-800">Documents</label>
-              <div className="flex items-center gap-2">
-                <label className="inline-flex items-center gap-2 px-3 py-2 text-green-700 border border-green-300 rounded-md cursor-pointer hover:bg-green-50">
-                  <FaUpload />
-                  <span>Upload File</span>
-                  <input type="file" multiple className="hidden" onChange={onDocsSelected} />
-                </label>
-                <button
-                  type="button"
-                  className="px-2 py-2 text-green-700 border border-green-300 rounded-md"
-                  title="More"
-                >
-                  ▾
-                </button>
-              </div>
-              <p className="mt-1 text-sm text-green-600">
-                You can upload a maximum of 10 files, 10MB each (stored as metadata only).
-              </p>
-
-              {documents.length > 0 && (
-                <ul className="mt-3 space-y-2">
-                  {documents.map((d, i) => (
-                    <li
-                      key={`${d.name}-${i}`}
-                      className="flex items-center justify-between px-3 py-2 border border-green-200 rounded-md"
-                    >
-                      <span className="truncate">
-                        {d.name} <span className="text-xs text-green-700">({Math.ceil(d.size / 1024)} KB)</span>
-                      </span>
-                      <button
-                        className="text-red-600 hover:underline"
-                        onClick={() => removeDoc(i)}
-                        title="Remove"
-                      >
-                        <FaTrash />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
           </div>
         )}
 
