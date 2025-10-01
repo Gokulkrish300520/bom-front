@@ -10,7 +10,7 @@ class FreightFilter(django_filters.FilterSet):
     vendor_name = django_filters.CharFilter(field_name="vendor__display_name", lookup_expr='icontains')
     start_date = django_filters.DateFilter(field_name="date", lookup_expr='gte')
     end_date = django_filters.DateFilter(field_name="date", lookup_expr='lte')
-    deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='exact')
+    deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='icontains')
     item_name = django_filters.CharFilter(field_name="item_name", lookup_expr='icontains')
 
     class Meta:
@@ -21,7 +21,7 @@ class DealFilter(django_filters.FilterSet):
     customer_id = django_filters.NumberFilter(field_name="customer_id")
     start_date = django_filters.DateFilter(field_name="start_date", lookup_expr='gte')
     end_date = django_filters.DateFilter(field_name="end_date", lookup_expr='lte')
-    deal_no = django_filters.CharFilter(field_name="deal_no", lookup_expr='exact')
+    deal_no = django_filters.CharFilter(field_name="deal_no", lookup_expr='icontains')
     company_name = django_filters.CharFilter(field_name="customer__company_name", lookup_expr='icontains')
 
     class Meta:
@@ -31,7 +31,7 @@ class BillFilter(django_filters.FilterSet):
     vendor_id = django_filters.NumberFilter(field_name="vendor_id")
     start_date = django_filters.DateFilter(field_name="bill_date", lookup_expr='gte')
     end_date = django_filters.DateFilter(field_name="bill_date", lookup_expr='lte')
-    deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='exact')
+    deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='icontains')
     company_name = django_filters.CharFilter(field_name="vendor__company_name", lookup_expr='icontains')
     status = django_filters.ChoiceFilter(field_name="status", choices=Bill.STATUS_CHOICES)
 
@@ -44,7 +44,7 @@ class InvoiceFilter(django_filters.FilterSet):
     customer_id = django_filters.NumberFilter(field_name="deal__customer_id")
     start_date = django_filters.DateFilter(field_name="invoice_date", lookup_expr='gte')
     end_date = django_filters.DateFilter(field_name="invoice_date", lookup_expr='lte')
-    deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='exact')
+    deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='icontains')
     company_name = django_filters.CharFilter(field_name="customer__company_name", lookup_expr='icontains')
     status = django_filters.ChoiceFilter(field_name="status", choices=Invoice.STATUS_CHOICES)
 
@@ -57,7 +57,7 @@ class ProformaInvoiceFilter(django_filters.FilterSet):
     customer_id = django_filters.NumberFilter(field_name="deal__customer_id")
     start_date = django_filters.DateFilter(field_name="invoice_date", lookup_expr='gte')
     end_date = django_filters.DateFilter(field_name="invoice_date", lookup_expr='lte')
-    deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='exact')
+    deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='icontains')
     company_name = django_filters.CharFilter(field_name="customer__company_name", lookup_expr='icontains')
     status = django_filters.ChoiceFilter(field_name="status", choices=ProformaInvoice._meta.get_field('status').choices)
 
@@ -70,7 +70,7 @@ class DeliveryChallanFilter(django_filters.FilterSet):
     customer_id = django_filters.NumberFilter(field_name="deal__customer_id")
     start_date = django_filters.DateFilter(field_name="date", lookup_expr='gte')
     end_date = django_filters.DateFilter(field_name="date", lookup_expr='lte')
-    deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='exact')
+    deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='icontains')
     company_name = django_filters.CharFilter(field_name="customer__company_name", lookup_expr='icontains')
     status = django_filters.ChoiceFilter(field_name="status", choices=DeliveryChallan.STATUS_CHOICES)
 
