@@ -79,8 +79,8 @@ class DeliveryChallanFilter(django_filters.FilterSet):
         fields = ["customer_id", "start_date", "end_date","deal_no", "company_name", "status"]
         
 class VendorFilter(django_filters.FilterSet):
-    company_name = django_filters.CharFilter(field_name="vendor__company_name", lookup_expr='icontains')
-    display_name = django_filters.CharFilter(field_name="vendor__display_name", lookup_expr='icontains')
+    company_name = django_filters.CharFilter(field_name="company_name", lookup_expr='icontains')
+    display_name = django_filters.CharFilter(field_name="first_name", lookup_expr='icontains')
 
     class Meta:
         model = Vendor
