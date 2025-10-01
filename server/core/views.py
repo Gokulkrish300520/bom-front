@@ -19,6 +19,7 @@ from .filters_extra import (
     BillFilter,
     DealFilter,
     FreightFilter,
+    VendorFilter,
 )
 from .filters import QuoteFilter
 from .models import (
@@ -355,6 +356,8 @@ class VendorViewSet(
     )  # pylint: disable=no-member,too-many-ancestors
     serializer_class = VendorSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = VendorFilter
 
 
 class ItemViewSet(viewsets.ModelViewSet):  # pylint: disable=too-many-ancestors
