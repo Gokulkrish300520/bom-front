@@ -517,7 +517,7 @@ class Item(models.Model):
 
     name = models.CharField(max_length=255)
     unit = models.CharField(max_length=10, choices=UNIT_CHOICES, default="Nos")
-    hsn_code = models.CharField(max_length=10, unique=True)
+    hsn_code = models.CharField(max_length=20, unique=True)
     item_no = models.CharField(max_length=20, null=True, blank=True)
 
     # Sales Information

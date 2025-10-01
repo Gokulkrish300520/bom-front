@@ -1,8 +1,21 @@
 from .models import Invoice, ProformaInvoice, DeliveryChallan,Deal
 import django_filters
 from .models import Bill
+from .purchase_models import Freight
 
 # Bill filter for vendor_id
+
+class FreightFilter(django_filters.FilterSet):
+    vendor_id = django_filters.NumberFilter(field_name="vendor_id")
+    vendor_name = django_filters.CharFilter(field_name="vendor__display_name", lookup_expr='icontains')
+    start_date = django_filters.DateFilter(field_name="date", lookup_expr='gte')
+    end_date = django_filters.DateFilter(field_name="date", lookup_expr='lte')
+    deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='exact')
+    item_name = django_filters.CharFilter(field_name="item_name", lookup_expr='icontains')
+
+    class Meta:
+        model = Freight
+        fields = ["vendor_id", "start_date", "end_date","deal_no","item_name"]
 
 class DealFilter(django_filters.FilterSet):
     customer_id = django_filters.NumberFilter(field_name="customer_id")

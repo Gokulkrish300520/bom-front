@@ -9,14 +9,16 @@ from .serializers import (
     ProformaInvoiceSerializer,
     QuoteSerializer,
     VendorSerializer,
-    DealSerializer
+    DealSerializer,
+    FreightSerializer,
 )
 from .filters_extra import (
     InvoiceFilter,
     ProformaInvoiceFilter,
     DeliveryChallanFilter,
     BillFilter,
-    DealFilter
+    DealFilter,
+    FreightFilter,
 )
 from .filters import QuoteFilter
 from .models import (
@@ -32,6 +34,7 @@ from .models import (
     Vendor,
     Deal,
 )
+from .purchase_models import Freight
 from django.db.models import F
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -52,6 +55,15 @@ from django.http import JsonResponse
 
 
 # ...existing code...
+class FreightViewSet(viewsets.ModelViewSet):
+    queryset = Freight.objects.all().order_by('-date', '-created_at')
+    serializer_class = FreightSerializer
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = FreightFilter
+
+    ordering_fields = ['date', 'total_price_inr', 'created_at']
+    ordering = ['-date']
 
 class DealViewSet(viewsets.ModelViewSet):
     queryset = Deal.objects.all().order_by('id')

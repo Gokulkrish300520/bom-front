@@ -21,7 +21,9 @@ from rest_framework import serializers
 from .inventory_management_models import (
     InventoryManagement
 )
-
+from .purchase_models import (
+    Freight
+)
 
 from rest_framework import serializers
 
@@ -271,6 +273,54 @@ class VendorSerializer(serializers.ModelSerializer):
                         **{k: v for k, v in cp_data.items() if k != "id"}
                     )
         return instance
+
+class FreightSerializer(serializers.ModelSerializer):
+    vendor = VendorSerializer(read_only=True)  # nested vendor details for read
+    vendor_id = serializers.PrimaryKeyRelatedField(
+        queryset=Vendor.objects.all(),
+        source='vendor',
+        write_only=True
+    )
+    deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
+    deal_id = serializers.PrimaryKeyRelatedField(
+        queryset=Deal.objects.all(),source='deal', write_only=True
+    )
+    created_by = serializers.ReadOnlyField(source="created_by.username")
+
+    class Meta:
+        model = Freight
+        fields = [
+            "id",
+            "vendor",
+            "vendor_id",
+            "deal_no",
+            "deal_id",
+            "currency",
+            "item_name",
+            "description",
+            "item_specification",
+            "brand",
+            "hsn_code",
+            "quantity",
+            "unit_price_usd",
+            "unit_price_inr",
+            "total_price_usd",
+            "total_price_inr",
+            "date",
+            "sf_number",
+            "weight",
+            "freight_type",
+            "created_by",
+            "created_at",
+        ]
+        read_only_fields = ["id", "vendor", "deal_no","created_by", "created_at"]
+
+    def create(self, validated_data):
+        # Optionally associate user from context if you want
+        user = self.context.get('request').user if self.context.get('request') else None
+        if user and not user.is_anonymous:
+            validated_data['created_by'] = user
+        return super().create(validated_data)
 
 
 class BillItemSerializer(serializers.ModelSerializer):
