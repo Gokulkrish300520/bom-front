@@ -4,7 +4,10 @@ import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
-import { FaTrash } from "react-icons/fa";
+import { FaTrash, FaMix } from "react-icons/fa";
+import { LuMerge  } from "react-icons/lu";
+import { useRouter } from "next/navigation";
+
 
 type CustomerType = {
   id: number;
@@ -44,6 +47,7 @@ export default function QuotesPage() {
   const [prevPageUrl, setPrevPageUrl] = useState<string | null>(null);
   const [editingStatusIds, setEditingStatusIds] = useState<Record<number, QuoteStatus>>({});
   const statusOptions: QuoteStatus[] = ["draft", "sent", "accepted", "rejected" , "expired"];
+  const router = useRouter();
 
 
   const baseApiUrl = "https://web-production-6baf3.up.railway.app/api/quotes/";
@@ -205,7 +209,7 @@ export default function QuotesPage() {
         <tr key={q.id} className="transition border-b hover:bg-green-50">
           <td className="px-4 py-3">{formatDate(q.quote_date)}</td>
           <td className="px-4 py-3 font-medium text-green-700">
-            <Link href={`/books/sales/quotes/${q.id}`}>{q.quote_number}</Link>
+            {q.quote_number}
           </td>
           <td className="px-4 py-3">{q.customer.display_name}</td>
           <td className="px-4 py-3">{formatDate(q.expiry_date)}</td>
@@ -266,6 +270,12 @@ export default function QuotesPage() {
               </>
             ) : (
               <>
+              <button
+                    onClick={() => router.push(`/books/sales/quotes/${q.id}`)}
+                    className="px-2 py-1 text-white bg-blue-500 rounded hover:bg-blue-600"
+                  >
+                    View
+                  </button>
                 <button
                   onClick={() =>
                     setEditingStatusIds((curr) => ({
@@ -273,18 +283,23 @@ export default function QuotesPage() {
                       [q.id]: q.status,
                     }))
                   }
-                  className="px-3 py-1 border rounded text-blue-600 hover:bg-blue-100"
+                  className="px-2 py-1 text-white bg-yellow-500 rounded hover:bg-yellow-600"
                   title="Edit Status"
                 >
-                  Edit
+                  Edit Status
                 </button>
                 <button
                   onClick={() => deleteQuote(q.id)}
-                  className="text-red-600 hover:text-red-800"
-                  aria-label="Delete quote"
-                  title="Delete quote"
+                  className="px-2 py-1 text-white bg-red-500 rounded hover:bg-red-600"
                 >
-                  <FaTrash />
+                  Delete
+                </button>
+                <button
+                  onClick={() => router.push(`/books/sales/quotes/toProforma/${q.id}`)}
+                  className="px-3 py-1 border rounded text-purple-600 hover:bg-purple-100"
+                  title="Convert to Proforma"
+                >
+                  <LuMerge />
                 </button>
               </>
             )}

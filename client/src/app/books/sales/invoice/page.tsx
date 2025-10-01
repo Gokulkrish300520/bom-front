@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
 import { FaTrash } from "react-icons/fa";
+import { LuMerge } from "react-icons/lu";
+import { useRouter } from "next/navigation";
 
 type CustomerType = {
   id: number;
@@ -34,6 +36,7 @@ export default function InvoiceListPage() {
   const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
   const [prevPageUrl, setPrevPageUrl] = useState<string | null>(null);
   const [editingStatusIds, setEditingStatusIds] = useState<Record<string, InvoiceStatus>>({});
+  const router = useRouter();
   
 
   const baseApiUrl = "https://web-production-6baf3.up.railway.app/api/invoices/";
@@ -247,19 +250,32 @@ export default function InvoiceListPage() {
                         </>
                       ) : (
                         <>
+                        <button
+                            onClick={() => router.push(`/books/sales/invoice/${inv.id}`)}
+                            className="px-2 py-1 text-white bg-blue-500 rounded hover:bg-blue-600"
+                          >
+                            View
+                          </button>
                           <button
                             onClick={() => setEditingStatusIds((curr) => ({ ...curr, [inv.id]: inv.status }))}
-                            className="px-3 py-1 border rounded text-blue-600 hover:bg-blue-100"
+                            className="px-2 py-1 text-white bg-yellow-500 rounded hover:bg-yellow-600"
                             title="Edit Status"
                           >
-                            Edit
+                            Edit Status
                           </button>
                           <button
                             onClick={() => deleteInvoice(inv.id)}
-                            className="text-red-600 hover:text-red-800"
+                            className="px-2 py-1 text-white bg-red-500 rounded hover:bg-red-600"
                             title="Delete Invoice"
                           >
-                            <FaTrash />
+                            Delete
+                          </button>
+                          <button
+                            onClick={() => router.push(`/books/sales/invoice/toDelivery/${inv.id}`)}
+                            className="px-3 py-1 border rounded text-purple-600 hover:bg-purple-100"
+                            title="Convert to Proforma"
+                          >
+                            <LuMerge />
                           </button>
                         </>
                       )}

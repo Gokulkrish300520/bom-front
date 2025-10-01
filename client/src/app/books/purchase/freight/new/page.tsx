@@ -1,14 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { fetchWithAuth } from "@/auth/tokenservice";
+
+interface Vendor {
+  id: number;
+  display_name: string;
+}
+
+interface Deal {
+  id: number;
+  deal_no: string;
+}
 
 export default function NewFreightPage() {
   const router = useRouter();
 
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+
   const [formData, setFormData] = useState({
-    vendor: "",
-    dealNumber: "",
+    vendor_id: "", // change to id
+    deal_id: "",   // change to id
     item: "",
     description: "",
     itemSpecification: "",
@@ -23,10 +39,24 @@ export default function NewFreightPage() {
     date: "",
     weight: "",
     freight: "",
-    currency: "USD", // NEW FIELD
+    currency: "USD",
   });
 
   const exchangeRate = 83; // USD → INR
+
+  useEffect(() => {
+    // Fetch vendors
+    fetchWithAuth("https://web-production-6baf3.up.railway.app/api/vendors/")
+      .then((res) => res.json())
+      .then((data) => setVendors(data.results || []))
+      .catch((err) => console.error("Failed to fetch vendors", err));
+
+    // Fetch deals
+    fetchWithAuth("https://web-production-6baf3.up.railway.app/api/deals/")
+      .then((res) => res.json())
+      .then((data) => setDeals(data.results || []))
+      .catch((err) => console.error("Failed to fetch deals", err));
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -60,46 +90,62 @@ export default function NewFreightPage() {
       alert("If USD value entered, SF Number and Weight are required.");
       return;
     }
-
+    setIsSaving(true);
     const qty = Number(formData.qty);
     const unitPriceUSD = Number(formData.unitPriceUSD) || undefined;
     const unitPriceINR = Number(formData.unitPriceINR) || 0;
     const totalUSD = unitPriceUSD ? qty * unitPriceUSD : undefined;
     const totalINR = qty * unitPriceINR;
 
+    // Prepare data with IDs as expected by backend
     const newEntry = {
-      vendor: formData.vendor,
-      dealNumber: formData.dealNumber,
-      item: formData.item,
-      description: formData.description,
-      itemSpecification: formData.itemSpecification,
-      hsnCode: formData.hsnCode,
-      brand: formData.brand,
-      qty,
-      unitPriceUSD,
-      totalUSD,
-      unitPriceINR,
-      totalINR,
-      sfNumber: formData.sfNumber || undefined,
-      date: formData.date,
-      weight: formData.weight || undefined,
-      freight: Number(formData.freight) || undefined,
+      vendor_id: Number(formData.vendor_id),
+      deal_id: Number(formData.deal_id),
       currency: formData.currency,
+      item_name: formData.item,
+      description: formData.description,
+      item_specification: formData.itemSpecification,
+      hsn_code: formData.hsnCode,
+      brand: formData.brand,
+      quantity: qty,
+      unit_price_usd: unitPriceUSD,
+      total_price_usd: totalUSD,
+      unit_price_inr: unitPriceINR,
+      total_price_inr: totalINR,
+      date: formData.date,
+      sf_number: formData.sfNumber || undefined,
+      weight: formData.weight || undefined,
+      freight_type: formData.freight || undefined,
     };
 
-    const storedData = localStorage.getItem("freightData");
-    const data = storedData ? JSON.parse(storedData) : [];
-    data.push(newEntry);
-    localStorage.setItem("freightData", JSON.stringify(data));
-
-    router.push("/books/purchase/freight");
+    // POST to backend instead of localStorage
+    fetchWithAuth("https://web-production-6baf3.up.railway.app/api/freights/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newEntry),
+    })
+      .then((res) => {
+        setIsSaving(false);
+        if (!res.ok) {
+          throw new Error("Failed to create freight");
+        }
+        return res.json();
+      })
+     .then(() => {
+    setTimeout(() => {
+      setSuccessMessage("");
+      router.push("/books/purchase/freight");
+    }, 2000); // show message for 2 seconds
+  })
+  .catch((err) => {
+    setIsSaving(false);
+    alert(err.message);
+  });
   };
 
   return (
     <div className="min-h-screen p-8 bg-white">
-      <h1 className="mb-6 text-2xl font-bold text-green-700">
-        Add New Freight
-      </h1>
+      <h1 className="mb-6 text-2xl font-bold text-green-700">Add New Freight</h1>
 
       <form
         onSubmit={handleSubmit}
@@ -111,39 +157,44 @@ export default function NewFreightPage() {
             Vendor <span className="text-red-500">*</span>
           </label>
           <select
-            name="vendor"
-            value={formData.vendor}
+            name="vendor_id"
+            value={formData.vendor_id}
             onChange={handleChange}
             className="w-full p-2 border rounded"
             required
           >
             <option value="">Select Vendor</option>
-            <option value="Vendor A">Vendor A</option>
-            <option value="Vendor B">Vendor B</option>
-            <option value="Vendor C">Vendor C</option>
+            {vendors.map((vendor) => (
+              <option key={vendor.id} value={vendor.id}>
+                {vendor.display_name}
+              </option>
+            ))}
           </select>
         </div>
 
-        {/* Currency dropdown */}
+        {/* Deal number dropdown */}
         <div>
           <label className="block font-medium text-green-800">
-            Currency <span className="text-red-500">*</span>
+            Deal Number <span className="text-red-500">*</span>
           </label>
           <select
-            name="currency"
-            value={formData.currency}
+            name="deal_id"
+            value={formData.deal_id}
             onChange={handleChange}
             className="w-full p-2 border rounded"
             required
           >
-            <option value="USD">USD</option>
-            <option value="INR">INR</option>
+            <option value="">Select Deal</option>
+            {deals.map((deal) => (
+              <option key={deal.id} value={deal.id}>
+                {deal.deal_no}
+              </option>
+            ))}
           </select>
         </div>
 
-        {/* Rest of the fields */}
+        {/* Rest of fields as before but keys updated */}
         {[
-          { label: "Deal Number", name: "dealNumber", type: "text", required: true },
           { label: "Item", name: "item", type: "text" },
           { label: "Description", name: "description", type: "text" },
           { label: "Item Specification", name: "itemSpecification", type: "text" },
@@ -158,22 +209,28 @@ export default function NewFreightPage() {
           { label: "Date", name: "date", type: "date", required: true },
           { label: "Weight", name: "weight", type: "text" },
           { label: "Freight", name: "freight", type: "number" },
-        ].map((field, idx) => (
-          <div key={idx}>
-            <label className="block font-medium text-green-800">
-              {field.label} {field.required && <span className="text-red-500">*</span>}
-            </label>
-            <input
-              type={field.type}
-              name={field.name}
-              value={(formData as any)[field.name]}
-              onChange={handleChange}
-              readOnly={field.readOnly}
-              className="w-full p-2 border rounded"
-              required={field.required}
-            />
-          </div>
-        ))}
+          { label: "Currency", name: "currency", type: "select" }, // keep as dropdown inside original
+        ].map((field, idx) => {
+          if (field.name === 'currency') {
+            return null; // already handled above
+          }
+          return (
+            <div key={idx}>
+              <label className="block font-medium text-green-800">
+                {field.label} {field.required && <span className="text-red-500">*</span>}
+              </label>
+              <input
+                type={field.type}
+                name={field.name}
+                value={(formData as any)[field.name]}
+                onChange={handleChange}
+                readOnly={field.readOnly}
+                className="w-full p-2 border rounded"
+                required={field.required}
+              />
+            </div>
+          );
+        })}
 
         <div className="flex justify-end col-span-2 gap-4 mt-4">
           <button
@@ -183,12 +240,19 @@ export default function NewFreightPage() {
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            className="px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700"
-          >
-            Save
-          </button>
+                  <button
+          type="submit"
+          disabled={isSaving}
+          className={`px-4 py-2 text-white rounded ${
+            isSaving ? "bg-gray-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+        }`}>
+          {isSaving ? "Saving..." : successMessage ? "Saved" : "Save"}
+        </button>
+        {successMessage && (
+  <div className="mb-4 p-2 text-green-700 bg-green-100 border border-green-300 rounded">
+    {successMessage}
+  </div>
+)}
         </div>
       </form>
     </div>

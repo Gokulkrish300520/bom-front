@@ -4,79 +4,88 @@ import { useEffect, useState } from "react";
 import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
 import { useRouter } from "next/navigation";
+import { fetchWithAuth } from "@/auth/tokenservice";
 
 type FreightEntry = {
-  vendor: string;
-  dealNumber: string;
-  totalUSD?: number;
-  totalINR: number;
-  sfNumber?: string;
+  id: number;
+  vendor: {
+    display_name: string;
+  };
+  deal_no: string;
+  total_price_usd?: string;
+  total_price_inr: string;
+  sf_number?: string;
   weight?: string;
-  freight?: number;
+  freight_type?: string;
   date: string;
 };
 
 export default function FreightPage() {
   const router = useRouter();
+
   const [data, setData] = useState<FreightEntry[]>([]);
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
   const [searchVendor, setSearchVendor] = useState("");
   const [searchDeal, setSearchDeal] = useState("");
 
+  // Fetch data with filters applied
   useEffect(() => {
-    const storedData = localStorage.getItem("freightData");
-    if (storedData) {
-      setData(JSON.parse(storedData));
-    }
-  }, []);
+    const params = new URLSearchParams();
+    if (filterFrom) params.append("start_date", filterFrom);
+    if (filterTo) params.append("end_date", filterTo);
+    if (searchVendor) params.append("vendor_name", searchVendor);
+    if (searchDeal) params.append("deal_no", searchDeal);
+
+    const url = `https://web-production-6baf3.up.railway.app/api/freights/?${params}`;
+
+    fetchWithAuth(url)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch freights");
+        return res.json();
+      })
+      .then((apiData) => {
+        setData(apiData.results || []);
+      })
+      .catch((err) => {
+        console.error(err);
+        setData([]);
+      });
+  }, [filterFrom, filterTo, searchVendor, searchDeal]);
 
   const handleExport = () => {
-    const ws = XLSX.utils.json_to_sheet(data);
+    const exportData = data.map((entry) => ({
+      vendor: entry.vendor.display_name,
+      dealNumber: entry.deal_no,
+      totalUSD: entry.total_price_usd ? parseFloat(entry.total_price_usd) : undefined,
+      totalINR: parseFloat(entry.total_price_inr),
+      sfNumber: entry.sf_number,
+      weight: entry.weight,
+      freight: entry.freight_type ? Number(entry.freight_type) : undefined,
+      date: entry.date,
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Freight");
     const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
     saveAs(new Blob([buf]), "freight.xlsx");
   };
 
-  const handleDelete = (idx: number) => {
+  const handleDelete = (id: number) => {
     if (confirm("Are you sure you want to delete this entry?")) {
-      const newData = [...data];
-      newData.splice(idx, 1);
-      localStorage.setItem("freightData", JSON.stringify(newData));
-      setData(newData);
+      fetchWithAuth(`https://web-production-6baf3.up.railway.app/api/freights/${id}/`, {
+        method: "DELETE",
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to delete entry");
+          setData((prev) => prev.filter((entry) => entry.id !== id));
+        })
+        .catch((err) => alert(err.message));
     }
   };
 
-  const filteredData = data.filter((d) => {
-    let match = true;
-
-    if (filterFrom && filterTo) {
-      match = match && d.date >= filterFrom && d.date <= filterTo;
-    } else if (filterFrom) {
-      match = match && d.date >= filterFrom;
-    } else if (filterTo) {
-      match = match && d.date <= filterTo;
-    }
-
-    if (searchVendor) {
-      match =
-        match &&
-        d.vendor.toLowerCase().includes(searchVendor.toLowerCase());
-    }
-
-    if (searchDeal) {
-      match =
-        match &&
-        d.dealNumber.toLowerCase().includes(searchDeal.toLowerCase());
-    }
-
-    return match;
-  });
-
   return (
     <div className="min-h-screen p-6 bg-white">
-      {/* Header with title and actions */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-green-700">Freight Records</h1>
         <div className="flex gap-3">
@@ -101,7 +110,6 @@ export default function FreightPage() {
         </div>
       </div>
 
-      {/* Filters row */}
       <div className="flex flex-wrap gap-3 mb-6">
         <label className="flex flex-col">
           <span className="text-sm text-gray-700">From Date</span>
@@ -141,9 +149,19 @@ export default function FreightPage() {
             onChange={(e) => setSearchDeal(e.target.value)}
           />
         </label>
+        <button
+    onClick={() => {
+      setFilterFrom("");
+      setFilterTo("");
+      setSearchVendor("");
+      setSearchDeal("");
+    }}
+    className="px-2 py-1 bg-red-500 text-white text-small rounded hover:bg-red-600"
+  >
+    Clear Filters
+  </button>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto border rounded shadow">
         <table className="w-full border-collapse">
           <thead className="text-green-800 bg-green-100">
@@ -165,20 +183,20 @@ export default function FreightPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredData.length > 0 ? (
-              filteredData.map((row, idx) => (
-                <tr key={idx} className="border-b hover:bg-green-50">
-                  <td className="p-2 border">{row.vendor}</td>
-                  <td className="p-2 border">{row.dealNumber}</td>
-                  <td className="p-2 border">{row.totalUSD ?? "-"}</td>
-                  <td className="p-2 border">{row.totalINR}</td>
-                  <td className="p-2 border">{row.sfNumber ?? "-"}</td>
+            {data.length > 0 ? (
+              data.map((row) => (
+                <tr key={row.id} className="border-b hover:bg-green-50">
+                  <td className="p-2 border">{row.vendor.display_name}</td>
+                  <td className="p-2 border">{row.deal_no}</td>
+                  <td className="p-2 border">{row.total_price_usd ?? "-"}</td>
+                  <td className="p-2 border">{row.total_price_inr}</td>
+                  <td className="p-2 border">{row.sf_number ?? "-"}</td>
                   <td className="p-2 border">{row.weight ?? "-"}</td>
-                  <td className="p-2 border">{row.freight ?? "-"}</td>
+                  <td className="p-2 border">{row.freight_type ?? "-"}</td>
                   <td className="flex gap-2 p-2 border">
                     <button
                       onClick={() =>
-                        router.push(`/books/purchase/freight/view?index=${idx}`)
+                        router.push(`/books/purchase/freight/${row.id}`)
                       }
                       className="px-2 py-1 text-white bg-blue-500 rounded hover:bg-blue-600"
                     >
@@ -186,14 +204,14 @@ export default function FreightPage() {
                     </button>
                     <button
                       onClick={() =>
-                        router.push(`/books/purchase/freight/edit?index=${idx}`)
+                        router.push(`/books/purchase/freight/${row.id}/edit`)
                       }
                       className="px-2 py-1 text-white bg-yellow-500 rounded hover:bg-yellow-600"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(idx)}
+                      onClick={() => handleDelete(row.id)}
                       className="px-2 py-1 text-white bg-red-500 rounded hover:bg-red-600"
                     >
                       Delete

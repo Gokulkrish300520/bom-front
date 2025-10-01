@@ -180,12 +180,6 @@ export default function CustomerDetailPage() {
           </h2>
         </div>
         <div className="flex items-center space-x-2">
-        <Link
-          href={`/books/sales/customers/${customer.id}/edit`}
-          className="text-white bg-green-600 hover:bg-green-700 rounded px-4 py-1 font-semibold"
-        >
-          Edit
-        </Link>
         <button
           className="text-green-700 border border-green-700 rounded px-4 py-1"
           onClick={() => router.back()}

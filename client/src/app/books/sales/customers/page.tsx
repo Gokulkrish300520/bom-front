@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { FaTrash } from "react-icons/fa";
 import { fetchWithAuth } from "@/auth/tokenservice";
+import { useRouter } from "next/navigation";
 
 type Customer = {
   id: number;
@@ -22,6 +23,7 @@ export default function CustomersPage() {
   const [page, setPage] = useState(1);
   const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
   const [prevPageUrl, setPrevPageUrl] = useState<string | null>(null);
+  const router = useRouter();
 
   const baseApiUrl =
     "https://web-production-6baf3.up.railway.app/api/customers/";
@@ -126,21 +128,29 @@ export default function CustomersPage() {
                   className="transition border-b hover:bg-green-200"
                 >
                   <td className="px-4 py-3 font-medium text-green-700">
-                    <Link href={`/books/sales/customers/${c.id}`}>
                       {c.display_name}
-                    </Link>
                   </td>
                   <td className="px-4 py-3">{c.company_name}</td>
                   <td className="px-4 py-3">{c.email}</td>
                   <td className="px-4 py-3">{c.work_phone}</td>
-                  <td className="px-4 py-3">
+                  <td className="flex gap-2 px-4 py-3">
+                    <button
+                      onClick={() => router.push(`/books/sales/customers/${c.id}`)}
+                      className="px-2 py-1 text-white bg-blue-500 rounded hover:bg-blue-600"
+                    >
+                      View
+                    </button>
+                    <button
+                    onClick={() => router.push(`/books/sales/customers/${c.id}/edit`)}
+                    className="px-2 py-1 text-white bg-yellow-500 rounded hover:bg-yellow-600"
+                  >
+                    Edit
+                  </button>
                     <button
                       onClick={() => deleteCustomer(c.id)}
-                      className="text-red-600 hover:text-red-800"
-                      aria-label="Delete customer"
-                      title="Delete customer"
+                      className="px-2 py-1 text-white bg-red-500 rounded hover:bg-red-600"
                     >
-                      <FaTrash />
+                      Delete
                     </button>
                   </td>
                 </tr>

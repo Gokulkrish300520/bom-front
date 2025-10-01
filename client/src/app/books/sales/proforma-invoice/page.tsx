@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { FaTrash } from "react-icons/fa"; // import at top
+import { LuMerge } from "react-icons/lu";
+import { useRouter } from "next/navigation";
 
 type CustomerType = {
   id: number;
@@ -40,6 +42,7 @@ export default function ProformaInvoicesPage() {
   const [prevPageUrl, setPrevPageUrl] = useState<string | null>(null);
   const [editingStatusIds, setEditingStatusIds] = useState<Record<string, ProformaStatus>>({});
   const statusOptions: ProformaStatus[] = ["draft", "sent", "accepted", "cancelled"];
+  const router = useRouter();
 
 
   const baseApiUrl = "https://web-production-6baf3.up.railway.app/api/proformainvoices/";
@@ -187,9 +190,7 @@ export default function ProformaInvoicesPage() {
         >
           <td className="p-3">{formatDate(inv.invoice_date)}</td>
           <td className="p-3">
-            <Link href={`/books/sales/proforma-invoice/${inv.id}`} className="hover:underline text-green-700 font-medium">
               {inv.invoice_number}
-            </Link>
           </td>
           <td className="p-3">{inv.customer.display_name}</td>
           <td className="p-3">
@@ -244,20 +245,31 @@ export default function ProformaInvoicesPage() {
               </>
             ) : (
               <>
+              <button
+                onClick={() => router.push(`/books/sales/proforma-invoice/${inv.id}`)}
+                className="px-2 py-1 text-white bg-blue-500 rounded hover:bg-blue-600"
+              >
+                View
+              </button>
                 <button
                   onClick={() => setEditingStatusIds((curr) => ({ ...curr, [inv.id]: inv.status }))}
-                  className="px-3 py-1 border rounded text-blue-600 hover:bg-blue-100"
+                  className="px-2 py-1 text-white bg-yellow-500 rounded hover:bg-yellow-600"
                   title="Edit Status"
                 >
-                  Edit
+                  Edit Status
                 </button>
                 <button
                   onClick={() => deleteProforma(inv.id)}
-                  className="text-red-600 hover:text-red-800"
-                  aria-label="Delete proforma invoice"
-                  title="Delete proforma invoice"
+                  className="px-2 py-1 text-white bg-red-500 rounded hover:bg-red-6000"
                 >
-                  <FaTrash />
+                  Delete
+                </button>
+                <button
+                  onClick={() => router.push(`/books/sales/proforma-invoice/toInvoice/${inv.id}`)}
+                  className="px-3 py-1 border rounded text-purple-600 hover:bg-purple-100"
+                  title="Convert to Proforma"
+                >
+                  <LuMerge />
                 </button>
               </>
             )}
