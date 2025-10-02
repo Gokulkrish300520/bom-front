@@ -409,6 +409,7 @@ class ImportBillSerializer(serializers.ModelSerializer):
             "deal_no",
             "deal_id",
             "date",
+            "currency",
             "payment_request",
             "payment_reference_no",
             "payment_status",

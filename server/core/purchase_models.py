@@ -81,6 +81,10 @@ class ImportBill(models.Model):
         Vendor, related_name="import_bills",on_delete=models.CASCADE,
         help_text="Vendor associated with the import bills"
     )
+    currency = models.CharField(
+        max_length=10, default="INR",
+        help_text="Currency of the amount"
+    )
     deal = models.ForeignKey(Deal, related_name="import_bills", on_delete=models.CASCADE)
     date = models.DateField(help_text="Date of import bill for invoice")
     payment_request = models.CharField(max_length=20,choices=payment_choices,default="Low")
