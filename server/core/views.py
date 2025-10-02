@@ -11,6 +11,8 @@ from .serializers import (
     VendorSerializer,
     DealSerializer,
     FreightSerializer,
+    ImportBillSerializer,
+    DutySerializer
 )
 from .filters_extra import (
     InvoiceFilter,
@@ -20,6 +22,8 @@ from .filters_extra import (
     DealFilter,
     FreightFilter,
     VendorFilter,
+    ImportBillFilter,
+    DutyFilter
 )
 from .filters import QuoteFilter
 from .models import (
@@ -35,7 +39,7 @@ from .models import (
     Vendor,
     Deal,
 )
-from .purchase_models import Freight
+from .purchase_models import Freight,ImportBill,Duty
 from django.db.models import F
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -63,7 +67,27 @@ class FreightViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = FreightFilter
 
-    ordering_fields = ['date', 'total_price_inr', 'created_at']
+    ordering_fields = ['date', 'total_amount', 'created_at']
+    ordering = ['-date']
+    
+class ImportBillViewSet(viewsets.ModelViewSet):
+    queryset = ImportBill.objects.all().order_by('-date', '-created_at')
+    serializer_class = ImportBillSerializer
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ImportBillFilter
+
+    ordering_fields = ['date', 'total_amount', 'created_at']
+    ordering = ['-date']
+    
+class DutyViewSet(viewsets.ModelViewSet):
+    queryset = Duty.objects.all().order_by('-date', '-created_at')
+    serializer_class = DutySerializer
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = DutyFilter
+
+    ordering_fields = ['date', 'total_amount', 'created_at']
     ordering = ['-date']
 
 class DealViewSet(viewsets.ModelViewSet):

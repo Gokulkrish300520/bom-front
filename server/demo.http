@@ -1,4 +1,117 @@
 
+## Purchase CRUD
+
+# List ImportBills GET,POST,DELETE,PUT
+
+GET http://127.0.0.1:8000/api/importbills/
+Authorization: Bearer <access_token>
+
+{
+    "id": 1,
+    "vendor": {
+        "id": 1,
+        "vendor_type": "business",
+        "salutation": "mr",
+        "first_name": "John",
+        "last_name": "Doe",
+        "company_name": "Acme Vendor",
+        "display_name": "Acme Vendor (John Doe)",
+        "email": "john.doe@vendor.com",
+        "work_phone": "1234567890",
+        "mobile": "9876543210",
+        "pan": "ABCDE1234F",
+        "currency": "INR",
+        "opening_balance": "1000.00",
+        "payment_terms": "net_30",
+        "billing_attention": "Accounts",
+        "billing_country": "India",
+        "billing_street1": "123 Main St",
+        "billing_street2": "Suite 100",
+        "billing_city": "Mumbai",
+        "billing_state": "MH",
+        "billing_pin_code": "400001",
+        "billing_phone": "0221234567",
+        "billing_fax": "0227654321",
+        "shipping_attention": "Warehouse",
+        "shipping_country": "India",
+        "shipping_street1": "456 Warehouse Rd",
+        "shipping_street2": "",
+        "shipping_city": "Mumbai",
+        "shipping_state": "MH",
+        "shipping_pin_code": "400002",
+        "shipping_phone": "0229876543",
+        "shipping_fax": "0223456789",
+        "contact_persons": [
+            {
+                "id": 3,
+                "salutation": "ms",
+                "first_name": "Jane",
+                "last_name": "Smith",
+                "email": "jane@vendor.com",
+                "work_phone": "",
+                "mobile": ""
+            }
+        ],
+        "custom_fields": {
+            "GSTIN": "27ABCDE1234F1Z5"
+        },
+        "tags": [
+            "priority",
+            "2025"
+        ],
+        "remarks": "Important vendor",
+        "created_at": "2025-10-01T10:21:44.431301Z"
+    },
+    "deal_no": "D-2025-02",
+    "date": "2025-10-02",
+    "payment_request": "High",
+    "payment_reference_no": "2333222",
+    "payment_status": "Paid",
+    "paid_by": "SBI",
+    "total_amount": "300000.00",
+    "bill_items": [
+        {
+            "id": 1,
+            "item_name": "Electronic Component",
+            "description": "Sensitive electronic parts in secure packaging",
+            "item_specification": "Size: 10x5 cm; Weight: 200g",
+            "brand": "TechBrand",
+            "hsn_code": "45435435-d2",
+            "quantity": "100.00",
+            "unit_price": "2000.00",
+            "total_price": "200000.00"
+        },
+        {
+            "id": 2,
+            "item_name": "Electronic Component - 2",
+            "description": "Sensitive electronic parts in secure packaging",
+            "item_specification": "Size: 10x5 cm; Weight: 200g",
+            "brand": "TechBrand",
+            "hsn_code": "45435435-d2",
+            "quantity": "50.00",
+            "unit_price": "2000.00",
+            "total_price": "100000.00"
+        }
+    ],
+    "created_by": "Gokul",
+    "created_at": "2025-10-02T13:56:58.118406Z"
+}
+
+####
+
+PUT http://127.0.0.1:8000/api/importbills/1/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{   "vendor_id":1,
+    "deal_id":2,
+    "payment_request": "High",
+    "payment_reference_no": "2333222",
+    "payment_status": "Paid",
+    "paid_by": "SBI"
+}
+
+
 ### INVENTORY MANAGEMENT CRUD
 
 # List inventory management records

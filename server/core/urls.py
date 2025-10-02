@@ -23,7 +23,9 @@ from .views import (
     BalanceSheetReportView,
     InventoryManagementViewSet,
     ItemStock,
-    FreightViewSet
+    FreightViewSet,
+    ImportBillViewSet,
+    DutyViewSet
 )
 from .views import DealViewSet
 
@@ -37,6 +39,8 @@ router.register(
     basename="inventorymanagement",
 )
 router.register(r'freights', FreightViewSet, basename='freight')
+router.register(r'importbills',ImportBillViewSet,basename='importbill')
+router.register(r'duties',DutyViewSet,basename='duty')
 router.register(r'deals', DealViewSet)
 router.register(r"customers", CustomerViewSet, basename="customer")
 router.register(r"vendors", VendorViewSet, basename="vendor")

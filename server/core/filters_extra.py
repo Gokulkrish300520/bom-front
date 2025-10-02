@@ -1,7 +1,7 @@
 from .models import Invoice, ProformaInvoice, DeliveryChallan,Deal
 import django_filters
 from .models import Bill,Vendor
-from .purchase_models import Freight
+from .purchase_models import Freight,ImportBill,Duty
 
 # Bill filter for vendor_id
 
@@ -11,11 +11,37 @@ class FreightFilter(django_filters.FilterSet):
     start_date = django_filters.DateFilter(field_name="date", lookup_expr='gte')
     end_date = django_filters.DateFilter(field_name="date", lookup_expr='lte')
     deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='icontains')
-    item_name = django_filters.CharFilter(field_name="item_name", lookup_expr='icontains')
+    item_name = django_filters.CharFilter(field_name="items__item_name", lookup_expr='icontains')
 
     class Meta:
         model = Freight
         fields = ["vendor_id", "start_date", "end_date","deal_no","item_name"]
+
+class ImportBillFilter(django_filters.FilterSet):
+    vendor_id = django_filters.NumberFilter(field_name="vendor_id")
+    vendor_name = django_filters.CharFilter(field_name="vendor__display_name", lookup_expr='icontains')
+    start_date = django_filters.DateFilter(field_name="date", lookup_expr='gte')
+    end_date = django_filters.DateFilter(field_name="date", lookup_expr='lte')
+    deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='icontains')
+    item_name = django_filters.CharFilter(field_name="bill_items__item_name", lookup_expr='icontains')
+
+    class Meta:
+        model = ImportBill
+        fields = ["vendor_id", "start_date", "end_date","deal_no","item_name"]
+
+class DutyFilter(django_filters.FilterSet):
+    vendor_id = django_filters.NumberFilter(field_name="vendor_id")
+    vendor_name = django_filters.CharFilter(field_name="vendor__display_name", lookup_expr='icontains')
+    start_date = django_filters.DateFilter(field_name="date", lookup_expr='gte')
+    end_date = django_filters.DateFilter(field_name="date", lookup_expr='lte')
+    deal_no = django_filters.CharFilter(field_name="deal__deal_no", lookup_expr='icontains')
+    item_name = django_filters.CharFilter(field_name="duty_items__item_name", lookup_expr='icontains')
+
+    class Meta:
+        model = Duty
+        fields = ["vendor_id", "start_date", "end_date","deal_no","item_name"]
+
+
 
 class DealFilter(django_filters.FilterSet):
     customer_id = django_filters.NumberFilter(field_name="customer_id")

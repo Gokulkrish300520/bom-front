@@ -22,10 +22,11 @@ from .inventory_management_models import (
     InventoryManagement
 )
 from .purchase_models import (
-    Freight
+    Freight,FreightItem,ImportBill,ImportBillItem,Duty,DutyItem
 )
 
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 
 class InventoryManagementSerializer(serializers.ModelSerializer):
@@ -72,7 +73,6 @@ class InventoryManagementSerializer(serializers.ModelSerializer):
 
 
 """Serializers for core Django models."""
-
 
 class CustomerDocumentSerializer(serializers.ModelSerializer):
     """
@@ -274,8 +274,14 @@ class VendorSerializer(serializers.ModelSerializer):
                     )
         return instance
 
+class FreightItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FreightItem
+        exclude = ['freight']
+
+
 class FreightSerializer(serializers.ModelSerializer):
-    vendor = VendorSerializer(read_only=True)  # nested vendor details for read
+    vendor = VendorSerializer(read_only=True)
     vendor_id = serializers.PrimaryKeyRelatedField(
         queryset=Vendor.objects.all(),
         source='vendor',
@@ -283,8 +289,9 @@ class FreightSerializer(serializers.ModelSerializer):
     )
     deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
     deal_id = serializers.PrimaryKeyRelatedField(
-        queryset=Deal.objects.all(),source='deal', write_only=True
+        queryset=Deal.objects.all(), source='deal', write_only=True
     )
+    items = FreightItemSerializer(many=True)
     created_by = serializers.ReadOnlyField(source="created_by.username")
 
     class Meta:
@@ -295,32 +302,283 @@ class FreightSerializer(serializers.ModelSerializer):
             "vendor_id",
             "deal_no",
             "deal_id",
-            "currency",
-            "item_name",
-            "description",
-            "item_specification",
-            "brand",
-            "hsn_code",
-            "quantity",
-            "unit_price_usd",
-            "unit_price_inr",
-            "total_price_usd",
-            "total_price_inr",
             "date",
+            "currency",
+            "items",
             "sf_number",
             "weight",
             "freight_type",
+            "total_amount",
             "created_by",
             "created_at",
         ]
-        read_only_fields = ["id", "vendor", "deal_no","created_by", "created_at"]
+        read_only_fields = ["id", "vendor", "deal_no", "created_by", "created_at"]
 
     def create(self, validated_data):
-        # Optionally associate user from context if you want
-        user = self.context.get('request').user if self.context.get('request') else None
-        if user and not user.is_anonymous:
-            validated_data['created_by'] = user
-        return super().create(validated_data)
+        items_data = validated_data.pop('items', [])
+        user = self.context['request'].user if 'request' in self.context else None
+        freight = Freight.objects.create(created_by=user, **validated_data)
+
+        total = 0
+        for item_data in items_data:
+            # calculate total_price for each item
+            quantity = item_data.get("quantity", 0)
+            unit_price = item_data.get("unit_price", 0)
+            item_data["total_price"] = quantity * unit_price
+
+            item = FreightItem.objects.create(freight=freight, **item_data)
+            total += item.total_price or 0
+
+        freight.total_amount = total
+        freight.save()
+        return freight
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop('items', None)
+
+        # update freight fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if items_data is not None:
+            existing_items = {item.id: item for item in instance.items.all()}
+            sent_item_ids = []
+
+            for item_data in items_data:
+                item_id = item_data.get("id", None)
+                quantity = item_data.get("quantity", 0)
+                unit_price = item_data.get("unit_price", 0)
+                item_data["total_price"] = quantity * unit_price
+
+                if item_id:  # update existing
+                    if item_id in existing_items:
+                        item = existing_items[item_id]
+                        for attr, value in item_data.items():
+                            setattr(item, attr, value)
+                        item.save()
+                        sent_item_ids.append(item_id)
+                    else:
+                        raise ValidationError({"items": f"Invalid item id {item_id}"})
+                else:  # create new
+                    new_item = FreightItem.objects.create(freight=instance, **item_data)
+                    sent_item_ids.append(new_item.id)
+
+            # optionally delete missing items
+            for item_id, item in existing_items.items():
+                if item_id not in sent_item_ids:
+                    item.delete()
+
+            # recalc total_amount
+            instance.total_amount = sum(
+                item.total_price or 0 for item in instance.items.all()
+            )
+            instance.save()
+
+        return instance
+
+class ImportBillItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ImportBillItem
+        exclude=["bill"]
+        extra_kwargs = {
+            "bill": {"required": False}  # bill will be set automatically in parent
+        }
+
+class ImportBillSerializer(serializers.ModelSerializer):
+    bill_items = ImportBillItemSerializer(many=True,required=False)
+    vendor = VendorSerializer(read_only=True)
+    vendor_id = serializers.PrimaryKeyRelatedField(
+        queryset=Vendor.objects.all(),
+        source='vendor',
+        write_only=True
+    )
+    deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
+    deal_id = serializers.PrimaryKeyRelatedField(
+        queryset=Deal.objects.all(), source='deal', write_only=True
+    )
+    created_by = serializers.ReadOnlyField(source="created_by.username")
+    date = serializers.DateField(required=False)
+
+    class Meta:
+        model = ImportBill
+        fields = [
+            "id",
+            "vendor",
+            "vendor_id",
+            "deal_no",
+            "deal_id",
+            "date",
+            "payment_request",
+            "payment_reference_no",
+            "payment_status",
+            "paid_by",
+            "total_amount",
+            "bill_items",
+            "created_by",
+            "created_at",
+        ]
+        read_only_fields = ["id", "vendor", "deal_no", "created_by", "created_at"]
+
+    def create(self, validated_data):
+        items_data = validated_data.pop("bill_items", [])
+        user = self.context['request'].user if 'request' in self.context else None
+        bill = ImportBill.objects.create(created_by=user, **validated_data)
+        total = 0
+        for item in items_data:
+            new_item = ImportBillItem.objects.create(bill=bill, **item)
+            total += new_item.total_price or 0
+        bill.total_amount = total
+        bill.save()
+        return bill
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop("bill_items", None)
+
+        # update top-level ImportBill fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if items_data is not None:
+            existing_items = {item.id: item for item in instance.bill_items.all()}
+            sent_item_ids = []
+
+            for item_data in items_data:
+                item_id = item_data.get("id", None)
+
+                if item_id:  # update existing item
+                    if item_id in existing_items:
+                        item = existing_items[item_id]
+                        for attr, value in item_data.items():
+                            setattr(item, attr, value)
+                        item.save()
+                        sent_item_ids.append(item_id)
+                    else:
+                        raise serializers.ValidationError({"bill_items": f"Invalid item id {item_id}"})
+                else:  # create new item
+                    new_item = ImportBillItem.objects.create(bill=instance, **item_data)
+                    sent_item_ids.append(new_item.id)
+
+            # ⚠️ Option 1: Delete missing items
+            for item_id, item in existing_items.items():
+                if item_id not in sent_item_ids:
+                    item.delete()
+                    
+            instance.total_amount = sum(item.total_price or 0 for item in instance.bill_items.all())
+            instance.save()
+
+            
+        return instance
+  
+class DutyItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DutyItem
+        exclude=["duty"]
+        extra_kwargs = {
+            "duty": {"required": False}
+        }
+
+
+class DutySerializer(serializers.ModelSerializer):
+    duty_items = DutyItemSerializer(many=True, required=False)
+    vendor = serializers.StringRelatedField(read_only=True)
+    vendor_id = serializers.PrimaryKeyRelatedField(
+        queryset=Vendor.objects.all(),
+        source="vendor",
+        write_only=True
+    )
+    deal_no = serializers.CharField(source="deal.deal_no", read_only=True)
+    deal_id = serializers.PrimaryKeyRelatedField(
+        queryset=Deal.objects.all(),
+        source="deal",
+        write_only=True
+    )
+    date = serializers.DateField(required=False)
+    created_by = serializers.ReadOnlyField(source="created_by.username")
+
+    class Meta:
+        model = Duty
+        fields = [
+            "id",
+            "vendor",
+            "vendor_id",
+            "deal_no",
+            "deal_id",
+            "currency",
+            "date",
+            "airway_bill",
+            "assessable_value",
+            "igst",
+            "social_welfare",
+            "cess",
+            "duty",
+            "addl_duty",
+            "total",
+            "duty_items",
+            "created_by",
+            "created_at"
+        ]
+        read_only_fields = ["id", "vendor", "deal_no", "total","created_by","created_at"]
+
+    # CREATE
+    def create(self, validated_data):
+        items_data = validated_data.pop("duty_items", [])
+        user = self.context['request'].user if 'request' in self.context else None
+        duty = Duty.objects.create(created_by=user, **validated_data)
+
+        for item in items_data:
+            DutyItem.objects.create(duty=duty, **item)
+
+        # Auto-calc total
+        duty.total = (
+            duty.igst + duty.social_welfare + duty.cess + duty.duty + duty.addl_duty
+        )
+        duty.save()
+        return duty
+
+    # UPDATE (with partial support for duty_items)
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop("duty_items", None)
+
+        # update top-level fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if items_data is not None:
+            existing_items = {item.id: item for item in instance.duty_items.all()}
+            sent_item_ids = []
+
+            for item_data in items_data:
+                item_id = item_data.get("id", None)
+
+                if item_id:  # update existing item
+                    if item_id in existing_items:
+                        item = existing_items[item_id]
+                        for attr, value in item_data.items():
+                            setattr(item, attr, value)
+                        item.save()
+                        sent_item_ids.append(item_id)
+                    else:
+                        raise serializers.ValidationError({"duty_items": f"Invalid item id {item_id}"})
+                else:  # new item
+                    new_item = DutyItem.objects.create(duty=instance, **item_data)
+                    sent_item_ids.append(new_item.id)
+
+            # delete items not in request
+            for item_id, item in existing_items.items():
+                if item_id not in sent_item_ids:
+                    item.delete()
+
+        # Recalculate total
+        instance.total = (
+            instance.igst + instance.social_welfare + instance.cess +
+            instance.duty + instance.addl_duty
+        )
+        instance.save()
+
+        return instance
 
 
 class BillItemSerializer(serializers.ModelSerializer):
