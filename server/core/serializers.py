@@ -22,7 +22,7 @@ from .inventory_management_models import (
     InventoryManagement
 )
 from .purchase_models import (
-    Freight,FreightItem,ImportBill,ImportBillItem,Duty,DutyItem
+    Freight,FreightItem,ImportBill,ImportBillItem,Duty,DutyItem,Gst,GstItem,NonGst,NonGstItem
 )
 
 from rest_framework import serializers
@@ -272,6 +272,224 @@ class VendorSerializer(serializers.ModelSerializer):
                         vendor=instance,
                         **{k: v for k, v in cp_data.items() if k != "id"}
                     )
+        return instance
+
+
+class GstItemSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
+
+    class Meta:
+        model = GstItem
+        exclude = ["gst"]
+
+    def create(self, validated_data):
+        # Calculate total_price automatically
+        validated_data['total_price'] = validated_data.get('quantity', 0) * validated_data.get('unit_price', 0)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        # Update total_price automatically
+        instance.quantity = validated_data.get('quantity', instance.quantity)
+        instance.unit_price = validated_data.get('unit_price', instance.unit_price)
+        instance.total_price = instance.quantity * instance.unit_price
+        return super().update(instance, validated_data)
+
+
+class GstSerializer(serializers.ModelSerializer):
+    items = GstItemSerializer(many=True, required=False)
+    vendor = VendorSerializer(read_only=True)
+    vendor_id = serializers.PrimaryKeyRelatedField(
+        queryset=Vendor.objects.all(),
+        source='vendor',
+        write_only=True
+    )
+    deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
+    deal_id = serializers.PrimaryKeyRelatedField(
+        queryset=Deal.objects.all(), source='deal', write_only=True
+    )
+    created_by = serializers.ReadOnlyField(source="created_by.username")
+    date = serializers.DateField(required=False)
+
+    class Meta:
+        model = Gst
+        fields = [
+            "id",
+            "vendor",
+            "vendor_id",
+            "deal_no",
+            "deal_id",
+            "date",
+            "currency",
+            "payment_request",
+            "payment_reference_no",
+            "payment_status",
+            "paid_by",
+            "total_amount",
+            "items",
+            "created_by",
+            "created_at",
+        ]
+        read_only_fields = ["id", "vendor", "deal_no", "created_by", "created_at", "total_amount"]
+
+    def create(self, validated_data):
+        items_data = validated_data.pop("items", [])
+        user = self.context['request'].user if 'request' in self.context else None
+        bill = Gst.objects.create(created_by=user, **validated_data)
+
+        total_amount = 0
+        for item_data in items_data:
+            item_data['total_price'] = item_data.get('quantity', 0) * item_data.get('unit_price', 0)
+            GstItem.objects.create(gst=bill, **item_data)
+            total_amount += item_data['total_price']
+
+        bill.total_amount = total_amount
+        bill.save()
+        return bill
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop("items", None)
+
+        # Update top-level fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if items_data is not None:
+            existing_items = {item.id: item for item in instance.items.all()}
+            sent_item_ids = []
+
+            for item_data in items_data:
+                item_id = item_data.get("id", None)
+                item_data['total_price'] = item_data.get('quantity', 0) * item_data.get('unit_price', 0)
+
+                if item_id and item_id in existing_items:
+                    item = existing_items[item_id]
+                    for attr, value in item_data.items():
+                        setattr(item, attr, value)
+                    item.save()
+                    sent_item_ids.append(item_id)
+                else:  # new item
+                    new_item = GstItem.objects.create(gst=instance, **item_data)
+                    sent_item_ids.append(new_item.id)
+
+            # Delete missing items
+            for item_id, item in existing_items.items():
+                if item_id not in sent_item_ids:
+                    item.delete()
+
+            instance.total_amount = sum(item.total_price for item in instance.items.all())
+            instance.save()
+
+        return instance
+
+
+# ---------------------- NonGst Serializers ----------------------
+
+class NonGstItemSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
+
+    class Meta:
+        model = NonGstItem
+        exclude = ["nongst"]
+
+    def create(self, validated_data):
+        validated_data['total_price'] = validated_data.get('quantity', 0) * validated_data.get('unit_price', 0)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        instance.quantity = validated_data.get('quantity', instance.quantity)
+        instance.unit_price = validated_data.get('unit_price', instance.unit_price)
+        instance.total_price = instance.quantity * instance.unit_price
+        return super().update(instance, validated_data)
+
+
+class NonGstSerializer(serializers.ModelSerializer):
+    items = NonGstItemSerializer(many=True, required=False)
+    vendor = VendorSerializer(read_only=True)
+    vendor_id = serializers.PrimaryKeyRelatedField(
+        queryset=Vendor.objects.all(),
+        source='vendor',
+        write_only=True
+    )
+    deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
+    deal_id = serializers.PrimaryKeyRelatedField(
+        queryset=Deal.objects.all(),
+        source='deal',
+        write_only=True
+    )
+    created_by = serializers.ReadOnlyField(source="created_by.username")
+    date = serializers.DateField(required=False)
+
+    class Meta:
+        model = NonGst
+        fields = [
+            "id",
+            "vendor",
+            "vendor_id",
+            "deal_no",
+            "deal_id",
+            "date",
+            "currency",
+            "payment_request",
+            "payment_reference_no",
+            "payment_status",
+            "paid_by",
+            "total_amount",
+            "items",
+            "created_by",
+            "created_at",
+        ]
+        read_only_fields = ["id", "vendor", "deal_no", "created_by", "created_at", "total_amount"]
+
+    def create(self, validated_data):
+        items_data = validated_data.pop("items", [])
+        user = self.context['request'].user if 'request' in self.context else None
+        bill = NonGst.objects.create(created_by=user, **validated_data)
+
+        total_amount = 0
+        for item_data in items_data:
+            item_data['total_price'] = item_data.get('quantity', 0) * item_data.get('unit_price', 0)
+            NonGstItem.objects.create(nongst=bill, **item_data)
+            total_amount += item_data['total_price']
+
+        bill.total_amount = total_amount
+        bill.save()
+        return bill
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop("items", None)
+
+        # Update top-level fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if items_data is not None:
+            existing_items = {item.id: item for item in instance.items.all()}
+            sent_item_ids = []
+
+            for item_data in items_data:
+                item_id = item_data.get("id", None)
+                item_data['total_price'] = item_data.get('quantity', 0) * item_data.get('unit_price', 0)
+
+                if item_id and item_id in existing_items:
+                    item = existing_items[item_id]
+                    for attr, value in item_data.items():
+                        setattr(item, attr, value)
+                    item.save()
+                    sent_item_ids.append(item_id)
+                else:  # new item
+                    new_item = NonGstItem.objects.create(nongst=instance, **item_data)
+                    sent_item_ids.append(new_item.id)
+
+            # Delete missing items
+            for item_id, item in existing_items.items():
+                if item_id not in sent_item_ids:
+                    item.delete()
+
+            instance.total_amount = sum(item.total_price for item in instance.items.all())
+            instance.save()
+
         return instance
 
 class FreightItemSerializer(serializers.ModelSerializer):

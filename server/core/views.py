@@ -12,7 +12,9 @@ from .serializers import (
     DealSerializer,
     FreightSerializer,
     ImportBillSerializer,
-    DutySerializer
+    DutySerializer,
+    GstSerializer,
+    NonGstSerializer
 )
 from .filters_extra import (
     InvoiceFilter,
@@ -23,7 +25,9 @@ from .filters_extra import (
     FreightFilter,
     VendorFilter,
     ImportBillFilter,
-    DutyFilter
+    DutyFilter,
+    GstFilter,
+    NonGstFilter
 )
 from .filters import QuoteFilter
 from .models import (
@@ -39,7 +43,7 @@ from .models import (
     Vendor,
     Deal,
 )
-from .purchase_models import Freight,ImportBill,Duty
+from .purchase_models import Freight,ImportBill,Duty,Gst,NonGst
 from django.db.models import F
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -60,6 +64,26 @@ from django.http import JsonResponse
 
 
 # ...existing code...
+class GstViewSet(viewsets.ModelViewSet):
+    queryset = Gst.objects.all().order_by('-date', '-created_at')
+    serializer_class = GstSerializer
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = GstFilter
+
+    ordering_fields = ['date', 'total_amount', 'created_at']
+    ordering = ['-date']
+
+class NonGstViewSet(viewsets.ModelViewSet):
+    queryset = NonGst.objects.all().order_by('-date', '-created_at')
+    serializer_class = NonGstSerializer
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = NonGstFilter
+
+    ordering_fields = ['date', 'total_amount', 'created_at']
+    ordering = ['-date']
+
 class FreightViewSet(viewsets.ModelViewSet):
     queryset = Freight.objects.all().order_by('-date', '-created_at')
     serializer_class = FreightSerializer
