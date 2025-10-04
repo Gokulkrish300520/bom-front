@@ -414,6 +414,11 @@ class Billorder(models.Model):
         decimal_places=2,
         default=0,
     )
+    paid_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
     amount_to_pay = models.DecimalField(
         max_digits=12,
         decimal_places=2,

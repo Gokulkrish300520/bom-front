@@ -863,18 +863,22 @@ class BillorderSerializer(serializers.ModelSerializer):
             "tax_percentage",
             "adjustments",
             "total_amount",
+            "paid_amount",
             "amount_to_pay",
             "created_at",
             "created_by",
             "billorder_items",
         ]
-        read_only_fields = ["created_at", "created_by", "vendor","deal_no","subtotal", "total_amount", "amount_to_pay"]
+        read_only_fields = ["created_at", "created_by", "vendor","deal_no","subtotal", "total_amount","amount_to_pay"]
 
     @transaction.atomic
     def create(self, validated_data):
         items_data = validated_data.pop("billorder_items", [])
+        paid_amount = Decimal(validated_data.pop("paid_amount", 0))
         user = self.context['request'].user if 'request' in self.context else None
-        bill_order = Billorder.objects.create(created_by=user,**validated_data)
+
+        # Create the bill order
+        bill_order = Billorder.objects.create(created_by=user, **validated_data)
 
         subtotal = 0
         items_to_create = []
@@ -883,32 +887,45 @@ class BillorderSerializer(serializers.ModelSerializer):
             unit_price = item_data.get("unit_price", 0)
             total_price = quantity * unit_price
             subtotal += total_price
-            
             item_data.pop("total_price", None)
             items_to_create.append(BillorderItem(bill_order=bill_order, total_price=total_price, **item_data))
 
         if items_to_create:
             BillorderItem.objects.bulk_create(items_to_create)
 
+        # Calculate total_amount
         tax_percentage = Decimal(bill_order.tax_percentage)
         tax_amount = subtotal * tax_percentage / Decimal(100)
         total_amount = subtotal + tax_amount + bill_order.adjustments if bill_order.tax_type == "TCS" else subtotal - tax_amount + bill_order.adjustments
 
+        # Update bill amounts
         bill_order.subtotal = subtotal
         bill_order.total_amount = total_amount
-        bill_order.amount_to_pay = total_amount if bill_order.status != "PAID" else 0
-        bill_order.save()
+        bill_order.paid_amount = paid_amount
+        bill_order.amount_to_pay = max(total_amount - paid_amount, 0)
 
+        # Update status
+        if paid_amount >= total_amount:
+            bill_order.status = "PAID"
+        elif paid_amount > 0:
+            bill_order.status = "PARTIAL"
+        else:
+            bill_order.status = "UNPAID"
+
+        bill_order.save()
         return bill_order
 
     @transaction.atomic
     def update(self, instance, validated_data):
+        amount_to_pay = Decimal(validated_data.pop("amount_to_pay", 0))
         items_data = validated_data.pop("billorder_items", [])
 
         # Update bill fields
         for field in ["vendor", "deal", "bill_number", "status", "bill_date", "due_date", "notes", "tax_type", "tax_percentage", "adjustments"]:
             setattr(instance, field, validated_data.get(field, getattr(instance, field)))
-        instance.save()
+
+        # Add any partial payment
+        instance.paid_amount += amount_to_pay
 
         existing_ids = [item.id for item in instance.billorder_items.all()]
         sent_ids = [item.get("id") for item in items_data if item.get("id")]
@@ -935,21 +952,29 @@ class BillorderSerializer(serializers.ModelSerializer):
                 unit_price = item_data.get("unit_price", 0)
                 total_price = quantity * unit_price
                 subtotal += total_price
-                
                 item_data.pop("total_price", None)
                 BillorderItem.objects.create(bill_order=instance, total_price=total_price, **item_data)
 
         # Recalculate totals
         tax_percentage = Decimal(instance.tax_percentage)
-        tax_amount = subtotal * tax_percentage /Decimal(100)
+        tax_amount = subtotal * tax_percentage / Decimal(100)
         total_amount = subtotal + tax_amount + instance.adjustments if instance.tax_type == "TCS" else subtotal - tax_amount + instance.adjustments
 
         instance.subtotal = subtotal
         instance.total_amount = total_amount
-        instance.amount_to_pay = total_amount if instance.status != "PAID" else 0
-        instance.save()
+        instance.amount_to_pay = max(total_amount - instance.paid_amount, 0)
 
+        # Update status
+        if instance.paid_amount >= total_amount:
+            instance.status = "PAID"
+        elif instance.paid_amount > 0:
+            instance.status = "PARTIAL"
+        else:
+            instance.status = "UNPAID"
+
+        instance.save()
         return instance
+
 
 
 class BillItemSerializer(serializers.ModelSerializer):
