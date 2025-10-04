@@ -802,6 +802,7 @@ class DutySerializer(serializers.ModelSerializer):
 from rest_framework import serializers
 from django.db import transaction
 from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 class BillorderItemSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)  # For updates
@@ -870,7 +871,13 @@ class BillorderSerializer(serializers.ModelSerializer):
             "billorder_items",
         ]
         read_only_fields = ["created_at", "created_by", "vendor", "deal_no", "subtotal", "total_amount", "amount_to_pay"]
-
+    
+    def _to_decimal(self, value):
+        try:
+            return Decimal(str(value or 0))
+        except (InvalidOperation, TypeError):
+            return Decimal(0)
+    
     @transaction.atomic
     def create(self, validated_data):
         items_data = validated_data.pop("billorder_items", [])
@@ -881,6 +888,7 @@ class BillorderSerializer(serializers.ModelSerializer):
 
         subtotal = 0
         items_to_create = []
+        
         for item_data in items_data:
             quantity = item_data.get("quantity", 0)
             unit_price = item_data.get("unit_price", 0)
@@ -913,17 +921,24 @@ class BillorderSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        amount_to_pay = Decimal(validated_data.pop("amount_to_pay", 0))
+        # Accept either 'paid_amount' (total so far) or 'amount_to_pay' (new payment)
+        new_paid = Decimal(validated_data.pop("paid_amount", None) or 0)
+        add_paid = Decimal(validated_data.pop("amount_to_pay", 0))
+
+        # Update fields
+        for field in ["vendor", "deal", "bill_number", "bill_date", "due_date", "notes", "tax_type", "tax_percentage", "adjustments"]:
+            if field in validated_data:
+                setattr(instance, field, validated_data[field])
+
+        # Handle payment logic
+        if new_paid:  # if total paid amount is directly provided
+            instance.paid_amount = new_paid
+        else:
+            instance.paid_amount += add_paid  # incremental payment
+
         items_data = validated_data.pop("billorder_items", None)
-
-        # Update bill fields
-        for field in ["vendor", "deal", "bill_number", "status", "bill_date", "due_date", "notes", "tax_type", "tax_percentage", "adjustments"]:
-            setattr(instance, field, validated_data.get(field, getattr(instance, field)))
-
-        # Add any new partial payment
-        instance.paid_amount += amount_to_pay
-
         subtotal = 0
+
         if items_data is not None:
             existing_ids = [item.id for item in instance.billorder_items.all()]
             sent_ids = [item.get("id") for item in items_data if item.get("id")]
@@ -936,7 +951,6 @@ class BillorderSerializer(serializers.ModelSerializer):
             # Update or create items
             for item_data in items_data:
                 if "id" in item_data:
-                    # Update existing item
                     item = BillorderItem.objects.get(id=item_data["id"], bill_order=instance)
                     for key, value in item_data.items():
                         if key in ["quantity", "unit_price", "item_name", "description", "item_specification", "brand", "hsn_code"]:
@@ -945,15 +959,12 @@ class BillorderSerializer(serializers.ModelSerializer):
                     item.save()
                     subtotal += item.total_price
                 else:
-                    # Create new item
                     quantity = item_data.get("quantity", 0)
                     unit_price = item_data.get("unit_price", 0)
                     total_price = quantity * unit_price
                     subtotal += total_price
-                    item_data.pop("total_price", None)
                     BillorderItem.objects.create(bill_order=instance, total_price=total_price, **item_data)
         else:
-            # No items sent → keep current items
             subtotal = sum(item.total_price for item in instance.billorder_items.all())
 
         # Recalculate totals
@@ -975,6 +986,7 @@ class BillorderSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+
 
 
 class BillItemSerializer(serializers.ModelSerializer):
