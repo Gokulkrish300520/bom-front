@@ -45,6 +45,7 @@ from .models import (
 )
 from .purchase_models import Freight,ImportBill,Duty,Gst,NonGst
 from django.db.models import F
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -61,6 +62,20 @@ import json
 import xlsxwriter
 from django.core.mail import EmailMessage
 from django.http import JsonResponse
+from django.contrib.auth.models import User
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def current_user(request):
+    user = request.user
+    role = "Admin" if user.is_superuser else "Staff" if user.is_staff else "User"
+    return Response({
+        "id": user.id,
+        "username": user.username,
+        "full_name": f"{user.first_name} {user.last_name}".strip(),
+        "email": user.email,
+        "role": role,
+    })
 
 
 # ...existing code...

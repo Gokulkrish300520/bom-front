@@ -6,6 +6,7 @@ from .views import send_report_email
 from .views import GeneratePresignedUrlView,generate_document_pdf
 from django.conf.urls.static import static
 from django.conf import settings
+from .views import current_user
 
 from rest_framework.routers import DefaultRouter
 from .views import (
@@ -79,6 +80,7 @@ urlpatterns = [
         BalanceSheetReportView.as_view(),
         name="balance-sheet-report",
     ),
+    path("auth/me/", current_user, name="current_user"),
     path("auth/logout/", TokenBlacklistView.as_view(), name="token_blacklist"),
     path('api/send-report-email/', send_report_email, name='send_report_email'),
     path("generate-presigned-url/", GeneratePresignedUrlView.as_view(), name="generate-presigned-url"),
