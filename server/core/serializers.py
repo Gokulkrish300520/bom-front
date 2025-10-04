@@ -22,7 +22,7 @@ from .inventory_management_models import (
     InventoryManagement
 )
 from .purchase_models import (
-    Freight,FreightItem,ImportBill,ImportBillItem,Duty,DutyItem,Gst,GstItem,NonGst,NonGstItem
+    Freight,FreightItem,ImportBill,ImportBillItem,Duty,DutyItem,Gst,GstItem,NonGst,NonGstItem,Billorder,BillorderItem
 )
 
 from rest_framework import serializers
@@ -795,6 +795,158 @@ class DutySerializer(serializers.ModelSerializer):
             instance.igst + instance.social_welfare + instance.cess +
             instance.duty + instance.addl_duty
         )
+        instance.save()
+
+        return instance
+
+from rest_framework import serializers
+from django.db import transaction
+from decimal import Decimal
+
+class BillorderItemSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)  # For updates
+
+    class Meta:
+        model = BillorderItem
+        fields = [
+            "id",
+            "item_name",
+            "description",
+            "item_specification",
+            "brand",
+            "hsn_code",
+            "quantity",
+            "unit_price",
+            "total_price",
+        ]
+        read_only_fields = ["total_price"]
+
+    def validate(self, attrs):
+        # Automatically calculate total_price
+        quantity = attrs.get("quantity", 0)
+        unit_price = attrs.get("unit_price", 0)
+        attrs["total_price"] = quantity * unit_price
+        return attrs
+
+
+class BillorderSerializer(serializers.ModelSerializer):
+    billorder_items = BillorderItemSerializer(many=True)
+    vendor = serializers.StringRelatedField(read_only=True)
+    vendor_id = serializers.PrimaryKeyRelatedField(
+        queryset=Vendor.objects.all(),
+        source="vendor",
+        write_only=True
+    )
+    deal_no = serializers.CharField(source="deal.deal_no", read_only=True)
+    deal_id = serializers.PrimaryKeyRelatedField(
+        queryset=Deal.objects.all(),
+        source="deal",
+        write_only=True
+    )
+    created_by = serializers.ReadOnlyField(source="created_by.username")
+
+    class Meta:
+        model = Billorder
+        fields = [
+            "id",
+            "vendor",
+            "vendor_id",
+            "deal_no",
+            "deal_id",
+            "bill_number",
+            "status",
+            "bill_date",
+            "due_date",
+            "notes",
+            "subtotal",
+            "tax_type",
+            "tax_percentage",
+            "adjustments",
+            "total_amount",
+            "amount_to_pay",
+            "created_at",
+            "created_by",
+            "billorder_items",
+        ]
+        read_only_fields = ["created_at", "created_by", "vendor","deal_no","subtotal", "total_amount", "amount_to_pay"]
+
+    @transaction.atomic
+    def create(self, validated_data):
+        items_data = validated_data.pop("billorder_items", [])
+        user = self.context['request'].user if 'request' in self.context else None
+        bill_order = Billorder.objects.create(created_by=user,**validated_data)
+
+        subtotal = 0
+        items_to_create = []
+        for item_data in items_data:
+            quantity = item_data.get("quantity", 0)
+            unit_price = item_data.get("unit_price", 0)
+            total_price = quantity * unit_price
+            subtotal += total_price
+            
+            item_data.pop("total_price", None)
+            items_to_create.append(BillorderItem(bill_order=bill_order, total_price=total_price, **item_data))
+
+        if items_to_create:
+            BillorderItem.objects.bulk_create(items_to_create)
+
+        tax_percentage = Decimal(bill_order.tax_percentage)
+        tax_amount = subtotal * tax_percentage / Decimal(100)
+        total_amount = subtotal + tax_amount + bill_order.adjustments if bill_order.tax_type == "TCS" else subtotal - tax_amount + bill_order.adjustments
+
+        bill_order.subtotal = subtotal
+        bill_order.total_amount = total_amount
+        bill_order.amount_to_pay = total_amount if bill_order.status != "PAID" else 0
+        bill_order.save()
+
+        return bill_order
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop("billorder_items", [])
+
+        # Update bill fields
+        for field in ["vendor", "deal", "bill_number", "status", "bill_date", "due_date", "notes", "tax_type", "tax_percentage", "adjustments"]:
+            setattr(instance, field, validated_data.get(field, getattr(instance, field)))
+        instance.save()
+
+        existing_ids = [item.id for item in instance.billorder_items.all()]
+        sent_ids = [item.get("id") for item in items_data if item.get("id")]
+
+        # Delete removed items
+        for item_id in existing_ids:
+            if item_id not in sent_ids:
+                BillorderItem.objects.filter(id=item_id).delete()
+
+        subtotal = 0
+        for item_data in items_data:
+            if "id" in item_data:
+                # Update existing item
+                item = BillorderItem.objects.get(id=item_data["id"], bill_order=instance)
+                for key, value in item_data.items():
+                    if key in ["quantity", "unit_price", "item_name", "description", "item_specification", "brand", "hsn_code"]:
+                        setattr(item, key, value)
+                item.total_price = item.quantity * item.unit_price
+                item.save()
+                subtotal += item.total_price
+            else:
+                # Create new item
+                quantity = item_data.get("quantity", 0)
+                unit_price = item_data.get("unit_price", 0)
+                total_price = quantity * unit_price
+                subtotal += total_price
+                
+                item_data.pop("total_price", None)
+                BillorderItem.objects.create(bill_order=instance, total_price=total_price, **item_data)
+
+        # Recalculate totals
+        tax_percentage = Decimal(instance.tax_percentage)
+        tax_amount = subtotal * tax_percentage /Decimal(100)
+        total_amount = subtotal + tax_amount + instance.adjustments if instance.tax_type == "TCS" else subtotal - tax_amount + instance.adjustments
+
+        instance.subtotal = subtotal
+        instance.total_amount = total_amount
+        instance.amount_to_pay = total_amount if instance.status != "PAID" else 0
         instance.save()
 
         return instance

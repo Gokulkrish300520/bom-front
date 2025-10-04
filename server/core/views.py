@@ -14,7 +14,8 @@ from .serializers import (
     ImportBillSerializer,
     DutySerializer,
     GstSerializer,
-    NonGstSerializer
+    NonGstSerializer,
+    BillorderSerializer
 )
 from .filters_extra import (
     InvoiceFilter,
@@ -27,7 +28,8 @@ from .filters_extra import (
     ImportBillFilter,
     DutyFilter,
     GstFilter,
-    NonGstFilter
+    NonGstFilter,
+    BillorderFilter
 )
 from .filters import QuoteFilter
 from .models import (
@@ -43,7 +45,7 @@ from .models import (
     Vendor,
     Deal,
 )
-from .purchase_models import Freight,ImportBill,Duty,Gst,NonGst
+from .purchase_models import Freight,ImportBill,Duty,Gst,NonGst,Billorder
 from django.db.models import F
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -128,6 +130,20 @@ class DutyViewSet(viewsets.ModelViewSet):
 
     ordering_fields = ['date', 'total_amount', 'created_at']
     ordering = ['-date']
+
+class BillorderViewSet(viewsets.ModelViewSet):
+
+    queryset = Billorder.objects.all().order_by('-bill_date', '-created_at')
+    serializer_class = BillorderSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = BillorderFilter
+    ordering_fields = ['bill_date', 'total_amount', 'created_at']
+    ordering = ['-bill_date']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.distinct()
+
 
 class DealViewSet(viewsets.ModelViewSet):
     queryset = Deal.objects.all().order_by('id')

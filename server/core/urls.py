@@ -28,7 +28,8 @@ from .views import (
     ImportBillViewSet,
     DutyViewSet,
     GstViewSet,
-    NonGstViewSet
+    NonGstViewSet,
+    BillorderViewSet
 )
 from .views import DealViewSet
 
@@ -46,6 +47,7 @@ router.register(r'nongsts', NonGstViewSet, basename='nongst')
 router.register(r'freights', FreightViewSet, basename='freight')
 router.register(r'importbills',ImportBillViewSet,basename='importbill')
 router.register(r'duties',DutyViewSet,basename='duty')
+router.register(r'billorders',BillorderViewSet,basename='billorders')
 router.register(r'deals', DealViewSet)
 router.register(r"customers", CustomerViewSet, basename="customer")
 router.register(r"vendors", VendorViewSet, basename="vendor")

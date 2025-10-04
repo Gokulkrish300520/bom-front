@@ -350,4 +350,117 @@ class DutyItem(models.Model):
         max_digits=12, decimal_places=2, default=0,
         help_text="Total price"
     )
+
+class Billorder(models.Model):
+    STATUS_CHOICES = [
+        ("PAID", "Paid"),
+        ("UNPAID", "Unpaid"),
+        ("PARTIAL", "Partial"),
+        ("DRAFT", "Draft"),
+    ]
+    TAX_TYPE_CHOICES = [
+        ("TDS", "TDS"),
+        ("TCS", "TCS"),
+    ]
+    TAX_PERCENTAGE_CHOICES = [
+        ("0", "0%"),
+        ("5", "5%"),
+        ("12", "12%"),
+        ("18", "18%"),
+        ("28", "28%"),
+    ]
     
+    
+    vendor = models.ForeignKey(
+        "Vendor",
+        related_name="billorders",
+        on_delete=models.CASCADE,
+    )
+    deal = models.ForeignKey(Deal, on_delete=models.CASCADE, related_name="billorders")
+    bill_number = models.CharField(
+        max_length=50,
+        unique=True,
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default="DRAFT",
+    )
+    bill_date = models.DateField(db_index=True)
+    due_date = models.DateField()
+    notes = models.TextField(
+        blank=True,
+    )
+    subtotal = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    tax_type = models.CharField(
+        max_length=3,
+        choices=TAX_TYPE_CHOICES,
+        default="TDS",
+    )
+    tax_percentage = models.CharField(
+        max_length=3, choices=TAX_PERCENTAGE_CHOICES, default="0"
+    )
+    adjustments = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    total_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    amount_to_pay = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, help_text="User who created the record"
+    )
+    
+    def __str__(self):
+        return f"Bill {self.bill_number} - {self.vendor}"
+
+class BillorderItem(models.Model):
+    bill_order = models.ForeignKey(Billorder,related_name="billorder_items",on_delete=models.CASCADE)
+    item_name = models.CharField(
+        max_length=100, help_text="Name of the item being purchased"
+    )
+    description = models.TextField(
+        null=True, blank=True,
+        help_text="Description of the item"
+    )
+    item_specification = models.TextField(
+        null=True, blank=True,
+        help_text="Specifications of the item"
+    )
+    brand = models.CharField(
+        max_length=50, null=True, blank=True,
+        help_text="Brand of the item")
+    hsn_code = models.CharField(
+        max_length=20, null=True, blank=True,
+        help_text="HSN code of the item"
+    )
+    quantity = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Quantity of the item"
+    )
+    unit_price = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Unit price")
+    total_price = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Total price"
+    )
+    
+    def __str__(self):
+        return f"{self.item_name} ({self.quantity} x {self.unit_price})"
