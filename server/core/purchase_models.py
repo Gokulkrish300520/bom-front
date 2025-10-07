@@ -147,18 +147,6 @@ class Freight(models.Model):
     date=models.DateField(
         help_text="Date of the freight charge"
     )
-    sf_number = models.CharField(
-        max_length=50, null=True, blank=True,
-        help_text="Salesforce number associated with the freight charge"
-    )
-    weight = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True,
-        help_text="Weight of the item"
-    )
-    freight_type = models.CharField(
-        max_length=20, null=True, blank=True,
-        help_text="Type of freight (e.g., air, sea, land)"
-    )
     total_amount = models.DecimalField(
         max_digits=12, decimal_places=2, default=0,
         help_text="Total price")
@@ -174,6 +162,19 @@ class Freight(models.Model):
     
 class FreightItem(models.Model):
     freight = models.ForeignKey(Freight, related_name="items", on_delete=models.CASCADE)
+    sf_number = models.CharField(
+        max_length=50, null=True, blank=True,
+        help_text="Salesforce number associated with the freight charge"
+    )
+    weight = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="Weight of the item"
+    )
+    freight_type = models.CharField(
+        max_length=20, null=True, blank=True,
+        help_text="Type of freight (e.g., air, sea, land)"
+    )
+    
     item_name = models.CharField(
         max_length=100, help_text="Name of the item being shipped"
     )
@@ -203,6 +204,14 @@ class FreightItem(models.Model):
         max_digits=12, decimal_places=2, default=0,null=True,blank = True,
         help_text="Total price"
     )
+    
+    def save(self, *args, **kwargs):
+        # Automatically calculate total price
+        self.total_price = (self.quantity or 0) * (self.unit_price or 0)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.item_name} ({self.sf_number or 'No SF'})"
     
 class ImportBill(models.Model):
     payment_choices =[("Low","low"),("High","high")]
@@ -285,31 +294,8 @@ class Duty(models.Model):
         max_length=20, null=True, blank=True,
         help_text="airway bill number of the duty")
     
-    assessable_value = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0,
-        help_text="Assessable value for this duty")
     
-    igst = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0,
-        help_text="IGSt amount for this duty"
-    )
-    social_welfare = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0,
-        help_text="Social Welfare Surcharge amount"
-    )
-    cess = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0,
-        help_text="Cess amount"
-    )
-    duty = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0,
-        help_text="Primary duty amount"
-    )
-    addl_duty = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0,
-        help_text="Additional duty amount"
-    )
-    total = models.DecimalField(
+    total_amount = models.DecimalField(
         max_digits=12, decimal_places=2, default=0,
         help_text="Total amount including all duties and taxes"
     )
@@ -318,9 +304,13 @@ class Duty(models.Model):
         on_delete=models.SET_NULL, help_text="User who created the record"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Duty for {self.vendor.display_name} ({self.deal.deal_no})"
 
 class DutyItem(models.Model):
     duty = models.ForeignKey(Duty,related_name="duty_items",on_delete=models.CASCADE)
+    
     item_name = models.CharField(
         max_length=100, help_text="Name of the item being shipped"
     )
@@ -350,8 +340,56 @@ class DutyItem(models.Model):
         max_digits=12, decimal_places=2, default=0,
         help_text="Total price"
     )
+    
+    
+    assessable_value = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Assessable value for this item"
+    )
+    igst = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="IGST amount for this item"
+    )
+    social_welfare = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Social welfare surcharge for this item"
+    )
+    cess = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Cess amount for this item"
+    )
+    duty_amount= models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Primary duty amount for this item"
+    )
+    addl_duty = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Additional duty for this item"
+    )
+
+    total_duty = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Total duty (sum of all duties/taxes)"
+    )
+
+    def save(self, *args, **kwargs):
+        # Auto-calculate total_duty and total_price
+        self.total_price = (self.quantity or 0) * (self.unit_price or 0)
+        self.total_duty = (
+            (self.assessable_value or 0)
+            + (self.igst or 0)
+            + (self.social_welfare or 0)
+            + (self.cess or 0)
+            + (self.duty_amount or 0)
+            + (self.addl_duty or 0)
+        )
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.item_name} - Total Duty: {self.total_duty}"
 
 class Billorder(models.Model):
+    paid_by_choices = [("SBI","sbi"),("IOB","iob"),("ICICI","icici"),("Petty Cash","petty cash"),("UnPaid","unpaid")]
     STATUS_CHOICES = [
         ("PAID", "Paid"),
         ("UNPAID", "Unpaid"),
@@ -409,6 +447,7 @@ class Billorder(models.Model):
         decimal_places=2,
         default=0,
     )
+    paid_by = models.CharField(max_length=12,choices=paid_by_choices,default="UnPaid")
     total_amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
