@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from .models import Vendor,Deal
+from decimal import Decimal
 
 class Gst(models.Model):
     payment_choices =[("Low","low"),("High","high")]
@@ -307,6 +308,12 @@ class Duty(models.Model):
     
     def __str__(self):
         return f"Duty for {self.vendor.display_name} ({self.deal.deal_no})"
+    
+    def update_total_amount(self):
+        """Recalculate total amount from all related DutyItems."""
+        total = self.duty_items.aggregate(models.Sum("total_duty"))["total_duty__sum"] or Decimal("0.00")
+        self.total_amount = total
+        self.save(update_fields=["total_amount"])
 
 class DutyItem(models.Model):
     duty = models.ForeignKey(Duty,related_name="duty_items",on_delete=models.CASCADE)
@@ -373,6 +380,8 @@ class DutyItem(models.Model):
     )
 
     def save(self, *args, **kwargs):
+        
+        zero = Decimal("0.00")
         # Auto-calculate total_duty and total_price
         self.total_price = (self.quantity or 0) * (self.unit_price or 0)
         self.total_duty = (
@@ -384,6 +393,13 @@ class DutyItem(models.Model):
             + (self.addl_duty or 0)
         )
         super().save(*args, **kwargs)
+        
+        self.duty.update_total_amount()
+
+    def delete(self, *args, **kwargs):
+        """Ensure parent Duty total updates on deletion."""
+        super().delete(*args, **kwargs)
+        self.duty.update_total_amount()
 
     def __str__(self):
         return f"{self.item_name} - Total Duty: {self.total_duty}"
