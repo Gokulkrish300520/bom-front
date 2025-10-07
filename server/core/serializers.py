@@ -698,7 +698,7 @@ class DutyItemSerializer(serializers.ModelSerializer):
 
 class DutySerializer(serializers.ModelSerializer):
     duty_items = DutyItemSerializer(many=True, required=False)
-    vendor = VendorSerializer(read_only=True)
+    vendor = serializers.StringRelatedField(read_only=True)
     vendor_id = serializers.PrimaryKeyRelatedField(
         queryset=Vendor.objects.all(),
         source="vendor",
