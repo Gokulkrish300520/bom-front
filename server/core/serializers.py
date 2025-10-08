@@ -492,22 +492,40 @@ class NonGstSerializer(serializers.ModelSerializer):
 
         return instance
 
+from rest_framework import serializers
+from django.db import transaction
+
 class FreightItemSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)  # for updates
+
     class Meta:
         model = FreightItem
         exclude = ['freight']
+        read_only_fields = ['total_price']
+
+    def create(self, validated_data):
+        validated_data['total_price'] = (validated_data.get('quantity') or 0) * (validated_data.get('unit_price') or 0)
+        return FreightItem(**validated_data)  # don't save yet; save in bulk later
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.total_price = (instance.quantity or 0) * (instance.unit_price or 0)
+        return instance
 
 
 class FreightSerializer(serializers.ModelSerializer):
     vendor = VendorSerializer(read_only=True)
     vendor_id = serializers.PrimaryKeyRelatedField(
-        queryset=Vendor.objects.all(),
+        queryset=Freight.objects.model.vendor.field.related_model.objects.all(),
         source='vendor',
         write_only=True
     )
     deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
     deal_id = serializers.PrimaryKeyRelatedField(
-        queryset=Deal.objects.all(), source='deal', write_only=True
+        queryset=Freight.objects.model.deal.field.related_model.objects.all(),
+        source='deal',
+        write_only=True
     )
     items = FreightItemSerializer(many=True)
     created_by = serializers.ReadOnlyField(source="created_by.username")
@@ -515,43 +533,40 @@ class FreightSerializer(serializers.ModelSerializer):
     class Meta:
         model = Freight
         fields = [
-            "id",
-            "vendor",
-            "vendor_id",
-            "deal_no",
-            "deal_id",
-            "date",
-            "currency",
-            "items",
-            "total_amount",
-            "created_by",
-            "created_at",
+            "id", "vendor", "vendor_id", "deal_no", "deal_id",
+            "date", "currency", "items", "total_amount",
+            "created_by", "created_at"
         ]
         read_only_fields = ["id", "vendor", "deal_no", "created_by", "created_at"]
 
     def create(self, validated_data):
         items_data = validated_data.pop('items', [])
         user = self.context['request'].user if 'request' in self.context else None
-        freight = Freight.objects.create(created_by=user, **validated_data)
 
-        total = 0
-        for item_data in items_data:
-            # calculate total_price for each item
-            quantity = item_data.get("quantity", 0)
-            unit_price = item_data.get("unit_price", 0)
-            item_data["total_price"] = quantity * unit_price
+        with transaction.atomic():
+            freight = Freight.objects.create(created_by=user, **validated_data)
 
-            item = FreightItem.objects.create(freight=freight, **item_data)
-            total += item.total_price or 0
+            items = []
+            total_amount = 0
+            for item_data in items_data:
+                item = FreightItem(
+                    freight=freight,
+                    total_price=(item_data.get('quantity') or 0) * (item_data.get('unit_price') or 0),
+                    **item_data
+                )
+                total_amount += item.total_price
+                items.append(item)
 
-        freight.total_amount = total
-        freight.save()
+            FreightItem.objects.bulk_create(items)
+            freight.total_amount = total_amount
+            freight.save()
+
         return freight
 
     def update(self, instance, validated_data):
         items_data = validated_data.pop('items', None)
 
-        # update freight fields
+        # Update freight fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
@@ -559,35 +574,48 @@ class FreightSerializer(serializers.ModelSerializer):
         if items_data is not None:
             existing_items = {item.id: item for item in instance.items.all()}
             sent_item_ids = []
+            items_to_create = []
+            items_to_update = []
 
             for item_data in items_data:
                 item_id = item_data.get("id", None)
-                quantity = item_data.get("quantity", 0)
-                unit_price = item_data.get("unit_price", 0)
-                item_data["total_price"] = quantity * unit_price
+                item_data['total_price'] = (item_data.get('quantity') or 0) * (item_data.get('unit_price') or 0)
 
                 if item_id:  # update existing
+                    item_id = int(item_id)
                     if item_id in existing_items:
                         item = existing_items[item_id]
                         for attr, value in item_data.items():
                             setattr(item, attr, value)
-                        item.save()
+                        items_to_update.append(item)
                         sent_item_ids.append(item_id)
                     else:
-                        raise ValidationError({"items": f"Invalid item id {item_id}"})
+                        raise serializers.ValidationError({"items": f"Invalid item id {item_id}"})
                 else:  # create new
-                    new_item = FreightItem.objects.create(freight=instance, **item_data)
-                    sent_item_ids.append(new_item.id)
+                    new_item = FreightItem(freight=instance, **item_data)
+                    items_to_create.append(new_item)
 
-            # optionally delete missing items
+            # Bulk operations
+            if items_to_update:
+                FreightItem.objects.bulk_update(
+                    items_to_update,
+                    fields=[
+                        'sf_number', 'weight', 'freight_type', 'item_name', 'description',
+                        'item_specification', 'brand', 'hsn_code', 'quantity', 'unit_price', 'total_price'
+                    ]
+                )
+
+            if items_to_create:
+                FreightItem.objects.bulk_create(items_to_create)
+                sent_item_ids.extend([item.id for item in items_to_create])  # update list
+
+            # Delete missing items
             for item_id, item in existing_items.items():
                 if item_id not in sent_item_ids:
                     item.delete()
 
-            # recalc total_amount
-            instance.total_amount = sum(
-                item.total_price or 0 for item in instance.items.all()
-            )
+            # Recalculate total_amount
+            instance.total_amount = sum(item.total_price or 0 for item in instance.items.all())
             instance.save()
 
         return instance

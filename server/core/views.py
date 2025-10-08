@@ -104,6 +104,9 @@ class NonGstViewSet(viewsets.ModelViewSet):
 class FreightViewSet(viewsets.ModelViewSet):
     queryset = Freight.objects.all().order_by('-date', '-created_at')
     serializer_class = FreightSerializer
+    def update(self, request, *args, **kwargs):
+        kwargs['partial'] = True  # ✅ allow partial update
+        return super().update(request, *args, **kwargs)
 
     filter_backends = [DjangoFilterBackend]
     filterset_class = FreightFilter
