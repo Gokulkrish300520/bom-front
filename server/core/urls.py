@@ -7,7 +7,7 @@ from .views import GeneratePresignedUrlView,generate_document_pdf
 from django.conf.urls.static import static
 from django.conf import settings
 from .views import current_user
-
+from .views import NewProfitAndLossReportView
 from rest_framework.routers import DefaultRouter
 from .views import (
     CustomerViewSet,
@@ -73,10 +73,11 @@ urlpatterns = [
     path("", include(router.urls)),
     path("banking/", include("server.core.banking.urls")),
     path(
-        "reports/profit-and-loss/",
+        "old/profit-and-loss/",
         ProfitAndLossReportView.as_view(),
         name="profit-and-loss-report",
     ),
+    path('reports/profit-and-loss/', NewProfitAndLossReportView.as_view(), name='profit_and_loss_report'),
     path(
         "reports/balance-sheet/",
         BalanceSheetReportView.as_view(),

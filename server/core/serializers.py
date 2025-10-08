@@ -31,6 +31,17 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 
+
+
+class ProfitLossSerializer(serializers.Serializer):
+    revenue = serializers.DecimalField(max_digits=12, decimal_places=2)
+    expenses = serializers.DecimalField(max_digits=12, decimal_places=2)
+    profit_or_loss = serializers.DecimalField(max_digits=12, decimal_places=2)
+    details = serializers.DictField(
+        child=serializers.DecimalField(max_digits=12, decimal_places=2)
+    )
+
+
 class InventoryManagementSerializer(serializers.ModelSerializer):
     adjusted_item = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all())
     adjusted_item_name = serializers.CharField(source='adjusted_item.name', read_only=True)

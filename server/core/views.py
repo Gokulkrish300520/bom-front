@@ -65,6 +65,25 @@ import xlsxwriter
 from django.core.mail import EmailMessage
 from django.http import JsonResponse
 from django.contrib.auth.models import User
+from .serializers import ProfitLossSerializer
+from .utils import calculate_profit_and_loss
+from django.shortcuts import get_object_or_404
+
+class NewProfitAndLossReportView(APIView):
+    def get(self, request):
+        deal_id = request.query_params.get('deal_id')
+        customer_id = request.query_params.get('customer_id')
+
+        deal = get_object_or_404(Deal, id=deal_id) if deal_id else None
+        customer = get_object_or_404(Customer, id=customer_id) if customer_id else None
+
+        data = calculate_profit_and_loss(deal=deal, customer=customer)
+
+        serializer = ProfitLossSerializer(data=data)
+        if serializer.is_valid():
+            return Response(serializer.data)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
