@@ -277,11 +277,16 @@ class ImportBillItem(models.Model):
     )
     
 class Duty(models.Model):
+    payment_choices =[("Low","low"),("High","high")]
+    payment_status_choices = [("Paid","paid"),("Unpaid","unpaid"),("Paid Partially","paid partially")]
+    paid_by_choices = [("SBI","sbi"),("IOB","iob"),("ICICI","icici"),("Petty Cash","petty cash")]
+        
     vendor = models.ForeignKey(
         Vendor, related_name="duty",on_delete=models.CASCADE,
         help_text="Vendor associated with the duty"
     )
     deal = models.ForeignKey(Deal, related_name="duty", on_delete=models.CASCADE)
+    
     currency = models.CharField(
         max_length=10, default="INR",
         help_text="Currency of the amount"
@@ -295,6 +300,9 @@ class Duty(models.Model):
         max_length=20, null=True, blank=True,
         help_text="airway bill number of the duty")
     
+    payment_request = models.CharField(max_length=20,choices=payment_choices,default="Low")
+    payment_reference_no = models.CharField(max_length= 30,null=True,blank=True)
+    payment_status = models.CharField(max_length=20,choices=payment_status_choices,default="Unpaid")
     
     total_amount = models.DecimalField(
         max_digits=12, decimal_places=2, default=0,
@@ -311,8 +319,13 @@ class Duty(models.Model):
     
     def update_total_amount(self):
         """Recalculate total amount from all related DutyItems."""
-        total = self.duty_items.aggregate(models.Sum("total_duty"))["total_duty__sum"] or Decimal("0.00")
-        self.total_amount = total
+        totals = self.duty_items.aggregate(
+            total_price_sum=models.Sum("total_price"),
+            total_duty_sum=models.Sum("total_duty"),)
+        
+        total_price = totals["total_price_sum"] or Decimal("0.00")
+        total_duty = totals["total_duty_sum"] or Decimal("0.00")
+        self.total_amount = total_price + total_duty
         self.save(update_fields=["total_amount"])
 
 class DutyItem(models.Model):

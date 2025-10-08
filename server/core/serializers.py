@@ -17,6 +17,8 @@ from .models import (
     Vendor,
     Deal
 )
+from django.db import models
+from decimal import Decimal
 from rest_framework import serializers
 from .inventory_management_models import (
     InventoryManagement
@@ -765,12 +767,15 @@ class DutySerializer(serializers.ModelSerializer):
         user = self.context['request'].user if 'request' in self.context else None
         duty = Duty.objects.create(created_by=user, **validated_data)
 
-        total = 0
+        total_price_sum = Decimal("0.00")
+        total_duty_sum = Decimal("0.00")
+        
         for item_data in items_data:
             duty_item = DutyItem.objects.create(duty=duty, **item_data)
-            total += duty_item.total_duty or 0
+            total_price_sum += duty_item.total_price or 0
+            total_duty_sum += duty_item.total_duty or 0
 
-        duty.total_amount = total
+        duty.total_amount = total_price_sum + total_duty_sum
         duty.save()
         return duty
 
@@ -801,7 +806,13 @@ class DutySerializer(serializers.ModelSerializer):
                 if item_id not in sent_item_ids:
                     item.delete()
 
-            instance.total_amount = sum(item.total_duty or 0 for item in instance.duty_items.all())
+            totals = instance.duty_items.aggregate(
+                total_price_sum=models.Sum("total_price"),
+                total_duty_sum=models.Sum("total_duty"),
+            )
+            total_price = totals["total_price_sum"] or Decimal("0.00")
+            total_duty = totals["total_duty_sum"] or Decimal("0.00")
+            instance.total_amount = total_price + total_duty
             instance.save()
 
         return instance
