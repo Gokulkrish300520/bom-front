@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function CRMPage() {
   const router = useRouter();
@@ -41,5 +41,15 @@ export default function CRMPage() {
       validateTokens();
     }, [router]);
 
-  return <h1 className="text-2xl text-center mt-10">CRM Page</h1>;
+  return (
+  <div className="flex flex-col items-center justify-center min-h-screen">
+    <h1 className="text-2xl font-bold mb-6">CRM Page</h1>
+    <button
+      onClick={() => router.push("/crm/pipelines/dashboard")}
+      className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition"
+    >
+      Go to Dashboard
+    </button>
+  </div>
+);
 }

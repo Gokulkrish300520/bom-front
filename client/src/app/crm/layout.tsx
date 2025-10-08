@@ -27,8 +27,8 @@ export default function CRMLayout({ children }: { children: React.ReactNode }) {
       });
 
       // Clear tokens from storage
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
 
       router.push("/login"); // redirect after logout
     } catch (error) {

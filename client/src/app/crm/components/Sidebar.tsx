@@ -1,18 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
-  Layers,
-  Users,
   BookOpen,
   Box,
   Calendar,
-  Settings,
-  Plus,
   Flag,
+  Layers,
+  Plus,
+  Settings,
+  Users,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import React, { useState } from "react";
 
 type NavItem = {
   id: string;
@@ -22,7 +22,7 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "pipelines", label: "Pipelines", href: "/crm/pipelines", Icon: Layers },
+  { id: "pipelines", label: "Pipelines", href: "/crm/pipelines/dashboard", Icon: Layers },
   { id: "contacts", label: "Contacts", href: "/crm/contacts", Icon: Users },
   {
     id: "companies",
