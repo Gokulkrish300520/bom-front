@@ -2,18 +2,24 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut,LayoutDashboard } from "lucide-react";
+import { LogOut, LayoutDashboard } from "lucide-react";
 import {
   Package,
-  Banknote,
   FileText,
   ShoppingCart,
   PieChart,
   ChevronDown,
   ChevronRight,
   Repeat,
-} from "lucide-react"; // Added Repeat for Transactions icon
-import { useState, useEffect,useRef } from "react";
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+
+interface User {
+  full_name: string;
+  username: string;
+  email: string;
+  role?: string;
+}
 
 export default function BooksLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -21,6 +27,27 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
   const [expanded, setExpanded] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return;
+
+      try {
+        const res = await fetch("https://web-production-6baf3.up.railway.app/api/auth/me/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch user:", err);
+      }
+    };
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -32,9 +59,24 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const getInitials = (user: User | null) => {
+  if (!user) return "U";
+
+  const name = user.full_name?.trim() || user.username || "U";
+  const words = name.split(" ");
+
+  if (words.length === 1) {
+    return words[0].charAt(0).toUpperCase();
+  }
+
+  // Take first letter of first two words
+  return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+};
+
+
   const handleLogout = async () => {
     try {
-      const refresh = localStorage.getItem("refresh"); // stored refresh token
+      const refresh = localStorage.getItem("refreshToken");
       if (!refresh) {
         router.push("/login");
         return;
@@ -42,17 +84,13 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
 
       await fetch("https://web-production-6baf3.up.railway.app/api/auth/logout/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh }),
       });
 
-      // Clear tokens from storage
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
-
-      router.push("/login"); // redirect after logout
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      router.push("/login");
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -67,12 +105,6 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
         { name: "Inventory Adjustments", href: "/books/items/inventory" },
       ],
     },
-    // {
-    //   name: "Banking",
-    //   icon: <Banknote size={18} />,
-    //   subItems: [],
-    //   href: "/books/banking",
-    // },
     {
       name: "Sales",
       icon: <FileText size={18} />,
@@ -90,13 +122,13 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
       subItems: [
         { name: "Vendors", href: "/books/purchase/vendors" },
         { name: "GST", href: "/books/purchase/gst" },
-        { name: "Non-GST", href: "/books/purchase/non-gst" },
+        { name: "Non-GST", href: "/books/purchase/nongst" },
         { name: "Freight", href: "/books/purchase/freight" },
         { name: "Import Bills", href: "/books/purchase/import_bills" },
         { name: "Duty", href: "/books/purchase/duty" },
-        {name:"Purchase Orders", href:"/books/purchase/bill_order"},
+        { name: "Purchase Orders", href: "/books/purchase/bill_order" },
       ],
-},
+    },
     {
       name: "Transactions",
       icon: <Repeat size={18} />,
@@ -197,17 +229,28 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
       </div>
-        
-        <div className="flex-1 flex flex-col bg-gray-50">
+
+      {/* Main Area */}
+      <div className="flex-1 flex flex-col bg-gray-50">
         {/* Top Navbar */}
         <div className="h-11 bg-green-700 flex justify-end items-center px-4 shadow-md">
           <div className="relative" ref={dropdownRef}>
             <div
-              className="w-8 h-8 rounded-full bg-gray-200 cursor-pointer"
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white text-green-700 font-bold cursor-pointer"
               onClick={() => setDropdownOpen((prev) => !prev)}
-            />
+            >
+              {getInitials(user)}
+            </div>
+
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-44 bg-white shadow-md rounded-md py-2 z-50">
+              <div className="absolute right-0 mt-2 w-48 bg-white shadow-md rounded-md py-2 z-50">
+                {user && (
+              <div className="px-4 py-2 border-b border-gray-200">
+                <p className="text-sm font-semibold text-gray-800">{user.full_name || user.username}</p>
+                <p className="text-xs text-gray-500">{user.role}</p>
+              </div>
+            )}
+
                 <button
                   onClick={() => router.push("/dashboard")}
                   className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
@@ -215,6 +258,7 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
                   <LayoutDashboard size={16} />
                   Go to Dashboard
                 </button>
+
                 <button
                   onClick={handleLogout}
                   className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left"
@@ -227,9 +271,9 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
 
-      {/* Main content */}
-      <div className="flex-1 p-6 bg-gray-50">{children}</div>
-    </div>
+        {/* Main content */}
+        <div className="flex-1 p-6 bg-gray-50">{children}</div>
+      </div>
     </div>
   );
 }
