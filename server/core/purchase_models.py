@@ -303,7 +303,7 @@ class Duty(models.Model):
     payment_request = models.CharField(max_length=20,choices=payment_choices,default="Low")
     payment_reference_no = models.CharField(max_length= 30,null=True,blank=True)
     payment_status = models.CharField(max_length=20,choices=payment_status_choices,default="Unpaid")
-    
+    paid_by = models.CharField(max_length = 20 ,choices=paid_by_choices,default="Petty Cash")
     total_amount = models.DecimalField(
         max_digits=12, decimal_places=2, default=0,
         help_text="Total amount including all duties and taxes"
