@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Quotation / Invoice</title>
+<style>
+  @page { size: A4; margin: 20mm; }
+  html,body {
+    margin:0; padding:0;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    background:#fff; color:#1a2e1a;
+  }
+  .page { width:210mm; min-height:297mm; padding:18mm; box-sizing:border-box; }
+
+  /* HEADER */
+  .header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:18px; }
+  .company { max-width:60%; }
+  .company h1 { margin:0; font-size:22px; color:#14532d; }
+  .company .small { font-size:12px; color:#4b604b; margin-top:6px; line-height:1.4; }
+  .meta { text-align:right; font-size:13px; }
+  .meta .title { font-weight:700; font-size:18px; color:#14532d; }
+  .meta .muted { color:#4b604b; font-size:12px; margin-top:6px; }
+  hr.sep { border:none; border-top:2px solid #d1e7d1; margin:14px 0 18px; }
+
+  /* INFO BLOCKS */
+  .buckets { display:flex; gap:18px; margin-bottom:14px; }
+  .bucket {
+    flex:1; background:#f0fdf4;
+    padding:12px; border-radius:6px;
+    border:1px solid #bbf7d0;
+  }
+  .bucket h4 { margin:0 0 6px; font-size:13px; color:#065f46; }
+  .bucket p { margin:0; font-size:13px; color:#064e3b; line-height:1.35; }
+
+  /* TABLE */
+  table.items { width:100%; border-collapse:collapse; margin-bottom:12px; font-size:13px; }
+  table.items thead th {
+    background:#bbf7d0; color:#064e3b;
+    text-align:left; padding:10px;
+    font-weight:600; border:1px solid #a7f3d0;
+  }
+  table.items tbody td { padding:10px; border:1px solid #d1fae5; vertical-align:top; }
+  table.items tbody tr:nth-child(even) td { background:#f0fdf4; }
+
+  .right { text-align:right; }
+  .center { text-align:center; }
+
+  /* TOTALS */
+  .totals {
+    width:320px; margin-left:auto; margin-top:8px; font-size:13px;
+    border:1px solid #bbf7d0; border-radius:6px; overflow:hidden;
+  }
+  .totals .row { display:flex; justify-content:space-between; padding:8px 10px; border-bottom:1px solid #e2f6e9; }
+  .totals .row.total { font-weight:700; font-size:16px; background:#bbf7d0; color:#064e3b; }
+
+  /* NOTES */
+  .notes { margin-top:18px; font-size:12px; color:#1a2e1a; }
+  .bank {
+    margin-top:14px; background:#f0fdf4; padding:10px;
+    border-radius:6px; border:1px solid #bbf7d0;
+    font-size:12px; color:#064e3b;
+  }
+
+  /* PRINT */
+  @media print { body { background: white; } .page { box-shadow:none; margin:0; } }
+
+  .badge { display:inline-block; padding:5px 8px; background:#059669; color:#fff; border-radius:4px; font-size:12px; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <!-- HEADER -->
+    <div class="header">
+      <div class="company">
+        <h1>GLONIX ELECTRONICS PRIVATE LIMITED</h1>
+        <div class="small">
+          Plot No.54, 2nd Floor, Door No.SF1,<br>
+          Anna nagar 2nd Street, Tansi nagar, Velachery,<br>
+          Chennai - 600 042.<br>
+          GSTIN: <strong>33AAHCGO729N2ZG</strong>
+        </div>
+      </div>
+      <div class="meta">
+        <div class="title">Quotation</div>
+        <div class="muted">Quote#: <strong>{{quoteNumber}}</strong></div>
+        <div class="muted">Quote Date: <strong>{{quoteDate}}</strong></div>
+        <div style="margin-top:8px;"><span class="badge">Important</span></div>
+      </div>
+    </div>
+
+    <hr class="sep">
+
+    <!-- CUSTOMER DETAILS -->
+    <div class="buckets">
+      <div class="bucket">
+        <h4>Bill To</h4>
+        <p>{{billTo_name}}<br>{{billTo_address}}<br>{{billTo_city}}<br>GSTIN: {{billTo_gstin}}</p>
+      </div>
+      <div class="bucket">
+        <h4>Ship To</h4>
+        <p>{{shipTo_name}}<br>{{shipTo_address}}<br>{{shipTo_city}}</p>
+        <div style="margin-top:10px;">
+          <h4>Place Of Supply</h4>
+          <p>{{placeOfSupply}}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ITEMS TABLE -->
+    <table class="items">
+      <thead>
+        <tr>
+          <th style="width:6%;">#</th>
+          <th style="width:42%;">Item & Description</th>
+          <th style="width:12%;">HSN/SAC</th>
+          <th style="width:10%;" class="center">Qty</th>
+          <th style="width:15%;" class="right">Rate</th>
+          <th style="width:15%;" class="right">Amount</th>
+        </tr>
+      </thead>
+      <tbody id="items-body">
+        <!-- DB rows injected dynamically -->
+
+      </tbody>
+    </table>
+<br>
+<br>
+<br>
+    <!-- TOTALS -->
+    <div class="totals">
+      <div class="row"><div>Sub Total</div><div class="right">₹ {{subtotal}}</div></div>
+      <div class="row"><div>CGST (9%)</div><div class="right">₹ {{cgst}}</div></div>
+      <div class="row"><div>SGST (9%)</div><div class="right">₹ {{sgst}}</div></div>
+      <div class="row total"><div>Total</div><div class="right">₹ {{total}}</div></div>
+    </div>
+
+    <!-- NOTES & BANK -->
+    <div class="notes">
+      <strong>Total In Words:</strong>
+      <div style="margin-top:6px;">{{totalInWords}}</div>
+      <div style="margin-top:10px;">
+        <strong>Notes</strong>
+        <ol style="padding-left:18px; margin:6px 0 0;">
+          <li>Delivery Terms – {{deliveryTerms}}</li>
+          <li>Payment terms – {{paymentTerms}}</li>
+          <li>If quantity changes, unit price will change.</li>
+        </ol>
+      </div>
+
+      <!-- Bank details moved below Total in Words -->
+      <div class="bank">
+        <strong>Bank Details</strong><br>
+        NAME: {{bank_name}}<br>
+        AC NO: {{bank_ac}}<br>
+        BANK: {{bank_name_full}}<br>
+        IFSC: {{bank_ifsc}}<br>
+        Swift code: {{bank_swift}}
+      </div>
+    </div>
+
+    <div style="margin-top:18px; font-size:12px; color:#4b604b;">
+      <em>Authorized Signature</em>
+    </div>
+  </div>
+</body>
+</html>
