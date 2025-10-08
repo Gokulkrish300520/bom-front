@@ -1,413 +1,200 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  ChevronDownIcon,
-  FunnelIcon,
-  ArrowUpTrayIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { Bar } from "react-chartjs-2";
 import { fetchWithAuth } from "@/auth/tokenservice";
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
-import Link from "next/link";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
 
-// Types - as before
-type ReportDetails = {
-  operating_income: number;
-  cost_of_goods_sold: number;
-  gross_profit: number;
-  operating_expense: number;
-  operating_profit: number;
-  non_operating_income: number;
-  non_operating_expense: number;
-  net_profit_loss: number;
-  payments_received: number;
-  invoice_breakdown?: any[];
-  bill_breakdown?: any[];
-};
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-type ProfitLossReport = {
-  period: string;
-  basis: string;
-  start_date: string;
-  end_date: string;
-  report: ReportDetails;
-  compare_with?: string;
-  compare_report?: ReportDetails;
-};
+// TypeScript interfaces
+interface Customer {
+  id: number;
+  display_name: string;
+}
+
+interface Deal {
+  id: number;
+  deal_no: string;
+  customer?: Customer;
+}
+
+interface ReportData {
+  revenue: string;
+  expenses: string;
+  profit_or_loss: string;
+  details: Record<string, string>;
+}
 
 export default function ProfitLossPage() {
-  const [dateRange, setDateRange] = useState("This Month");
-  const [reportBasis, setReportBasis] = useState("Accrual");
-  const [compareWith, setCompareWith] = useState("None");
-  const [showZeroBalance, setShowZeroBalance] = useState(true);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [vendors, setVendors] = useState<any[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
-  const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
-
-  const [runFilter, setRunFilter] = useState({
-    time: "This Month",
-    basis: "Accrual",
-    compare: "None",
-  });
-
-  const [report, setReport] = useState<ProfitLossReport | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+  const [selectedDeal, setSelectedDeal] = useState<string>("");
+  const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
+  // Fetch customers and deals
   useEffect(() => {
-    async function fetchReport() {
-      setLoading(true);
-      setError("");
-      setReport(null);
+    async function fetchData() {
       try {
-        const token = localStorage.getItem("access_token") ?? "";
-        const params = new URLSearchParams();
-        params.set("time", runFilter.time);
-        params.set("basis", runFilter.basis);
-        if (runFilter.compare !== "None") {
-          params.set("compare_with", runFilter.compare);
-        }
-        if (selectedCustomer) params.set("customer_id", selectedCustomer);
-        if (selectedVendor) params.set("vendor_id", selectedVendor);
+        const [custRes, dealsRes] = await Promise.all([
+          fetchWithAuth("https://web-production-6baf3.up.railway.app/api/customers/"),
+          fetchWithAuth("https://web-production-6baf3.up.railway.app/api/deals/"),
+        ]);
 
-        const res = await fetchWithAuth(
-          `https://web-production-6baf3.up.railway.app/api/reports/profit-and-loss/?${params.toString()}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const custData = await custRes.json();
+        const dealsData = await dealsRes.json();
 
-        if (!res.ok) {
-          let errMsg = "Failed to fetch report";
-          try {
-            const errBody = await res.json();
-            if (errBody?.detail) errMsg = errBody.detail;
-          } catch {}
-          throw new Error(errMsg);
-        }
-
-        const data: ProfitLossReport = await res.json();
-        setReport(data);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Unknown error");
-      } finally {
-        setLoading(false);
+        setCustomers(custData?.results ?? []);
+        setDeals(dealsData?.results ?? []);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to fetch customers or deals.");
       }
     }
-    fetchReport();
-  }, [runFilter]);
+    fetchData();
+  }, []);
 
-  useEffect(() => {
-  async function fetchDropdownData() {
-    const token = localStorage.getItem("access_token") ?? "";
-
-    // Fetch customers
-    const resCustomers = await fetchWithAuth("https://web-production-6baf3.up.railway.app/api/customers/", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (resCustomers.ok) {
-      const data = await resCustomers.json();
-      setCustomers(data.results || []);
-    }
-
-    // Fetch vendors
-    const resVendors = await fetchWithAuth("https://web-production-6baf3.up.railway.app/api/vendors/", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (resVendors.ok) {
-      const data = await resVendors.json();
-      setVendors(data.results || []);
-    }
-  }
-  fetchDropdownData();
-}, []);
-
-
-  // Prepare rows for main report
-  const mainRows = report
-    ? [
-        { label: "Operating Income", total: report.report.operating_income },
-        { label: "Cost of Goods Sold", total: report.report.cost_of_goods_sold },
-        { label: "Gross Profit", total: report.report.gross_profit },
-        { label: "Operating Expense", total: report.report.operating_expense },
-        { label: "Operating Profit", total: report.report.operating_profit },
-        { label: "Non Operating Income", total: report.report.non_operating_income },
-        { label: "Non Operating Expense", total: report.report.non_operating_expense },
-        { label: "Net Profit/Loss", total: report.report.net_profit_loss },
-      ]
-    : [];
-
-  // Prepare rows for compare report if exists
-  const compareRows =
-    report?.compare_report != null
-      ? [
-          { label: "Operating Income", total: report.compare_report.operating_income },
-          { label: "Cost of Goods Sold", total: report.compare_report.cost_of_goods_sold },
-          { label: "Gross Profit", total: report.compare_report.gross_profit },
-          { label: "Operating Expense", total: report.compare_report.operating_expense },
-          { label: "Operating Profit", total: report.compare_report.operating_profit },
-          { label: "Non Operating Income", total: report.compare_report.non_operating_income },
-          { label: "Non Operating Expense", total: report.compare_report.non_operating_expense },
-          { label: "Net Profit/Loss", total: report.compare_report.net_profit_loss },
-        ]
-      : [];
-
-  const handleRunReport = () => {
-    setRunFilter({
-      time: dateRange,
-      basis: reportBasis,
-      compare: compareWith,
-    });
-  };
-
-  const handleReset = () => {
-    setDateRange("This Month");
-    setReportBasis("Accrual");
-    setCompareWith("None");
-    setShowZeroBalance(true);
-    setRunFilter({
-      time: "This Month",
-      basis: "Accrual",
-      compare: "None",
-    });
-  };
-
-  const handleExport = () => {
-    if (!report) {
-      alert("No data to export");
-      return;
-    }
-    const wb = XLSX.utils.book_new();
-
-    const summarySheet = XLSX.utils.json_to_sheet(
-      mainRows.map(({ label, total }) => ({ Account: label, Total: total }))
-    );
-    XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
-
-    if (report.report.invoice_breakdown && report.report.invoice_breakdown.length > 0) {
-      const invSheet = XLSX.utils.json_to_sheet(report.report.invoice_breakdown);
-      XLSX.utils.book_append_sheet(wb, invSheet, "Invoice Breakdown");
-    }
-    if (report.report.bill_breakdown && report.report.bill_breakdown.length > 0) {
-      const billSheet = XLSX.utils.json_to_sheet(report.report.bill_breakdown);
-      XLSX.utils.book_append_sheet(wb, billSheet, "Bill Breakdown");
-    }
-
-    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    saveAs(new Blob([wbout], { type: "application/octet-stream" }), "profit_and_loss_report.xlsx");
-  };
-
-  const handleShare = async () => {
-    if (!report) {
-      alert("No data to share");
-      return;
-    }
-    const recipient = window.prompt("Enter recipient email address to share the report:");
-    if (!recipient) {
-      alert("Email is required");
-      return;
-    }
-
+  // Fetch Profit & Loss report
+  const handleFetchReport = async () => {
+    if (!selectedDeal) return alert("Please select a deal!");
+    setLoading(true);
     try {
-      const token = localStorage.getItem("access_token") ?? "";
-      const reportData = {
-        Account: mainRows.map(({ label, total }) => ({
-          Account: label,
-          Total: total,
-        })),
-        invoice_breakdown: report.report.invoice_breakdown ?? [],
-        bill_breakdown: report.report.bill_breakdown ?? [],
-        start_date: report.start_date,
-        end_date: report.end_date,
-        basis: report.basis,
-      };
       const res = await fetchWithAuth(
-        "https://web-production-6baf3.up.railway.app/api/api/send-report-email/",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            recipient_email: recipient,
-            subject: "Profit and Loss Report",
-            report_data: reportData,
-          }),
-        }
+        `https://web-production-6baf3.up.railway.app/api/reports/profit-and-loss/?deal_id=${selectedDeal}&customer_id=${selectedCustomer}`
       );
-      if (!res.ok) {
-        const errBody = await res.json();
-        throw new Error(errBody.error || "Failed to send email");
-      }
-      alert("Report shared successfully via email.");
-    } catch (e) {
-      alert(`Failed to share report: ${e instanceof Error ? e.message : e}`);
+      const data = await res.json();
+      setReportData(data);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch report.");
+    } finally {
+      setLoading(false);
     }
   };
+
+  // Prepare chart data
+  const chartData = reportData
+    ? {
+        labels: Object.keys(reportData.details),
+        datasets: [
+          {
+            label: "Amount (₹)",
+            data: Object.values(reportData.details).map((v) => parseFloat(v)),
+            backgroundColor: "rgba(59, 130, 246, 0.7)",
+          },
+        ],
+      }
+    : null;
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      {/* Breadcrumb */}
-      <div className="mb-6 flex items-center">
-        <Link href="/books/reports" className="text-gray-600 hover:underline">
-          Business Overview
-        </Link>
-        <span className="mx-2 text-gray-400 font-bold">{">"}</span>
-        <span className="text-gray-600">Profit and Loss</span>
-        {report && (
-          <span className="ml-2 text-gray-500">
-            • From {report.start_date} To {report.end_date}
-          </span>
-        )}
-      </div>
-      <h1 className="text-3xl font-bold mt-2">Profit and Loss</h1>
-      <div className="text-gray-600 mb-4">Basis: {reportBasis}</div>
+    <div className="p-6 min-h-screen bg-gray-50">
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">
+        Profit & Loss Dashboard
+      </h1>
 
-      {/* Filters & Actions */}
-      <div className="flex flex-col md:flex-row md:justify-between gap-4 mb-4">
-        <div className="flex gap-2 flex-wrap">
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="border px-3 py-1 rounded"
-          >
-            <option>This Month</option>
-            <option>Last Month</option>
-            <option>This Year</option>
-          </select>
-          <select
-            value={reportBasis}
-            onChange={(e) => setReportBasis(e.target.value)}
-            className="border px-3 py-1 rounded"
-          >
-            <option>Accrual</option>
-            <option>Cash</option>
-          </select>
-          <select
-          value={selectedCustomer ?? ""}
-          onChange={(e) => setSelectedCustomer(e.target.value || null)}
-          className="border px-3 py-1 rounded"
-          >
-          <option value="">--Select Customers--</option>
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-4 mb-6 items-center">
+        <select
+          value={selectedCustomer}
+          onChange={(e) => setSelectedCustomer(e.target.value)}
+          className="p-3 border rounded shadow w-full md:w-1/3"
+        >
+          <option value="">Select Customer (optional)</option>
           {customers.map((c) => (
-          <option key={c.id} value={c.id}>
-          {c.first_name} {c.last_name}
-          </option>
+            <option key={c.id} value={c.id}>
+              {c.display_name}
+            </option>
           ))}
         </select>
+
         <select
-      value={selectedVendor ?? ""}
-      onChange={(e) => setSelectedVendor(e.target.value || null)}
-      className="border px-3 py-1 rounded"
-      >
-    <option value="">--Select Vendors--</option>
-    {vendors.map((v) => (
-    <option key={v.id} value={v.id}>
-      {v.first_name} {v.last_name}
-    </option>
-    ))}
-      </select>
-          <select
-            value={compareWith}
-            onChange={(e) => setCompareWith(e.target.value)}
-            className="border px-3 py-1 rounded"
-          >
-            <option>None</option>
-            <option>Last Month</option>
-            <option>Last Year</option>
-          </select>
-          <button
-            onClick={() => setShowZeroBalance(!showZeroBalance)}
-            className="border px-3 py-1 rounded flex items-center gap-1"
-          >
-            {showZeroBalance ? "Hide" : "Show"} Zero Balance
-            <FunnelIcon className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleRunReport}
-            className="bg-blue-600 text-white px-2 py-1 rounded flex items-center gap-1"
-          >
-            Run Report <ChevronDownIcon className="w-7 h-3" />
-          </button>
-          <button
-            onClick={handleExport}
-            className="border px-3 py-1 rounded bg-green-100 flex items-center gap-1"
-          >
-            Export <ArrowUpTrayIcon className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleShare}
-            className="border px-3 py-1 rounded flex items-center gap-1"
-          >
-            Share <ArrowUpTrayIcon className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleReset}
-            className="border px-3 py-1 rounded flex items-center gap-1 text-red-500"
-          >
-            Reset <XMarkIcon className="w-4 h-4" />
-          </button>
-        </div>
+          value={selectedDeal}
+          onChange={(e) => setSelectedDeal(e.target.value)}
+          className="p-3 border rounded shadow w-full md:w-1/3"
+        >
+          <option value="">Select Deal</option>
+          {deals.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.deal_no} - {d.customer?.display_name || "No Customer"}
+            </option>
+          ))}
+        </select>
+
+        <button
+          onClick={handleFetchReport}
+          className="px-6 py-3 bg-blue-600 text-white rounded shadow hover:bg-blue-700 transition"
+        >
+          {loading ? "Loading..." : "Get Report"}
+        </button>
       </div>
 
-      {/* Report Table and Comparison */}
-      <div className="bg-white shadow rounded-lg overflow-auto">
-        {loading ? (
-          <div className="p-8 text-center">Loading...</div>
-        ) : error ? (
-          <div className="p-8 text-center text-red-600">{error}</div>
-        ) : (
-          <table className="min-w-full border-collapse">
-            <thead className="bg-gray-50 sticky top-0">
-              <tr>
-                <th className="text-left px-4 py-2 border-b">ACCOUNT</th>
-                <th className="text-right px-4 py-2 border-b">TOTAL</th>
-                {report && report.compare_with && report.compare_report && (
-                  <th className="text-right px-4 py-2 border-b">
-                    Compare With: {report.compare_with}
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {mainRows.map(({ label, total }, idx) => {
-                const compTotal = compareRows[idx]?.total ?? null;
+      {/* Report Summary */}
+      {reportData && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-white shadow rounded">
+              <p className="text-gray-500">Revenue</p>
+              <p className="text-2xl font-bold">
+                ₹ {parseFloat(reportData.revenue).toLocaleString()}
+              </p>
+            </div>
+            <div className="p-4 bg-white shadow rounded">
+              <p className="text-gray-500">Expenses</p>
+              <p className="text-2xl font-bold">
+                ₹ {parseFloat(reportData.expenses).toLocaleString()}
+              </p>
+            </div>
+            <div
+              className={`p-4 shadow rounded ${
+                parseFloat(reportData.profit_or_loss) >= 0
+                  ? "bg-green-100 text-green-800"
+                  : "bg-red-100 text-red-800"
+              }`}
+            >
+              <p className="text-gray-500">Profit / Loss</p>
+              <p className="text-2xl font-bold">
+                ₹ {parseFloat(reportData.profit_or_loss).toLocaleString()}
+              </p>
+            </div>
+          </div>
 
-                // Filter zero balances if needed
-                if (
-                  !showZeroBalance &&
-                  (total === 0 || total === null) &&
-                  (compTotal === 0 || compTotal === null)
-                ) {
-                  return null;
-                }
+          {/* Detailed Breakdown */}
+          <div className="bg-white shadow rounded p-4">
+            <h2 className="text-xl font-semibold mb-4">Detailed Breakdown</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(reportData.details).map(([key, value]) => (
+                <div
+                  key={key}
+                  className="p-4 bg-gray-50 rounded shadow hover:shadow-lg transition"
+                >
+                  <p className="text-gray-500 capitalize">{key}</p>
+                  <p className="text-lg font-semibold">
+                    ₹ {parseFloat(value).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
 
-                return (
-                  <tr key={label} className="hover:bg-gray-50">
-                    <td className="px-4 py-2">{label}</td>
-                    <td className="px-4 py-2 text-right">
-                      {total?.toLocaleString(undefined, { minimumFractionDigits: 2 }) ??
-                        "0.00"}
-                    </td>
-                    {report && report.compare_with && report.compare_report && (
-                      <td className="px-4 py-2 text-right">
-                        {compTotal?.toLocaleString(undefined, { minimumFractionDigits: 2 }) ??
-                          "0.00"}
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+          {/* Chart */}
+          {chartData && (
+            <div className="bg-white shadow rounded p-4">
+              <h2 className="text-xl font-semibold mb-4">Breakdown Chart</h2>
+              <Bar data={chartData} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
