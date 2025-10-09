@@ -10,7 +10,7 @@ Authorization: Bearer <access_token>
     "id": 1,
     "vendor": {
         "id": 1,
-        "vendor_type": "business",
+        "vendor_type": "busines",
         "salutation": "mr",
         "first_name": "John",
         "last_name": "Doe",
