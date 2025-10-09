@@ -889,7 +889,7 @@ class BillorderSerializer(serializers.ModelSerializer):
             "deal_id",
             "bill_number",
             "status",
-            "Paid_by"
+            "paid_by",
             "bill_date",
             "due_date",
             "notes",
