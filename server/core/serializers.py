@@ -1008,6 +1008,7 @@ class BillorderSerializer(serializers.ModelSerializer):
             "bill_number",
             "status",
             "paid_by",
+            "payment_reference_no",
             "bill_date",
             "due_date",
             "notes",

@@ -477,6 +477,7 @@ class Billorder(models.Model):
         default=0,
     )
     paid_by = models.CharField(max_length=12,choices=paid_by_choices,default="UnPaid")
+    payment_reference_no = models.CharField(max_length= 30,null=True,blank=True)
     total_amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
