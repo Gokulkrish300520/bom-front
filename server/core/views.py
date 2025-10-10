@@ -15,7 +15,8 @@ from .serializers import (
     DutySerializer,
     GstSerializer,
     NonGstSerializer,
-    BillorderSerializer
+    BillorderSerializer,
+    PaymentTransactionSerializer
 )
 from .filters_extra import (
     InvoiceFilter,
@@ -45,7 +46,7 @@ from .models import (
     Vendor,
     Deal,
 )
-from .purchase_models import Freight,ImportBill,Duty,Gst,NonGst,Billorder
+from .purchase_models import Freight,ImportBill,Duty,Gst,NonGst,Billorder,PaymentTransaction
 from django.db.models import F
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -68,6 +69,14 @@ from django.contrib.auth.models import User
 from .serializers import ProfitLossSerializer
 from .utils import calculate_profit_and_loss
 from django.shortcuts import get_object_or_404
+
+class PaymentTransactionViewSet(viewsets.ModelViewSet):
+    queryset = PaymentTransaction.objects.all().order_by('-paid_on')
+    serializer_class = PaymentTransactionSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['bill_order', 'paid_by', 'paid_on']  # optional filters
+    ordering_fields = ['paid_on', 'amount']
+    ordering = ['-paid_on']
 
 class NewProfitAndLossReportView(APIView):
     def get(self, request):
@@ -163,8 +172,7 @@ class BillorderViewSet(viewsets.ModelViewSet):
     ordering = ['-bill_date']
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        return qs.distinct()
+        return super().get_queryset().distinct()
 
 
 class DealViewSet(viewsets.ModelViewSet):

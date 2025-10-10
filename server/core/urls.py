@@ -8,7 +8,7 @@ from django.conf.urls.static import static
 from .views import GenerateDocumentPdfView
 from django.conf import settings
 from .views import current_user
-from .views import NewProfitAndLossReportView
+from .views import NewProfitAndLossReportView,PaymentTransactionViewSet
 from rest_framework.routers import DefaultRouter
 from .views import (
     CustomerViewSet,
@@ -43,6 +43,7 @@ router.register(
     InventoryManagementViewSet,
     basename="inventorymanagement",
 )
+router.register(r'transactions', PaymentTransactionViewSet, basename='transaction')
 router.register(r'gsts', GstViewSet, basename='gst')
 router.register(r'nongsts', NonGstViewSet, basename='nongst')
 router.register(r'freights', FreightViewSet, basename='freight')

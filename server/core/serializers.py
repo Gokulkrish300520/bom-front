@@ -24,13 +24,11 @@ from .inventory_management_models import (
     InventoryManagement
 )
 from .purchase_models import (
-    Freight,FreightItem,ImportBill,ImportBillItem,Duty,DutyItem,Gst,GstItem,NonGst,NonGstItem,Billorder,BillorderItem
+    Freight,FreightItem,ImportBill,ImportBillItem,Duty,DutyItem,Gst,GstItem,NonGst,NonGstItem,Billorder,BillorderItem,PaymentTransaction
 )
 
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-
-
 
 
 class ProfitLossSerializer(serializers.Serializer):
@@ -956,209 +954,97 @@ from decimal import Decimal
 from decimal import Decimal, InvalidOperation
 
 class BillorderItemSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)  # For updates
+    id = serializers.IntegerField(required=False)
 
     class Meta:
         model = BillorderItem
         fields = [
-            "id",
-            "item_name",
-            "description",
-            "item_specification",
-            "brand",
-            "hsn_code",
-            "quantity",
-            "unit_price",
-            "total_price",
+            "id", "item_name", "description", "item_specification",
+            "brand", "hsn_code", "quantity", "unit_price", "total_price"
         ]
         read_only_fields = ["total_price"]
 
-    def validate(self, attrs):
-        # Automatically calculate total_price
-        quantity = attrs.get("quantity", 0)
-        unit_price = attrs.get("unit_price", 0)
-        attrs["total_price"] = quantity * unit_price
-        return attrs
+
+class PaymentTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentTransaction
+        fields = ["id", "bill_order", "amount", "paid_by", "payment_reference_no", "paid_on"]
+        read_only_fields = ["paid_on"]
 
 
 class BillorderSerializer(serializers.ModelSerializer):
     billorder_items = BillorderItemSerializer(many=True)
+    transactions = PaymentTransactionSerializer(many=True, read_only=True)
     vendor = serializers.StringRelatedField(read_only=True)
     vendor_id = serializers.PrimaryKeyRelatedField(
-        queryset=Vendor.objects.all(),
-        source="vendor",
-        write_only=True
+        queryset=Vendor.objects.all(), source="vendor", write_only=True
     )
     deal_no = serializers.CharField(source="deal.deal_no", read_only=True)
     deal_id = serializers.PrimaryKeyRelatedField(
-        queryset=Deal.objects.all(),
-        source="deal",
-        write_only=True
+        queryset=Deal.objects.all(), source="deal", write_only=True
     )
     created_by = serializers.ReadOnlyField(source="created_by.username")
 
     class Meta:
         model = Billorder
         fields = [
-            "id",
-            "vendor",
-            "vendor_id",
-            "deal_no",
-            "deal_id",
-            "bill_number",
-            "status",
-            "paid_by",
-            "payment_reference_no",
-            "bill_date",
-            "due_date",
-            "notes",
-            "subtotal",
-            "tax_type",
-            "tax_percentage",
-            "adjustments",
-            "total_amount",
-            "paid_amount",
-            "amount_to_pay",
-            "created_at",
-            "created_by",
-            "billorder_items",
+            "id", "vendor", "vendor_id", "deal_no", "deal_id",
+            "bill_number", "payment_status", "paid_by", "payment_reference_no",
+            "bill_date", "due_date", "notes", "tax_type", "tax_percentage",
+            "adjustments", "subtotal", "total_amount", "paid_amount",
+            "amount_to_pay", "created_at", "created_by",
+            "billorder_items", "transactions"
         ]
-        read_only_fields = ["created_at", "created_by", "vendor", "deal_no", "subtotal", "total_amount", "amount_to_pay"]
-    
-    def _to_decimal(self, value):
-        try:
-            return Decimal(str(value or 0))
-        except (InvalidOperation, TypeError):
-            return Decimal(0)
-    
+        read_only_fields = [
+            "created_at", "created_by", "vendor", "deal_no",
+            "subtotal", "total_amount", "paid_amount", "amount_to_pay"
+        ]
+
     @transaction.atomic
     def create(self, validated_data):
         items_data = validated_data.pop("billorder_items", [])
-        paid_amount = Decimal(validated_data.pop("paid_amount", 0))
-        user = self.context['request'].user if 'request' in self.context else None
-
+        user = self.context.get("request").user if self.context.get("request") else None
         bill_order = Billorder.objects.create(created_by=user, **validated_data)
 
-        subtotal = 0
-        items_to_create = []
-        
         for item_data in items_data:
-            quantity = item_data.get("quantity", 0)
-            unit_price = item_data.get("unit_price", 0)
-            total_price = quantity * unit_price
-            subtotal += total_price
-            item_data.pop("total_price", None)
-            items_to_create.append(BillorderItem(bill_order=bill_order, total_price=total_price, **item_data))
-
-        if items_to_create:
-            BillorderItem.objects.bulk_create(items_to_create)
-
-        tax_percentage = Decimal(bill_order.tax_percentage)
-        tax_amount = subtotal * tax_percentage / Decimal(100)
-        total_amount = subtotal + tax_amount + bill_order.adjustments if bill_order.tax_type == "TCS" else subtotal - tax_amount + bill_order.adjustments
-
-        bill_order.subtotal = subtotal
-        bill_order.total_amount = total_amount
-        bill_order.paid_amount = paid_amount
-        bill_order.amount_to_pay = max(total_amount - paid_amount, 0)
-
-        if paid_amount >= total_amount:
-            bill_order.status = "PAID"
-        elif paid_amount > 0:
-            bill_order.status = "PARTIAL"
-        else:
-            bill_order.status = "UNPAID"
-
-        bill_order.save()
+            BillorderItem.objects.create(bill_order=bill_order, **item_data)
         return bill_order
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        """
-        Update a Billorder instance safely, handling:
-        - Full, partial, and zero payments
-        - Backward/forward payment transitions
-        - Bill items updates (add, modify, delete)
-        """
-        # --- Extract payment and items data ---
-        new_paid = self._to_decimal(validated_data.pop("paid_amount", None))  # Direct set
-        paid_by = validated_data.pop("paid_by", None)
         items_data = validated_data.pop("billorder_items", None)
 
-        # --- Update basic fields ---
-        for field in ["vendor", "deal", "bill_number", "bill_date", "due_date", "notes", "tax_type", "tax_percentage", "adjustments"]:
+        # Update bill order fields
+        for field in [
+            "vendor", "deal", "bill_number", "bill_date", "due_date",
+            "notes", "tax_type", "tax_percentage", "adjustments",
+            "paid_by", "payment_reference_no"
+        ]:
             if field in validated_data:
                 setattr(instance, field, validated_data[field])
 
-        # --- Payment handling ---
-        if new_paid is not None:
-            # Directly set paid_amount (can be 0, partial, or full)
-            instance.paid_amount = new_paid
-
-        # Ensure paid_amount never negative
-        if instance.paid_amount < 0:
-            instance.paid_amount = 0
-
-        if paid_by:
-            instance.paid_by = paid_by
-
-        # --- Handle bill items ---
-        subtotal = 0
+        # Update bill order items
         if items_data is not None:
-            existing_ids = [item.id for item in instance.billorder_items.all()]
             sent_ids = [item.get("id") for item in items_data if item.get("id")]
+            instance.billorder_items.exclude(id__in=sent_ids).delete()
 
-            # Delete removed items
-            for item_id in existing_ids:
-                if item_id not in sent_ids:
-                    BillorderItem.objects.filter(id=item_id).delete()
-
-            # Update or create items
             for item_data in items_data:
                 if "id" in item_data:
+                    # Update existing item
                     item = BillorderItem.objects.get(id=item_data["id"], bill_order=instance)
-                    for key in ["quantity", "unit_price", "item_name", "description", "item_specification", "brand", "hsn_code"]:
+                    for key in [
+                        "item_name", "description", "item_specification",
+                        "brand", "hsn_code", "quantity", "unit_price"
+                    ]:
                         if key in item_data:
                             setattr(item, key, item_data[key])
-                    item.total_price = item.quantity * item.unit_price
                     item.save()
-                    subtotal += item.total_price
                 else:
-                    quantity = item_data.get("quantity", 0)
-                    unit_price = item_data.get("unit_price", 0)
-                    total_price = quantity * unit_price
-                    subtotal += total_price
-                    BillorderItem.objects.create(bill_order=instance, total_price=total_price, **item_data)
-        else:
-            # No items update, just sum existing
-            subtotal = sum(item.total_price for item in instance.billorder_items.all())
+                    # Create new item
+                    BillorderItem.objects.create(bill_order=instance, **item_data)
 
-        # --- Recalculate totals ---
-        tax_percentage = self._to_decimal(instance.tax_percentage)
-        tax_amount = subtotal * tax_percentage / Decimal(100)
-
-        if instance.tax_type == "TCS":
-            total_amount = subtotal + tax_amount + instance.adjustments
-        elif instance.tax_type == "TDS":
-            total_amount = subtotal - tax_amount + instance.adjustments
-        else:
-            total_amount = subtotal + instance.adjustments
-
-        instance.subtotal = subtotal
-        instance.total_amount = total_amount
-        instance.amount_to_pay = max(total_amount - instance.paid_amount, 0)
-
-        # --- Dynamic status recalculation ---
-        if instance.paid_amount >= total_amount:
-            instance.status = "PAID"
-        elif 0 < instance.paid_amount < total_amount:
-            instance.status = "PARTIAL"
-        else:
-            instance.status = "UNPAID"
-
-        instance.save()
+        instance.update_status()
         return instance
-
 
 class BillItemSerializer(serializers.ModelSerializer):
     """Serializer for BillItem model, includes item details."""

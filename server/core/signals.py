@@ -12,7 +12,7 @@ from .models import (
     InvoiceItem,
     Item,
 )
-
+from .purchase_models import PaymentTransaction
 
 def adjust_item_stock(item, delta):
     if item.track_inventory:
@@ -196,3 +196,7 @@ def update_vendor_balance(sender, instance, **kwargs):
 @receiver(post_delete, sender=Invoice)
 def update_customer_balance(sender, instance, **kwargs):
     recalc_customer_balance(instance.customer)
+
+@receiver(post_delete, sender=PaymentTransaction)
+def update_bill_status_after_delete(sender, instance, **kwargs):
+    instance.bill_order.update_status()

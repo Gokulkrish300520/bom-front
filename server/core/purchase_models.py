@@ -2,6 +2,8 @@ from django.db import models
 from django.conf import settings
 from .models import Vendor,Deal
 from decimal import Decimal
+from django.db.models import Sum
+
 
 class Gst(models.Model):
     payment_choices =[("Low","low"),("High","high")]
@@ -418,123 +420,91 @@ class DutyItem(models.Model):
         return f"{self.item_name} - Total Duty: {self.total_duty}"
 
 class Billorder(models.Model):
-    paid_by_choices = [("SBI","sbi"),("IOB","iob"),("ICICI","icici"),("Petty Cash","petty cash"),("UnPaid","unpaid")]
-    STATUS_CHOICES = [
-        ("PAID", "Paid"),
-        ("UNPAID", "Unpaid"),
-        ("PARTIAL", "Partial"),
-        ("DRAFT", "Draft"),
-    ]
-    TAX_TYPE_CHOICES = [
-        ("TDS", "TDS"),
-        ("TCS", "TCS"),
-    ]
-    TAX_PERCENTAGE_CHOICES = [
-        ("0", "0%"),
-        ("5", "5%"),
-        ("12", "12%"),
-        ("18", "18%"),
-        ("28", "28%"),
-    ]
-    
-    
-    vendor = models.ForeignKey(
-        "Vendor",
-        related_name="billorders",
-        on_delete=models.CASCADE,
-    )
-    deal = models.ForeignKey(Deal, on_delete=models.CASCADE, related_name="billorders")
-    bill_number = models.CharField(
-        max_length=50,
-        unique=True,
-    )
-    status = models.CharField(
-        max_length=10,
-        choices=STATUS_CHOICES,
-        default="DRAFT",
-    )
+    paid_by_choices = [("SBI","sbi"),("IOB","iob"),("ICICI","icici"),("Petty Cash","petty cash")]
+    STATUS_CHOICES = [("PAID", "Paid"), ("UNPAID", "Unpaid"), ("PARTIAL", "Partial")]
+    TAX_TYPE_CHOICES = [("TDS", "TDS"), ("TCS", "TCS")]
+    TAX_PERCENTAGE_CHOICES = [("0","0%"),("5","5%"),("12","12%"),("18","18%"),("28","28%")]
+
+    vendor = models.ForeignKey(Vendor, related_name="billorders", on_delete=models.CASCADE)
+    deal = models.ForeignKey(Deal, related_name="billorders", on_delete=models.CASCADE)
+    bill_number = models.CharField(max_length=50, unique=True)
+    payment_status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="UnPaid")
     bill_date = models.DateField(db_index=True)
     due_date = models.DateField()
-    notes = models.TextField(
-        blank=True,
-    )
-    subtotal = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-    )
-    tax_type = models.CharField(
-        max_length=3,
-        choices=TAX_TYPE_CHOICES,
-        default="TDS",
-    )
-    tax_percentage = models.CharField(
-        max_length=3, choices=TAX_PERCENTAGE_CHOICES, default="0"
-    )
-    adjustments = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-    )
-    paid_by = models.CharField(max_length=12,choices=paid_by_choices,default="UnPaid")
-    payment_reference_no = models.CharField(max_length= 30,null=True,blank=True)
-    total_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-    )
-    paid_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-    )
-    amount_to_pay = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, blank=True,
-        on_delete=models.SET_NULL, help_text="User who created the record"
-    )
-    
+    notes = models.TextField(blank=True)
+    tax_type = models.CharField(max_length=3, choices=TAX_TYPE_CHOICES, default="TDS")
+    tax_percentage = models.CharField(max_length=3, choices=TAX_PERCENTAGE_CHOICES, default="0")
+    adjustments = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    paid_by = models.CharField(max_length=12, choices=paid_by_choices, default="UNPAID")
+    payment_reference_no = models.CharField(max_length=30, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+
     def __str__(self):
         return f"Bill {self.bill_number} - {self.vendor}"
 
+    @property
+    def subtotal(self):
+        return self.billorder_items.aggregate(total=Sum("total_price"))["total"] or Decimal("0.00")
+
+    @property
+    def tax_amount(self):
+        pct = Decimal(self.tax_percentage or 0)
+        return self.subtotal * pct / Decimal(100)
+
+    @property
+    def total_amount(self):
+        if self.tax_type == "TCS":
+            return self.subtotal + self.tax_amount + self.adjustments
+        elif self.tax_type == "TDS":
+            return self.subtotal - self.tax_amount + self.adjustments
+        return self.subtotal + self.adjustments
+
+    @property
+    def paid_amount(self):
+        return self.transactions.aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
+
+    @property
+    def amount_to_pay(self):
+        return max(self.total_amount - self.paid_amount, Decimal("0.00"))
+
+    def update_status(self):
+        if self.paid_amount >= self.total_amount:
+            self.payment_status = "PAID"
+        elif self.paid_amount > 0:
+            self.payment_status = "PARTIAL"
+        else:
+            self.payment_status = "UNPAID"
+        self.save(update_fields=["payment_status"])
+
 class BillorderItem(models.Model):
-    bill_order = models.ForeignKey(Billorder,related_name="billorder_items",on_delete=models.CASCADE)
-    item_name = models.CharField(
-        max_length=100, help_text="Name of the item being purchased"
-    )
-    description = models.TextField(
-        null=True, blank=True,
-        help_text="Description of the item"
-    )
-    item_specification = models.TextField(
-        null=True, blank=True,
-        help_text="Specifications of the item"
-    )
-    brand = models.CharField(
-        max_length=50, null=True, blank=True,
-        help_text="Brand of the item")
-    hsn_code = models.CharField(
-        max_length=20, null=True, blank=True,
-        help_text="HSN code of the item"
-    )
-    quantity = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0,
-        help_text="Quantity of the item"
-    )
-    unit_price = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0,
-        help_text="Unit price")
-    total_price = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0,
-        help_text="Total price"
-    )
-    
+    bill_order = models.ForeignKey(Billorder, related_name="billorder_items", on_delete=models.CASCADE)
+    item_name = models.CharField(max_length=100)
+    description = models.TextField(null=True, blank=True)
+    item_specification = models.TextField(null=True, blank=True)
+    brand = models.CharField(max_length=50, null=True, blank=True)
+    hsn_code = models.CharField(max_length=20, null=True, blank=True)
+    quantity = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    def save(self, *args, **kwargs):
+        self.total_price = (self.quantity or 0) * (self.unit_price or 0)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.item_name} ({self.quantity} x {self.unit_price})"
+
+class PaymentTransaction(models.Model):
+    bill_order = models.ForeignKey(Billorder, related_name="transactions", on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    paid_by = models.CharField(max_length=12, choices=Billorder.paid_by_choices)
+    payment_reference_no = models.CharField(max_length=30, null=True, blank=True)
+    paid_on = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.bill_order.update_status()
+        self.bill_order.payment_reference_no = self.payment_reference_no or ""
+        self.bill_order.paid_by = self.paid_by
+        self.bill_order.save(update_fields=["payment_status", "payment_reference_no", "paid_by"])
