@@ -30,7 +30,8 @@ from .filters_extra import (
     DutyFilter,
     GstFilter,
     NonGstFilter,
-    BillorderFilter
+    BillorderFilter,
+    TransactionFilter
 )
 from .filters import QuoteFilter
 from .models import (
@@ -74,7 +75,7 @@ class PaymentTransactionViewSet(viewsets.ModelViewSet):
     queryset = PaymentTransaction.objects.all().order_by('-paid_on')
     serializer_class = PaymentTransactionSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['bill_order', 'paid_by', 'paid_on']  # optional filters
+    filterset_class = TransactionFilter
     ordering_fields = ['paid_on', 'amount']
     ordering = ['-paid_on']
 

@@ -1,9 +1,12 @@
 from .models import Invoice, ProformaInvoice, DeliveryChallan,Deal
 import django_filters
 from .models import Bill,Vendor
-from .purchase_models import Freight,ImportBill,Duty,Gst,NonGst,Billorder
+from .purchase_models import Freight,ImportBill,Duty,Gst,NonGst,Billorder,PaymentTransaction
 
 # Bill filter for vendor_id
+class TransactionFilter(django_filters.FilterSet):
+    start_date = django_filters.DateFilter(field_name="paid_on", lookup_expr='gte')
+    end_date = django_filters.DateFilter(field_name="paid_on", lookup_expr='lte')
 class GstFilter(django_filters.FilterSet):
     vendor_id = django_filters.NumberFilter(field_name="vendor_id")
     vendor_name = django_filters.CharFilter(field_name="vendor__display_name", lookup_expr='icontains')

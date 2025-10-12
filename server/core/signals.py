@@ -12,7 +12,10 @@ from .models import (
     InvoiceItem,
     Item,
 )
-from .purchase_models import PaymentTransaction
+from .purchase_models import PaymentTransaction,GstItem,NonGst,Duty,ImportBill,ImportBillItem,Billorder,DutyItem,NonGstItem,GstItem,DutyItem,BillorderItem
+from decimal import Decimal
+from django.db.models import Sum
+ZERO = Decimal("0.00")
 
 def adjust_item_stock(item, delta):
     if item.track_inventory:
@@ -197,6 +200,120 @@ def update_vendor_balance(sender, instance, **kwargs):
 def update_customer_balance(sender, instance, **kwargs):
     recalc_customer_balance(instance.customer)
 
+    
+@receiver([post_save, post_delete], sender=DutyItem)
+def update_duty_total(sender, instance, **kwargs):
+    duty = instance.duty
+    totals = duty.duty_items.aggregate(
+        total_price_sum=Sum("total_price"),
+        total_duty_sum=Sum("total_duty"),
+    )
+    duty.total_amount = (totals.get("total_price_sum") or ZERO) + (totals.get("total_duty_sum") or ZERO)
+    duty.save(update_fields=["total_amount"])
+    # Update payment status safely
+    total_paid = duty.transactions.aggregate(total=Sum("amount"))["total"] or ZERO
+    if total_paid >= duty.total_amount:
+        duty.payment_status = "Paid"
+    elif total_paid > 0:
+        duty.payment_status = "Paid Partially"
+    else:
+        duty.payment_status = "Unpaid"
+    duty.save(update_fields=["payment_status"])
+
+
+# ----------------------
+# GST AND GSTITEM SIGNALS
+# ----------------------
+@receiver([post_save, post_delete], sender=GstItem)
+def update_gst_total(sender, instance, **kwargs):
+    gst = instance.gst
+    gst.total_amount = gst.items.aggregate(total=Sum("total_price"))["total"] or ZERO
+    gst.save(update_fields=["total_amount"])
+    # Update payment status
+    total_paid = gst.transactions.aggregate(total=Sum("amount"))["total"] or ZERO
+    gst.payment_status = (
+        "Paid" if total_paid >= gst.total_amount else
+        "Paid Partially" if total_paid > 0 else
+        "Unpaid"
+    )
+    gst.save(update_fields=["payment_status"])
+
+
+# ----------------------
+# NONGST AND NONGSTITEM SIGNALS
+# ----------------------
+@receiver([post_save, post_delete], sender=NonGstItem)
+def update_nongst_total(sender, instance, **kwargs):
+    nongst = instance.nongst
+    nongst.total_amount = nongst.items.aggregate(total=Sum("total_price"))["total"] or ZERO
+    nongst.save(update_fields=["total_amount"])
+    total_paid = nongst.transactions.aggregate(total=Sum("amount"))["total"] or ZERO
+    nongst.payment_status = (
+        "Paid" if total_paid >= nongst.total_amount else
+        "Paid Partially" if total_paid > 0 else
+        "Unpaid"
+    )
+    nongst.save(update_fields=["payment_status"])
+
+
+# ----------------------
+# IMPORTBILL AND IMPORTBILLITEM SIGNALS
+# ----------------------
+@receiver([post_save, post_delete], sender=ImportBillItem)
+def update_importbill_total(sender, instance, **kwargs):
+    bill = instance.bill
+    bill.total_amount = bill.bill_items.aggregate(total=Sum("total_price"))["total"] or ZERO
+    bill.save(update_fields=["total_amount"])
+    total_paid = bill.transactions.aggregate(total=Sum("amount"))["total"] or ZERO
+    bill.payment_status = (
+        "Paid" if total_paid >= bill.total_amount else
+        "Paid Partially" if total_paid > 0 else
+        "Unpaid"
+    )
+    bill.save(update_fields=["payment_status","total_amount"])
+
+
 @receiver(post_delete, sender=PaymentTransaction)
-def update_bill_status_after_delete(sender, instance, **kwargs):
-    instance.bill_order.update_status()
+def update_importbill_after_transaction_delete(sender, instance, **kwargs):
+    """
+    Automatically update ImportBill when a PaymentTransaction is deleted.
+    """
+    related_obj = instance.content_object
+    if isinstance(related_obj, ImportBill):
+        related_obj.update_status()
+
+
+# ----------------------
+# BILLORDER AND BILLORDERITEM SIGNALS
+# ----------------------
+@receiver([post_save, post_delete], sender=BillorderItem)
+def update_billorder_total(sender, instance, **kwargs):
+    bill = instance.bill_order
+
+    # Update payment status
+    total_paid = bill.transactions.aggregate(total=Sum("amount"))["total"] or ZERO
+    if total_paid >= bill.total_amount:
+        bill.payment_status = "Paid"
+    elif total_paid > 0:
+        bill.payment_status = "Paid Partially"
+    else:
+        bill.payment_status = "Unpaid"
+    bill.save(update_fields=["payment_status"])
+
+
+# ----------------------
+# PAYMENTTRANSACTION SIGNAL
+# ----------------------
+@receiver(post_save, sender=PaymentTransaction)
+def update_related_payment_status(sender, instance, **kwargs):
+    obj = instance.content_object
+    if hasattr(obj, "update_status"):
+        obj.update_status()
+
+@receiver(post_delete, sender=PaymentTransaction)
+def update_related_status_after_delete(sender, instance, **kwargs):
+    related = instance.content_object
+    if related and hasattr(related, "update_status"):
+        related.update_status()
+
+    

@@ -17,8 +17,9 @@ from .models import (
     Vendor,
     Deal
 )
+from django.db.models import Sum
 from django.db import models
-from decimal import Decimal
+from decimal import Decimal,ROUND_HALF_UP
 from rest_framework import serializers
 from .inventory_management_models import (
     InventoryManagement
@@ -26,9 +27,43 @@ from .inventory_management_models import (
 from .purchase_models import (
     Freight,FreightItem,ImportBill,ImportBillItem,Duty,DutyItem,Gst,GstItem,NonGst,NonGstItem,Billorder,BillorderItem,PaymentTransaction
 )
-
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+
+class PaymentTransactionSerializer(serializers.ModelSerializer):
+    content_object_type = serializers.SerializerMethodField(read_only=True)
+    content_type = serializers.PrimaryKeyRelatedField(
+        queryset=ContentType.objects.all(), write_only=True, required=False
+    )
+    object_id = serializers.IntegerField(write_only=True, required=False)
+
+    class Meta:
+        model = PaymentTransaction
+        fields = ["id", "amount", "paid_by", "payment_reference_no", "paid_on",
+                "content_type", "object_id", "content_object_type"]
+        read_only_fields = ["paid_on", "content_object_type"]
+
+    def get_content_object_type(self, obj):
+        return obj.content_type.model if obj.content_type else None
+
+    def create(self, validated_data):
+        parent = self.context.get('parent_instance')
+        if parent:
+            validated_data.setdefault(
+                'content_type_id', ContentType.objects.get_for_model(parent).pk
+            )
+            validated_data.setdefault('object_id', parent.id)
+        return super().create(validated_data)
+
+    
+    def update(self, instance, validated_data):
+        # Update the transaction fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
 
 
 class ProfitLossSerializer(serializers.Serializer):
@@ -308,6 +343,9 @@ class GstItemSerializer(serializers.ModelSerializer):
 
 class GstSerializer(serializers.ModelSerializer):
     items = GstItemSerializer(many=True, required=False)
+    
+    transactions = PaymentTransactionSerializer(many=True, required=False)
+    
     vendor = VendorSerializer(read_only=True)
     vendor_id = serializers.PrimaryKeyRelatedField(
         queryset=Vendor.objects.all(),
@@ -336,33 +374,56 @@ class GstSerializer(serializers.ModelSerializer):
             "payment_status",
             "paid_by",
             "total_amount",
+            "paid_amount",
+            "amount_to_pay",
             "items",
+            "transactions",
             "created_by",
             "created_at",
         ]
-        read_only_fields = ["id", "vendor", "deal_no", "created_by", "created_at", "total_amount"]
+        read_only_fields = ["id", "vendor", "deal_no", "created_by", "created_at", "total_amount", "paid_amount", "amount_to_pay"]
 
     def create(self, validated_data):
         items_data = validated_data.pop("items", [])
+        transactions_data = validated_data.pop("transactions", [])
         user = self.context['request'].user if 'request' in self.context else None
-        bill = Gst.objects.create(created_by=user, **validated_data)
+        
+        if 'paid_by' not in validated_data or not validated_data['paid_by']:
+            validated_data['paid_by'] = "None"
+        
+        gst = Gst.objects.create(created_by=user, **validated_data)
 
         total_amount = 0
         for item_data in items_data:
             item_data['total_price'] = item_data.get('quantity', 0) * item_data.get('unit_price', 0)
-            GstItem.objects.create(gst=bill, **item_data)
+            GstItem.objects.create(gst=gst, **item_data)
             total_amount += item_data['total_price']
 
-        bill.total_amount = total_amount
-        bill.save()
-        return bill
+        gst.total_amount = total_amount
+        gst.save()
+        
+        # Create transactions
+        for tx_data in transactions_data:
+            serializer = PaymentTransactionSerializer(
+                data=tx_data,
+                context={'parent_instance': gst}
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            
+        gst.update_status()
+            
+        return gst
 
     def update(self, instance, validated_data):
         items_data = validated_data.pop("items", None)
-
+        transactions_data = validated_data.pop("transactions", None)
+        
         # Update top-level fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+        if not instance.paid_by:  # ensure paid_by never null
+            instance.paid_by = "None"
         instance.save()
 
         if items_data is not None:
@@ -391,6 +452,36 @@ class GstSerializer(serializers.ModelSerializer):
             instance.total_amount = sum(item.total_price for item in instance.items.all())
             instance.save()
 
+        # Update transactions
+        # --- Transactions Update (create/update/delete) ---
+        if transactions_data is not None:
+            existing_txs = {tx.id: tx for tx in instance.transactions.all()}
+            sent_tx_ids = []
+
+            for tx_data in transactions_data:
+                tx_id = tx_data.get("id")
+                if tx_id and tx_id in existing_txs:
+                    tx = existing_txs[tx_id]
+                    for attr, val in tx_data.items():
+                        setattr(tx, attr, val)
+                    tx.save()
+                    sent_tx_ids.append(tx_id)
+                else:
+                    serializer = PaymentTransactionSerializer(
+                        data=tx_data,
+                        context={'parent_instance': instance}
+                    )
+                    serializer.is_valid(raise_exception=True)
+                    tx = serializer.save()
+                    sent_tx_ids.append(tx.id)
+
+            # Delete removed transactions
+            for tx_id, tx in existing_txs.items():
+                if tx_id not in sent_tx_ids:
+                    tx.delete()
+
+            instance.update_status()
+                
         return instance
 
 
@@ -416,6 +507,8 @@ class NonGstItemSerializer(serializers.ModelSerializer):
 
 class NonGstSerializer(serializers.ModelSerializer):
     items = NonGstItemSerializer(many=True, required=False)
+    transactions = PaymentTransactionSerializer(many=True, required=False)
+    
     vendor = VendorSerializer(read_only=True)
     vendor_id = serializers.PrimaryKeyRelatedField(
         queryset=Vendor.objects.all(),
@@ -446,15 +539,23 @@ class NonGstSerializer(serializers.ModelSerializer):
             "payment_status",
             "paid_by",
             "total_amount",
+            "paid_amount",
+            "amount_to_pay",
             "items",
+            "transactions",
             "created_by",
             "created_at",
         ]
-        read_only_fields = ["id", "vendor", "deal_no", "created_by", "created_at", "total_amount"]
+        read_only_fields = ["id", "vendor", "deal_no", "created_by", "created_at", "total_amount","paid_amount","amount_to_pay"]
 
     def create(self, validated_data):
         items_data = validated_data.pop("items", [])
+        transactions_data = validated_data.pop("transactions", [])
         user = self.context['request'].user if 'request' in self.context else None
+        
+        if 'paid_by' not in validated_data or not validated_data['paid_by']:
+            validated_data['paid_by'] = "None"
+        
         bill = NonGst.objects.create(created_by=user, **validated_data)
 
         total_amount = 0
@@ -465,14 +566,30 @@ class NonGstSerializer(serializers.ModelSerializer):
 
         bill.total_amount = total_amount
         bill.save()
+        
+        for tx_data in transactions_data:
+            
+            serializer = PaymentTransactionSerializer(
+                data=tx_data,
+                context={'parent_instance': bill}
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+        # Update payment status after all transactions
+        bill.update_status()
         return bill
 
     def update(self, instance, validated_data):
         items_data = validated_data.pop("items", None)
+        transactions_data = validated_data.pop("transactions", None)
+
 
         # Update top-level fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+        if not instance.paid_by:
+            instance.paid_by = "None"
         instance.save()
 
         if items_data is not None:
@@ -501,6 +618,32 @@ class NonGstSerializer(serializers.ModelSerializer):
             instance.total_amount = sum(item.total_price for item in instance.items.all())
             instance.save()
 
+        if transactions_data is not None:
+            existing_txs = {tx.id: tx for tx in instance.transactions.all()}
+            sent_tx_ids = []
+
+            for tx_data in transactions_data:
+                tx_id = tx_data.get("id")
+                if tx_id and tx_id in existing_txs:
+                    tx = existing_txs[tx_id]
+                    for attr, val in tx_data.items():
+                        setattr(tx, attr, val)
+                    tx.save()
+                    sent_tx_ids.append(tx_id)
+                else:
+                    serializer = PaymentTransactionSerializer(
+                        data=tx_data,
+                        context={'parent_instance': instance}
+                    )
+                    serializer.is_valid(raise_exception=True)
+                    tx = serializer.save()
+                    sent_tx_ids.append(tx.id)
+
+            for tx_id, tx in existing_txs.items():
+                if tx_id not in sent_tx_ids:
+                    tx.delete()
+
+            instance.update_status()
         return instance
 
 from rest_framework import serializers
@@ -632,16 +775,28 @@ class FreightSerializer(serializers.ModelSerializer):
         return instance
 
 class ImportBillItemSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
+
     class Meta:
         model = ImportBillItem
         exclude = ["bill"]
-        extra_kwargs = {
-            "bill": {"required": False}
-        }
+
+    def create(self, validated_data):
+        validated_data['total_price'] = validated_data.get('quantity', 0) * validated_data.get('unit_price', 0)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        instance.quantity = validated_data.get('quantity', instance.quantity)
+        instance.unit_price = validated_data.get('unit_price', instance.unit_price)
+        instance.total_price = instance.quantity * instance.unit_price
+        return super().update(instance, validated_data)
+
 
 class ImportBillSerializer(serializers.ModelSerializer):
     bill_items = ImportBillItemSerializer(many=True, required=False)
-    vendor = serializers.StringRelatedField(read_only=True)
+    transactions = PaymentTransactionSerializer(many=True, required=False)
+
+    vendor = VendorSerializer(read_only=True)
     vendor_id = serializers.PrimaryKeyRelatedField(
         queryset=Vendor.objects.all(),
         source="vendor",
@@ -671,78 +826,61 @@ class ImportBillSerializer(serializers.ModelSerializer):
             "payment_status",
             "paid_by",
             "total_amount",
+            "paid_amount",
+            "amount_to_pay",
             "bill_items",
+            "transactions",
             "created_by",
             "created_at",
         ]
         read_only_fields = [
-            "id",
-            "vendor",
-            "deal_no",
-            "total_amount",
-            "created_by",
-            "created_at",
+            "id", "vendor", "deal_no", "created_by", "created_at", "total_amount",
+            "paid_amount", "amount_to_pay"
         ]
 
-    # ---------- Helper ----------
-    def _to_decimal(self, value):
-        try:
-            return Decimal(str(value or 0))
-        except (InvalidOperation, TypeError):
-            return Decimal(0)
-
-    def _update_payment_status(self, instance):
-        """Automatically update payment_status based on payment_request."""
-        total = instance.total_amount or Decimal("0.00")
-        paid_request = instance.payment_request or Decimal("0.00")
-
-        if paid_request >= total:
-            instance.payment_status = "PAID"
-        elif paid_request > 0:
-            instance.payment_status = "PARTIAL"
-        else:
-            instance.payment_status = "UNPAID"
-
-    # ---------- CREATE ----------
     @transaction.atomic
     def create(self, validated_data):
         items_data = validated_data.pop("bill_items", [])
+        transactions_data = validated_data.pop("transactions", [])
         user = self.context.get("request").user if "request" in self.context else None
+
         bill = ImportBill.objects.create(created_by=user, **validated_data)
 
-        total_price_sum = Decimal("0.00")
+        total_amount = 0
         for item_data in items_data:
-            bill_item = ImportBillItem.objects.create(bill=bill, **item_data)
-            total_price_sum += bill_item.total_price or Decimal("0.00")
+            item_data['total_price'] = item_data.get('quantity', 0) * item_data.get('unit_price', 0)
+            ImportBillItem.objects.create(bill=bill, **item_data)
+            total_amount += item_data['total_price']
 
-        bill.total_amount = total_price_sum
-        self._update_payment_status(bill)
+        bill.total_amount = total_amount
         bill.save()
+
+        # Create transactions
+        for tx_data in transactions_data:
+            serializer = PaymentTransactionSerializer(
+                data=tx_data,
+                context={'parent_instance': bill}
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+        # Update paid_by, payment_reference_no, and payment_status
+        last_tx = bill.transactions.order_by('-paid_on').first()
+        if last_tx:
+            bill.paid_by = last_tx.paid_by
+            bill.payment_reference_no = last_tx.payment_reference_no
+        bill.update_status()
         return bill
 
-    # ---------- UPDATE ----------
     @transaction.atomic
     def update(self, instance, validated_data):
         items_data = validated_data.pop("bill_items", None)
-        new_request = self._to_decimal(validated_data.pop("payment_request", None))
-        add_request = self._to_decimal(validated_data.pop("amount_to_pay", 0))
-        paid_by = validated_data.pop("paid_by", None)
+        transactions_data = validated_data.pop("transactions", None)
 
         # Update top-level fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-
-        # Handle payment logic (forward & backward)
-        if new_request != 0:
-            instance.payment_request = new_request
-        else:
-            instance.payment_request = (instance.payment_request or 0) + add_request
-
-        if instance.payment_request < 0:
-            instance.payment_request = 0
-
-        if paid_by:
-            instance.paid_by = paid_by
+        instance.save()
 
         # Handle bill items
         if items_data is not None:
@@ -751,32 +889,59 @@ class ImportBillSerializer(serializers.ModelSerializer):
 
             for item_data in items_data:
                 item_id = item_data.get("id", None)
+                item_data['total_price'] = item_data.get('quantity', 0) * item_data.get('unit_price', 0)
+
                 if item_id and item_id in existing_items:
-                    # Update existing
                     item = existing_items[item_id]
                     for attr, value in item_data.items():
                         setattr(item, attr, value)
                     item.save()
                     sent_item_ids.append(item_id)
                 else:
-                    # Create new
                     new_item = ImportBillItem.objects.create(bill=instance, **item_data)
                     sent_item_ids.append(new_item.id)
 
-            # Delete removed items
+            # Delete missing items
             for item_id, item in existing_items.items():
                 if item_id not in sent_item_ids:
                     item.delete()
 
-            # Recalculate total amount
-            totals = instance.bill_items.aggregate(total_price_sum=models.Sum("total_price"))
-            instance.total_amount = totals["total_price_sum"] or Decimal("0.00")
+            instance.total_amount = sum(item.total_price for item in instance.bill_items.all())
+            instance.save()
 
-        # Update payment status dynamically
-        self._update_payment_status(instance)
-        instance.save()
+        # Handle transactions
+        if transactions_data is not None:
+            for tx_data in transactions_data:
+                serializer = PaymentTransactionSerializer(
+                    data=tx_data,
+                    context={'parent_instance': instance}
+                )
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+
+            last_tx = instance.transactions.order_by('-paid_on').first()
+            if last_tx:
+                instance.paid_by = last_tx.paid_by
+                instance.payment_reference_no = last_tx.payment_reference_no
+            else:
+            # ✅ Reset to safe nulls if no transaction exists
+                instance.paid_by = None
+                instance.payment_reference_no = None
+            
+            instance.update_status()
+        else:
+        # ✅ Even if transactions_data wasn't provided, re-check after possible deletions
+            last_tx = instance.transactions.order_by('-paid_on').first()
+            if last_tx:
+                instance.paid_by = last_tx.paid_by
+                instance.payment_reference_no = last_tx.payment_reference_no
+            else:
+                instance.paid_by = None
+                instance.payment_reference_no = None
+
+            instance.update_status()
+
         return instance
-
 
 class DutyItemSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
@@ -786,18 +951,36 @@ class DutyItemSerializer(serializers.ModelSerializer):
         exclude = ["duty"]
         extra_kwargs = {"duty": {"required": False}}
 
+    def _to_decimal(self, value):
+        try:
+            return Decimal(str(value or 0))
+        except (InvalidOperation, TypeError):
+            return Decimal(0)
+
     def validate(self, attrs):
-        # Automatically compute total fields if relevant data present
-        quantity = attrs.get("quantity", 0)
-        unit_price = attrs.get("unit_price", 0)
-        duty_value = attrs.get("duty_value", 0)
-        attrs["total_price"] = quantity * unit_price
-        attrs["total_duty"] = quantity * duty_value if "total_duty" in self.fields else 0
+        # Compute total_price
+        quantity = self._to_decimal(attrs.get("quantity"))
+        unit_price = self._to_decimal(attrs.get("unit_price"))
+        total_price = quantity * unit_price
+        attrs["total_price"] = total_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        # Compute total_duty
+        numeric_fields = [
+            "assessable_value",
+            "igst",
+            "social_welfare",
+            "cess",
+            "duty_amount",
+            "addl_duty",
+        ]
+        total_duty = sum(self._to_decimal(attrs.get(f)) for f in numeric_fields)
+        attrs["total_duty"] = total_duty.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         return attrs
 
-
+# ---------- Duty Serializer ----------
 class DutySerializer(serializers.ModelSerializer):
     duty_items = DutyItemSerializer(many=True, required=False)
+    transactions = PaymentTransactionSerializer(many=True, required=False)
     vendor = serializers.StringRelatedField(read_only=True)
     vendor_id = serializers.PrimaryKeyRelatedField(
         queryset=Vendor.objects.all(), source="vendor", write_only=True
@@ -824,7 +1007,10 @@ class DutySerializer(serializers.ModelSerializer):
             "payment_status",
             "paid_by",
             "total_amount",
+            "paid_amount",
+            "amount_to_pay",
             "duty_items",
+            "transactions",
             "created_by",
             "created_at",
         ]
@@ -845,11 +1031,10 @@ class DutySerializer(serializers.ModelSerializer):
             return Decimal(0)
 
     def _update_payment_status(self, instance):
-        """Automatically update payment_status based on internal rules."""
-        total = instance.total_amount or Decimal("0.00")
-        paid_request = instance.payment_request or Decimal("0.00")
+        total = self._to_decimal(instance.total_amount)
+        paid_request = self._to_decimal(instance.payment_request)
 
-        if paid_request >= total:
+        if paid_request >= total and total > 0:
             instance.payment_status = "PAID"
         elif paid_request > 0:
             instance.payment_status = "PARTIAL"
@@ -860,91 +1045,127 @@ class DutySerializer(serializers.ModelSerializer):
     @transaction.atomic
     def create(self, validated_data):
         items_data = validated_data.pop("duty_items", [])
-        user = self.context["request"].user if "request" in self.context else None
+        transactions_data = validated_data.pop("transactions", [])
+        user = self.context.get("request").user
 
         duty = Duty.objects.create(created_by=user, **validated_data)
 
-        total_price_sum = Decimal("0.00")
-        total_duty_sum = Decimal("0.00")
-
+        total_amount = Decimal("0.00")
         for item_data in items_data:
-            duty_item = DutyItem.objects.create(duty=duty, **item_data)
-            total_price_sum += duty_item.total_price or 0
-            total_duty_sum += duty_item.total_duty or 0
+            serializer = DutyItemSerializer(data=item_data)
+            serializer.is_valid(raise_exception=True)
+            item = DutyItem.objects.create(duty=duty, **serializer.validated_data)
+            total_amount += item.total_price + item.total_duty
 
-        duty.total_amount = total_price_sum + total_duty_sum
-        self._update_payment_status(duty)
+        duty.total_amount = total_amount
         duty.save()
+
+        # Transactions
+        for tx_data in transactions_data:
+            serializer = PaymentTransactionSerializer(
+                data=tx_data, context={"parent_instance": duty}
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+        duty.update_status()
         return duty
 
     # ---------- UPDATE ----------
     @transaction.atomic
     def update(self, instance, validated_data):
         items_data = validated_data.pop("duty_items", None)
-        paid_by = validated_data.pop("paid_by", None)
-        
-        # --- Determine new payment_request ---
-        new_request = validated_data.pop("payment_request", None)
-        add_request = validated_data.pop("amount_to_pay", 0)
+        transactions_data = validated_data.pop("transactions", None)
 
-        if new_request is not None:
-            # Directly set payment_request (handles backward changes)
-            instance.payment_request = self._to_decimal(new_request)
-        else:
-            # Incremental change
-            instance.payment_request = (instance.payment_request or 0) + self._to_decimal(add_request)
-
-        # Ensure non-negative payment_request
-        if instance.payment_request < 0:
-            instance.payment_request = 0
-
-        if paid_by:
-            instance.paid_by = paid_by
-
-        # --- Update basic fields ---
+        # Update top-level fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+        instance.save()
 
-        # --- Handle duty items ---
+        # Update duty_items
         if items_data is not None:
             existing_items = {item.id: item for item in instance.duty_items.all()}
             sent_ids = []
 
             for item_data in items_data:
                 item_id = item_data.get("id")
+                serializer = DutyItemSerializer(data=item_data)
+                serializer.is_valid(raise_exception=True)
+                validated_item = serializer.validated_data
+
                 if item_id and item_id in existing_items:
                     item = existing_items[item_id]
-                    for key, val in item_data.items():
+                    for key, val in validated_item.items():
                         setattr(item, key, val)
                     item.save()
                     sent_ids.append(item_id)
                 else:
-                    new_item = DutyItem.objects.create(duty=instance, **item_data)
-                    sent_ids.append(new_item.id)
+                    item = DutyItem.objects.create(duty=instance, **validated_item)
+                    sent_ids.append(item.id)
 
             # Delete removed items
             for item_id, item in existing_items.items():
                 if item_id not in sent_ids:
                     item.delete()
 
-        # --- Recalculate totals ---
+        # Update transactions
+        
+            # Handle transactions
+        if transactions_data is not None:
+            existing_transactions = {tx.id: tx for tx in instance.transactions.all()}
+
+            for tx_data in transactions_data:
+                tx_id = tx_data.get("id")
+
+                if tx_id and tx_id in existing_transactions:
+                    # ✅ Update existing transaction
+                    tx_instance = existing_transactions[tx_id]
+                    tx_serializer = PaymentTransactionSerializer(
+                        tx_instance, data=tx_data, partial=True
+                    )
+                    tx_serializer.is_valid(raise_exception=True)
+                    tx_serializer.save()
+                else:
+                    # 🆕 Create a new transaction
+                    tx_serializer = PaymentTransactionSerializer(
+                        data=tx_data, context={"parent_instance": instance}
+                    )
+                    tx_serializer.is_valid(raise_exception=True)
+                    tx_serializer.save()
+
+            # 🔁 Refresh status and payment info after any update
+            last_tx = instance.transactions.order_by("-paid_on").first()
+            if last_tx:
+                instance.paid_by = last_tx.paid_by
+                instance.payment_reference_no = last_tx.payment_reference_no
+            else:
+                instance.paid_by = "None"
+                instance.payment_reference_no = None
+
+            instance.update_status()
+
+        else:
+            # If transactions not provided — still recheck payment info
+            last_tx = instance.transactions.order_by("-paid_on").first()
+            if last_tx:
+                instance.paid_by = last_tx.paid_by
+                instance.payment_reference_no = last_tx.payment_reference_no
+            else:
+                instance.paid_by = "None"
+                instance.payment_reference_no = None
+
+            instance.update_status()
+
+        # Recalculate total_amount
         totals = instance.duty_items.aggregate(
             total_price_sum=models.Sum("total_price"),
             total_duty_sum=models.Sum("total_duty"),
         )
-        total_price = totals["total_price_sum"] or Decimal("0.00")
-        total_duty = totals["total_duty_sum"] or Decimal("0.00")
-        instance.total_amount = total_price + total_duty
+        instance.total_amount = self._to_decimal(totals.get("total_price_sum")) + self._to_decimal(totals.get("total_duty_sum"))
 
-        # --- Update payment status dynamically ---
-        if instance.payment_request >= instance.total_amount:
-            instance.payment_status = "PAID"
-        elif instance.payment_request > 0:
-            instance.payment_status = "PARTIAL"
-        else:
-            instance.payment_status = "UNPAID"
-
-        instance.save()
+        # Update payment status
+        instance.update_status()
+        instance.update_total_amount()
         return instance
 
 
@@ -963,18 +1184,23 @@ class BillorderItemSerializer(serializers.ModelSerializer):
             "brand", "hsn_code", "quantity", "unit_price", "total_price"
         ]
         read_only_fields = ["total_price"]
+    
+    def create(self, validated_data):
+        validated_data['total_price'] = validated_data.get('quantity', 0) * validated_data.get('unit_price', 0)
+        return super().create(validated_data)
 
-
-class PaymentTransactionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PaymentTransaction
-        fields = ["id", "bill_order", "amount", "paid_by", "payment_reference_no", "paid_on"]
-        read_only_fields = ["paid_on"]
+    def update(self, instance, validated_data):
+        instance.quantity = validated_data.get('quantity', instance.quantity)
+        instance.unit_price = validated_data.get('unit_price', instance.unit_price)
+        instance.total_price = instance.quantity * instance.unit_price
+        return super().update(instance, validated_data)
 
 
 class BillorderSerializer(serializers.ModelSerializer):
     billorder_items = BillorderItemSerializer(many=True)
-    transactions = PaymentTransactionSerializer(many=True, read_only=True)
+    
+    transactions = PaymentTransactionSerializer(many=True, required=False)
+    
     vendor = serializers.StringRelatedField(read_only=True)
     vendor_id = serializers.PrimaryKeyRelatedField(
         queryset=Vendor.objects.all(), source="vendor", write_only=True
@@ -1003,46 +1229,82 @@ class BillorderSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def create(self, validated_data):
         items_data = validated_data.pop("billorder_items", [])
+        transactions_data = validated_data.pop("transactions", [])
         user = self.context.get("request").user if self.context.get("request") else None
         bill_order = Billorder.objects.create(created_by=user, **validated_data)
 
         for item_data in items_data:
             BillorderItem.objects.create(bill_order=bill_order, **item_data)
-        return bill_order
+        
+        for tx_data in transactions_data:
+            serializer = PaymentTransactionSerializer(
+                data=tx_data,
+                context={'parent_instance': bill_order}
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
 
+        bill_order.update_status()
+        return bill_order
+    
     @transaction.atomic
     def update(self, instance, validated_data):
         items_data = validated_data.pop("billorder_items", None)
-
+        transactions_data = validated_data.pop("transactions", [])
         # Update bill order fields
-        for field in [
-            "vendor", "deal", "bill_number", "bill_date", "due_date",
-            "notes", "tax_type", "tax_percentage", "adjustments",
-            "paid_by", "payment_reference_no"
-        ]:
-            if field in validated_data:
-                setattr(instance, field, validated_data[field])
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
 
         # Update bill order items
         if items_data is not None:
-            sent_ids = [item.get("id") for item in items_data if item.get("id")]
-            instance.billorder_items.exclude(id__in=sent_ids).delete()
+            existing_items = {item.id: item for item in instance.billorder_items.all()}
+            sent_ids = []
 
             for item_data in items_data:
-                if "id" in item_data:
-                    # Update existing item
-                    item = BillorderItem.objects.get(id=item_data["id"], bill_order=instance)
-                    for key in [
-                        "item_name", "description", "item_specification",
-                        "brand", "hsn_code", "quantity", "unit_price"
-                    ]:
-                        if key in item_data:
-                            setattr(item, key, item_data[key])
+                item_data['total_price'] = item_data.get('quantity', 0) * item_data.get('unit_price', 0)
+                item_id = item_data.get("id")
+                if item_id and item_id in existing_items:
+                    item = existing_items[item_id]
+                    for k, v in item_data.items():
+                        setattr(item, k, v)
                     item.save()
+                    sent_ids.append(item_id)
                 else:
-                    # Create new item
-                    BillorderItem.objects.create(bill_order=instance, **item_data)
+                    new_item = BillorderItem.objects.create(bill_order=instance, **item_data)
+                    sent_ids.append(new_item.id)
 
+            # Delete removed items
+            for item_id, item in existing_items.items():
+                if item_id not in sent_ids:
+                    item.delete()
+                    
+        if transactions_data:
+            existing_txs = {tx.id: tx for tx in instance.transactions.all()}
+
+            for tx_data in transactions_data:
+                tx_id = tx_data.get('id')
+                if tx_id and tx_id in existing_txs:
+                    tx_instance = existing_txs[tx_id]
+                    serializer = PaymentTransactionSerializer(
+                        instance=tx_instance,
+                        data=tx_data,
+                        partial=True,
+                        context={'parent_instance': instance}
+                    )
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+                elif not tx_id:
+                    # Create only if no ID provided
+                    tx_data['content_type_id'] = ContentType.objects.get_for_model(instance).pk
+                    tx_data['object_id'] = instance.id
+                    serializer = PaymentTransactionSerializer(
+                        data=tx_data,
+                        context={'parent_instance': instance}
+                    )
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+                    
         instance.update_status()
         return instance
 
