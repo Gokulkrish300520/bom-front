@@ -49,6 +49,7 @@ from .models import (
 )
 from .purchase_models import Freight,ImportBill,Duty,Gst,NonGst,Billorder,PaymentTransaction
 from django.db.models import F
+from rest_framework import generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -79,6 +80,15 @@ class PaymentTransactionViewSet(viewsets.ModelViewSet):
     ordering_fields = ['paid_on', 'amount']
     ordering = ['-paid_on']
 
+class PendingTransactionsList(generics.ListAPIView):
+    serializer_class = PaymentTransactionSerializer
+
+    def get_queryset(self):
+        # use the optimized pending manager
+        return PaymentTransaction.objects.pending().select_related(
+            'content_type', 'created_by'
+        )
+        
 class NewProfitAndLossReportView(APIView):
     def get(self, request):
         deal_id = request.query_params.get('deal_id')

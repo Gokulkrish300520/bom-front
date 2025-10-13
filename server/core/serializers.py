@@ -17,7 +17,7 @@ from .models import (
     Vendor,
     Deal
 )
-from django.db.models import Sum
+from django.db.models import Sum,Q
 from django.db import models
 from decimal import Decimal,ROUND_HALF_UP
 from rest_framework import serializers
@@ -30,22 +30,39 @@ from .purchase_models import (
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-
+        
 class PaymentTransactionSerializer(serializers.ModelSerializer):
     content_object_type = serializers.SerializerMethodField(read_only=True)
+    vendor_name = serializers.SerializerMethodField(read_only=True)
     content_type = serializers.PrimaryKeyRelatedField(
         queryset=ContentType.objects.all(), write_only=True, required=False
     )
     object_id = serializers.IntegerField(write_only=True, required=False)
+    amount_to_pay = serializers.SerializerMethodField()
+    total_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = PaymentTransaction
-        fields = ["id", "amount", "paid_by", "payment_reference_no", "paid_on",
+        fields = ["id", "vendor_name","total_amount","amount_to_pay","amount", "paid_by", "payment_reference_no", "paid_on",
                 "content_type", "object_id", "content_object_type"]
-        read_only_fields = ["paid_on", "content_object_type"]
+        read_only_fields = ["paid_on", "content_object_type","vendor_name"]
+    
+    def get_amount_to_pay(self, obj):
+        # Use the property from the related object
+        return obj.content_object.amount_to_pay
+    
+    def get_total_amount(self, obj):
+        # Use the property from the related object
+        return obj.content_object.total_amount
 
     def get_content_object_type(self, obj):
         return obj.content_type.model if obj.content_type else None
+    
+    def get_vendor_name(self, obj):
+        try:
+            return obj.content_object.vendor.display_name
+        except AttributeError:
+            return None
 
     def create(self, validated_data):
         parent = self.context.get('parent_instance')
@@ -64,7 +81,6 @@ class PaymentTransactionSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
-
 
 class ProfitLossSerializer(serializers.Serializer):
     revenue = serializers.DecimalField(max_digits=12, decimal_places=2)

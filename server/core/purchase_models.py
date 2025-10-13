@@ -2,9 +2,20 @@ from django.db import models
 from django.conf import settings
 from .models import Vendor,Deal
 from decimal import Decimal,ROUND_HALF_UP
+from django.db.models import Q
 from django.db.models import Sum
 from django.contrib.contenttypes.fields import GenericForeignKey,GenericRelation
 from django.contrib.contenttypes.models import ContentType
+
+class PaymentTransactionQuerySet(models.QuerySet):
+    def pending(self):
+        return self.filter(
+            Q(gst_transactions__payment_status__in=['Unpaid', 'Paid Partially']) |
+            Q(nongst_transactions__payment_status__in=['Unpaid', 'Paid Partially']) |
+            Q(duty_transactions__payment_status__in=['Unpaid', 'Paid Partially']) |
+            Q(billorder_transactions__payment_status__in=['Unpaid', 'Paid Partially']) |
+            Q(importbill_transactions__payment_status__in=['Unpaid', 'Paid Partially'])
+        )
 
 class PaymentTransaction(models.Model):
     PAID_BY_CHOICES = [
@@ -18,7 +29,7 @@ class PaymentTransaction(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
-
+    objects = PaymentTransactionQuerySet.as_manager()
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     paid_by = models.CharField(max_length=20, choices=PAID_BY_CHOICES)
     payment_reference_no = models.CharField(max_length=64, null=True, blank=True)
@@ -513,7 +524,7 @@ class DutyItem(models.Model):
         super().save(*args, **kwargs)
 
 class Billorder(models.Model):
-    paid_by_choices = [("SBI","sbi"),("IOB","iob"),("ICICI","icici"),("Petty Cash","petty cash")]
+    paid_by_choices = [("SBI","sbi"),("IOB","iob"),("ICICI","icici"),("Petty Cash","petty cash"),("None", "none")]
     STATUS_CHOICES = [("Paid", "Paid"), ("Unpaid", "Unpaid"), ("Paid Partially", "Paid Partially")]
     TAX_TYPE_CHOICES = [("TDS", "TDS"), ("TCS", "TCS")]
     TAX_PERCENTAGE_CHOICES = [("0","0%"),("5","5%"),("12","12%"),("18","18%"),("28","28%")]
@@ -529,7 +540,7 @@ class Billorder(models.Model):
     tax_type = models.CharField(max_length=3, choices=TAX_TYPE_CHOICES, default="TDS")
     tax_percentage = models.CharField(max_length=3, choices=TAX_PERCENTAGE_CHOICES, default="0")
     adjustments = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    paid_by = models.CharField(max_length=12, choices=paid_by_choices, default="Petty Cash")
+    paid_by = models.CharField(max_length=12, choices=paid_by_choices, default="None")
     payment_reference_no = models.CharField(max_length=30, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
@@ -569,7 +580,17 @@ class Billorder(models.Model):
             self.payment_status = "Paid Partially"
         else:
             self.payment_status = "Unpaid"
-        self.save(update_fields=["payment_status"])
+        
+        # Update last payment details
+        last_tx = self.transactions.order_by("-paid_on").first()
+        if last_tx:
+            self.paid_by = last_tx.paid_by
+            self.payment_reference_no = last_tx.payment_reference_no
+        else:
+            self.paid_by = "None"
+            self.payment_reference_no = None
+
+        self.save(update_fields=["payment_status", "paid_by", "payment_reference_no"])
 
 class BillorderItem(models.Model):
     bill_order = models.ForeignKey(Billorder, related_name="billorder_items", on_delete=models.CASCADE)

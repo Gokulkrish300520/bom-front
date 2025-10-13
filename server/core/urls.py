@@ -10,6 +10,7 @@ from django.conf import settings
 from .views import current_user
 from .views import NewProfitAndLossReportView,PaymentTransactionViewSet
 from rest_framework.routers import DefaultRouter
+from .views import PendingTransactionsList
 from .views import (
     CustomerViewSet,
     InvoiceViewSet,
@@ -71,6 +72,7 @@ router.register(
 router.register(r"files", CustomerDocumentViewSet, basename="file")
 
 urlpatterns = [
+    path('transactions/pending/', PendingTransactionsList.as_view(), name='pending-transactions'),
     path("items/low_stock/", ItemStock.as_view(), name='low_stock_items'),
     path("", include(router.urls)),
     path("banking/", include("server.core.banking.urls")),
