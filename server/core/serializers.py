@@ -38,22 +38,12 @@ class PaymentTransactionSerializer(serializers.ModelSerializer):
         queryset=ContentType.objects.all(), write_only=True, required=False
     )
     object_id = serializers.IntegerField(write_only=True, required=False)
-    amount_to_pay = serializers.SerializerMethodField()
-    total_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = PaymentTransaction
-        fields = ["id", "vendor_name","total_amount","amount_to_pay","amount", "paid_by", "payment_reference_no", "paid_on",
+        fields = ["id", "vendor_name","amount", "paid_by", "payment_reference_no", "paid_on",
                 "content_type", "object_id", "content_object_type"]
         read_only_fields = ["paid_on", "content_object_type","vendor_name"]
-    
-    def get_amount_to_pay(self, obj):
-        # Use the property from the related object
-        return obj.content_object.amount_to_pay
-    
-    def get_total_amount(self, obj):
-        # Use the property from the related object
-        return obj.content_object.total_amount
 
     def get_content_object_type(self, obj):
         return obj.content_type.model if obj.content_type else None
@@ -81,6 +71,24 @@ class PaymentTransactionSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+
+class PendingTransactionSerializer(PaymentTransactionSerializer):
+    amount_to_pay = serializers.SerializerMethodField()
+    total_amount = serializers.SerializerMethodField()
+
+    class Meta(PaymentTransactionSerializer.Meta):
+        fields = PaymentTransactionSerializer.Meta.fields + ["amount_to_pay", "total_amount"]
+
+    def get_amount_to_pay(self, obj):
+        if obj.content_object:
+            return getattr(obj.content_object, "amount_to_pay", None)
+        return None
+
+    def get_total_amount(self, obj):
+        if obj.content_object:
+            return getattr(obj.content_object, "total_amount", None)
+        return None
+
 
 class ProfitLossSerializer(serializers.Serializer):
     revenue = serializers.DecimalField(max_digits=12, decimal_places=2)

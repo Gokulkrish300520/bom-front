@@ -16,7 +16,8 @@ from .serializers import (
     GstSerializer,
     NonGstSerializer,
     BillorderSerializer,
-    PaymentTransactionSerializer
+    PaymentTransactionSerializer,
+    PendingTransactionSerializer
 )
 from .filters_extra import (
     InvoiceFilter,
@@ -81,7 +82,7 @@ class PaymentTransactionViewSet(viewsets.ModelViewSet):
     ordering = ['-paid_on']
 
 class PendingTransactionsList(generics.ListAPIView):
-    serializer_class = PaymentTransactionSerializer
+    serializer_class = PendingTransactionSerializer
 
     def get_queryset(self):
         # use the optimized pending manager
