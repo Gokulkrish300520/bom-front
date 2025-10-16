@@ -843,7 +843,9 @@ from django.template.loader import render_to_string
 from django.http import HttpResponse, HttpResponseBadRequest
 from weasyprint import HTML
 from rest_framework.views import APIView
-import json
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import permission_classes
+
 @permission_classes([IsAuthenticated])
 class GenerateDocumentPdfView(APIView):
     def post(self, request):
@@ -855,6 +857,7 @@ class GenerateDocumentPdfView(APIView):
             if doc_type not in ['quote', 'invoice', 'proforma', 'delivery_challan']:
                 return HttpResponseBadRequest("Invalid document type.")
 
+            # Map frontend quote data to template keys
             context = {
                 'document_type': doc_type,
                 'document_number_label': {
@@ -862,34 +865,66 @@ class GenerateDocumentPdfView(APIView):
                     'invoice': 'Invoice #',
                     'proforma': 'Proforma Invoice #',
                     'delivery_challan': 'Challan #'
-                }.get(doc_type, 'Document #'),
+                }[doc_type],
                 'document_date_label': {
                     'quote': 'Quote Date',
                     'invoice': 'Invoice Date',
                     'proforma': 'Proforma Date',
                     'delivery_challan': 'Challan Date'
-                }.get(doc_type, 'Date'),
+                }[doc_type],
 
-                # Map your actual data fields here
-                'document_number': doc_data.get('document_number', ''),
-                'document_date': doc_data.get('document_date', ''),
-                'billing_info': doc_data.get('billing_info', {}),
-                'shipping_info': doc_data.get('shipping_info', {}),
+                # Map actual data
+                'document_number': doc_data.get('quote_number', ''),
+                'document_date': doc_data.get('quote_date', ''),
+                
+                'billing_info': {
+                    'name': doc_data.get('customer_name', ''),
+                    'address': doc_data.get('billing_address', ''),
+                    'city': doc_data.get('billing_city', ''),
+                    'gstin': doc_data.get('billing_gstin', ''),
+                },
+                'shipping_info': {
+                    'name': doc_data.get('shipping_name', ''),
+                    'address': doc_data.get('shipping_address', ''),
+                    'city': doc_data.get('shipping_city', ''),
+                },
                 'place_of_supply': doc_data.get('place_of_supply', ''),
-                'items': doc_data.get('items', []),
-                'totals': doc_data.get('totals', {}),
+
+                'items': [
+                    {
+                        'name': item.get('name', ''),
+                        'hsn': item.get('hsn_code', ''),
+                        'quantity': item.get('qty', 0),
+                        'rate': item.get('rate', 0),
+                        'amount': round(item.get('qty', 0) * item.get('rate', 0), 2)
+                    }
+                    for item in doc_data.get('item_details', [])
+                ],
+
+                'totals': {
+                    'subtotal': doc_data.get('subtotal', 0),
+                    'cgst': doc_data.get('cgst', 0),
+                    'sgst': doc_data.get('sgst', 0),
+                    'total': doc_data.get('total_amount', 0),
+                },
+
                 'total_in_words': doc_data.get('total_in_words', ''),
-                'notes': doc_data.get('notes', []),
+                'notes': doc_data.get('customer_notes', []),
                 'bank_details': doc_data.get('bank_details', {}),
             }
 
+            # Render HTML
             html_string = render_to_string('pdf/pdf_template.html', context)
 
+            # Generate PDF
             pdf_file = HTML(string=html_string).write_pdf()
 
+            # Send response
             response = HttpResponse(pdf_file, content_type='application/pdf')
             filename = f"{doc_type}_{context['document_number'] or 'document'}.pdf"
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
+
         except Exception as e:
             return HttpResponseBadRequest(f"Error generating PDF: {e}")
+
