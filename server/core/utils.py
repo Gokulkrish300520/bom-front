@@ -1,6 +1,7 @@
 from django.db.models import Sum, Q
 from .models import Invoice
 from .purchase_models import Billorder, Freight, Duty, Gst, NonGst, ImportBill
+from decimal import Decimal
 
 def calculate_profit_and_loss(deal=None, customer=None):
     filters = Q()
@@ -13,7 +14,8 @@ def calculate_profit_and_loss(deal=None, customer=None):
     revenue = Invoice.objects.filter(filters).aggregate(total=Sum('total_amount'))['total'] or 0
 
     # Aggregate Expenses from various purchase models
-    billorders = Billorder.objects.filter(filters).aggregate(total=Sum('total_amount'))['total'] or 0
+    billorders_qs = Billorder.objects.filter(filters)
+    billorders = sum((b.total_amount for b in billorders_qs), Decimal("0.00"))
     freights = Freight.objects.filter(filters).aggregate(total=Sum('total_amount'))['total'] or 0
     duties = Duty.objects.filter(filters).aggregate(total=Sum('total_amount'))['total'] or 0
     gst = Gst.objects.filter(filters).aggregate(total=Sum('total_amount'))['total'] or 0
