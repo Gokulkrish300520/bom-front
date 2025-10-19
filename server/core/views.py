@@ -845,6 +845,7 @@ from weasyprint import HTML
 from weasyprint.text.fonts import FontConfiguration
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from .models import Customer
 from rest_framework.decorators import permission_classes
 import logging
 
@@ -858,6 +859,28 @@ class GenerateDocumentPdfView(APIView):
 
             if doc_type not in ['quote', 'invoice', 'proforma', 'delivery_challan']:
                 return HttpResponseBadRequest("Invalid document type.")
+            
+            # Get customer id from frontend payload
+            customer_id = doc_data.get('customer_id')
+            if not customer_id:
+                return HttpResponseBadRequest("Customer ID is required.")
+            
+            customer = get_object_or_404(Customer, id=customer_id)
+            
+            # Prepare billing and shipping info dicts from customer object
+            billing_info = {
+                'name': customer.display_name,
+                'address': f"{customer.billing_street1} {customer.billing_street2}".strip(),
+                'city': customer.billing_city,
+                'gstin': getattr(customer, 'billing_gstin', ''),  # if GSTIN field exists
+                # add other fields as necessary
+            }
+            shipping_info = {
+                'name': customer.display_name,
+                'address': f"{customer.shipping_street1} {customer.shipping_street2}".strip(),
+                'city': customer.shipping_city,
+                # other shipping fields...
+            }
 
             context = {
                 'document_type': doc_type,
@@ -877,8 +900,8 @@ class GenerateDocumentPdfView(APIView):
 
                 'document_number': doc_data.get('document_number', ''),
                 'document_date': doc_data.get('document_date', ''),
-                'billing_info': doc_data.get('billing_info', {}),
-                'shipping_info': doc_data.get('shipping_info', {}),
+                'billing_info': billing_info,
+                'shipping_info': shipping_info,
                 'place_of_supply': doc_data.get('place_of_supply', ''),
 
 
