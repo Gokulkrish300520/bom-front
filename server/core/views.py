@@ -848,7 +848,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import permission_classes
 import logging
 
-logger = logging.getLogger(__name__)
 @permission_classes([IsAuthenticated])
 class GenerateDocumentPdfView(APIView):
     def post(self, request):
@@ -875,17 +874,17 @@ class GenerateDocumentPdfView(APIView):
                     'delivery_challan': 'Challan Date'
                 }.get(doc_type, 'Date'),
 
-                # ✅ Fixed keys to match your payload
+
                 'document_number': doc_data.get('document_number', ''),
                 'document_date': doc_data.get('document_date', ''),
                 'billing_info': doc_data.get('billing_info', {}),
                 'shipping_info': doc_data.get('shipping_info', {}),
                 'place_of_supply': doc_data.get('place_of_supply', ''),
 
-                # ✅ Items now match "items" key (not item_details)
+
                 'items': doc_data.get('items', []),
 
-                # ✅ Totals pulled directly
+
                 'totals': doc_data.get('totals', {}),
 
                 'total_in_words': doc_data.get('total_in_words', ''),
@@ -894,7 +893,6 @@ class GenerateDocumentPdfView(APIView):
             }
             
             html_string = render_to_string('pdf/pdf_template.html', context)
-            logger.debug("Generated HTML for PDF:\n%s", html_string)
             font_config = FontConfiguration()
             pdf_file = HTML(
     string=html_string, 
@@ -908,6 +906,5 @@ class GenerateDocumentPdfView(APIView):
             return response
 
         except Exception as e:
-            logger.error("Error generating PDF: %s", e, exc_info=True)
             return HttpResponseBadRequest(f"Error generating PDF: {e}")
 
