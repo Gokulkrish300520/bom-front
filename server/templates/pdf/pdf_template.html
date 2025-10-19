@@ -1,3 +1,4 @@
+{% load static %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -5,11 +6,24 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Quotation / Invoice</title>
 <style>
-  @page { size: A4; margin: 20mm; }
+  @font-face {
+      font-family: "Noto Sans";
+      src: url("{% static 'fonts/NotoSans-Regular.ttf' %}") format("truetype");
+      font-weight: normal;
+      font-style: normal;
+  }
+  @font-face {
+      font-family: "Noto Sans";
+      src: url("{% static 'fonts/NotoSans-Bold.ttf' %}") format("truetype");
+      font-weight: bold;
+      font-style: normal;
+  }
+  body { font-family: "Noto Sans", "DejaVu Sans", sans-serif; font-size: 12px; }
+  @page { size: A4; margin: 10mm; }
   html,body {
     margin:0; padding:0;
-    font-family: "Segoe UI", Roboto, Arial, sans-serif;
     background:#fff; color:#1a2e1a;
+    font-size: 12px;
   }
   .page { width:100%; min-height:297mm; padding:18mm; box-sizing:border-box; }
 
@@ -66,6 +80,11 @@
   @media print { body { background: white; } .page { box-shadow:none; margin:0; } }
 
   .badge { display:inline-block; padding:5px 8px; background:#059669; color:#fff; border-radius:4px; font-size:12px; }
+  @font-face {
+  font-family: "DejaVu Sans";
+  src: local("DejaVu Sans");
+}
+
 </style>
 </head>
 <body>

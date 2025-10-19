@@ -842,10 +842,13 @@ class GeneratePresignedUrlView(APIView):
 from django.template.loader import render_to_string
 from django.http import HttpResponse, HttpResponseBadRequest
 from weasyprint import HTML
+from weasyprint.text.fonts import FontConfiguration
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import permission_classes
+import logging
 
+logger = logging.getLogger(__name__)
 @permission_classes([IsAuthenticated])
 class GenerateDocumentPdfView(APIView):
     def post(self, request):
@@ -857,7 +860,6 @@ class GenerateDocumentPdfView(APIView):
             if doc_type not in ['quote', 'invoice', 'proforma', 'delivery_challan']:
                 return HttpResponseBadRequest("Invalid document type.")
 
-            # Map frontend quote data to template keys
             context = {
                 'document_type': doc_type,
                 'document_number_label': {
@@ -865,66 +867,47 @@ class GenerateDocumentPdfView(APIView):
                     'invoice': 'Invoice #',
                     'proforma': 'Proforma Invoice #',
                     'delivery_challan': 'Challan #'
-                }[doc_type],
+                }.get(doc_type, 'Document #'),
                 'document_date_label': {
                     'quote': 'Quote Date',
                     'invoice': 'Invoice Date',
                     'proforma': 'Proforma Date',
                     'delivery_challan': 'Challan Date'
-                }[doc_type],
+                }.get(doc_type, 'Date'),
 
-                # Map actual data
-                'document_number': doc_data.get('quote_number', ''),
-                'document_date': doc_data.get('quote_date', ''),
-                
-                'billing_info': {
-                    'name': doc_data.get('customer_name', ''),
-                    'address': doc_data.get('billing_address', ''),
-                    'city': doc_data.get('billing_city', ''),
-                    'gstin': doc_data.get('billing_gstin', ''),
-                },
-                'shipping_info': {
-                    'name': doc_data.get('shipping_name', ''),
-                    'address': doc_data.get('shipping_address', ''),
-                    'city': doc_data.get('shipping_city', ''),
-                },
+                # ✅ Fixed keys to match your payload
+                'document_number': doc_data.get('document_number', ''),
+                'document_date': doc_data.get('document_date', ''),
+                'billing_info': doc_data.get('billing_info', {}),
+                'shipping_info': doc_data.get('shipping_info', {}),
                 'place_of_supply': doc_data.get('place_of_supply', ''),
 
-                'items': [
-                    {
-                        'name': item.get('name', ''),
-                        'hsn': item.get('hsn_code', ''),
-                        'quantity': item.get('qty', 0),
-                        'rate': item.get('rate', 0),
-                        'amount': round(item.get('qty', 0) * item.get('rate', 0), 2)
-                    }
-                    for item in doc_data.get('item_details', [])
-                ],
+                # ✅ Items now match "items" key (not item_details)
+                'items': doc_data.get('items', []),
 
-                'totals': {
-                    'subtotal': doc_data.get('subtotal', 0),
-                    'cgst': doc_data.get('cgst', 0),
-                    'sgst': doc_data.get('sgst', 0),
-                    'total': doc_data.get('total_amount', 0),
-                },
+                # ✅ Totals pulled directly
+                'totals': doc_data.get('totals', {}),
 
                 'total_in_words': doc_data.get('total_in_words', ''),
-                'notes': doc_data.get('customer_notes', []),
+                'notes': doc_data.get('notes', []),
                 'bank_details': doc_data.get('bank_details', {}),
             }
-
-            # Render HTML
+            
             html_string = render_to_string('pdf/pdf_template.html', context)
+            logger.debug("Generated HTML for PDF:\n%s", html_string)
+            font_config = FontConfiguration()
+            pdf_file = HTML(
+    string=html_string, 
+    base_url=request.build_absolute_uri('/')
+).write_pdf(font_config=font_config)
 
-            # Generate PDF
-            pdf_file = HTML(string=html_string).write_pdf()
 
-            # Send response
             response = HttpResponse(pdf_file, content_type='application/pdf')
             filename = f"{doc_type}_{context['document_number'] or 'document'}.pdf"
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
 
         except Exception as e:
+            logger.error("Error generating PDF: %s", e, exc_info=True)
             return HttpResponseBadRequest(f"Error generating PDF: {e}")
 
