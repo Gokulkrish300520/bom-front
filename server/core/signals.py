@@ -11,6 +11,8 @@ from .models import (
     BillItem,
     InvoiceItem,
     Item,
+    DraftInvoiceItem,
+    DraftInvoice
 )
 from .purchase_models import PaymentTransaction,GstItem,NonGst,Duty,ImportBill,ImportBillItem,Billorder,DutyItem,NonGstItem,GstItem,DutyItem,BillorderItem
 from decimal import Decimal
@@ -315,5 +317,16 @@ def update_related_status_after_delete(sender, instance, **kwargs):
     related = instance.content_object
     if related and hasattr(related, "update_status"):
         related.update_status()
+
+@receiver([post_save, post_delete], sender=InvoiceItem)
+def update_invoice_totals_on_item_change(sender, instance, **kwargs):
+    if instance.invoice:
+        instance.invoice.update_totals(save=True)
+
+# --- DRAFT INVOICE TOTALS UPDATE ---
+@receiver([post_save, post_delete], sender=DraftInvoiceItem)
+def update_draftinvoice_totals_on_item_change(sender, instance, **kwargs):
+    if instance.draft_invoice:
+        instance.draft_invoice.update_totals(save=True)
 
     

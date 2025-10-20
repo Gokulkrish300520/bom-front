@@ -928,10 +928,7 @@ class InvoiceItem(DocumentItemBase):
 
 
 class Invoice(models.Model):
-    subtotal_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0)
-    gst_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0)
+    
     STATUS_CHOICES = [
         ("DRAFT", "Draft"),
         ("UNPAID", "Unpaid"),
@@ -940,7 +937,6 @@ class Invoice(models.Model):
         ("CANCELLED", "Cancelled"),
         ("SENT", "Sent")
     ]
-    due_date = models.DateField(null=True, blank=True, db_index=True)
     status = models.CharField(
         max_length=16, choices=STATUS_CHOICES, default="DRAFT", db_index=True
     )
@@ -959,8 +955,19 @@ class Invoice(models.Model):
     place_of_supply = models.CharField(max_length=50, blank=True)
     deal = models.ForeignKey(Deal, on_delete=models.CASCADE, related_name="invoices")
     invoice_date = models.DateField(db_index=True)
+    due_date = models.DateField(null=True, blank=True, db_index=True)
     customer_notes = models.TextField(blank=True)
     terms_and_conditions = models.TextField(blank=True)
+    subtotal_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
+    discount_percentage = models.DecimalField(
+    max_digits=5, decimal_places=2, default=0, help_text="Discount percentage"
+)
+    discount_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0, help_text="Discount amount"
+    )
+    gst_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
     total_amount = models.DecimalField(
         max_digits=12, decimal_places=2, default=0)
     files = models.ManyToManyField(
@@ -974,6 +981,39 @@ class Invoice(models.Model):
         blank=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    TAX_PERCENTAGE = 18
+    
+    def calculate_totals(self):
+        """Calculate subtotal, GST, and total dynamically from items."""
+        subtotal = sum(item.quantity * item.rate for item in self.item_details.all())
+        
+        # Apply discount
+        discount_amount = (subtotal * self.discount_percentage / 100) if self.discount_percentage else 0
+        subtotal_after_discount = subtotal - discount_amount
+
+        # GST
+        gst = subtotal_after_discount * (self.TAX_PERCENTAGE / 100)
+
+        # Total
+        total = subtotal_after_discount + gst
+
+        return subtotal, discount_amount, gst, total
+    
+    def update_totals(self, save=True):
+        self.subtotal_amount, self.discount_amount, self.gst_amount, self.total_amount = self.calculate_totals()
+        if save:
+            self.save(update_fields=["subtotal_amount", "discount_amount", "gst_amount", "total_amount"])
+    
+    def save(self, *args, **kwargs):
+    # Calculate only if this object already has items (avoid errors on first create)
+         # Recalculate totals if there are items
+        if hasattr(self, 'item_details') and self.item_details.exists():
+            self.update_totals(save=False)  # update totals but don't save yet
+        super().save(*args, **kwargs)
+
+
+
 
     def __str__(self):
         return (
@@ -1010,6 +1050,12 @@ class DraftInvoice(models.Model):
     due_date = models.DateField(null=True, blank=True)
     subtotal_amount = models.DecimalField(
         max_digits=12, decimal_places=2, default=0)
+    discount_percentage = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0, help_text="Discount percentage"
+    )
+    discount_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0, help_text="Discount amount"
+    )
     gst_amount = models.DecimalField(
         max_digits=12, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -1018,6 +1064,39 @@ class DraftInvoice(models.Model):
     files = models.ManyToManyField("CustomerDocument", blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    TAX_PERCENTAGE = 18  # or store per invoice if needed
+
+    def calculate_totals(self):
+        """Calculate subtotal, GST, and total dynamically from items."""
+        subtotal = sum(item.quantity * item.rate for item in self.item_details.all())
+        
+        discount_amount = (subtotal * self.discount_percentage / 100) if self.discount_pct else 0
+        subtotal_after_discount = subtotal - discount_amount
+
+        # GST
+        gst = subtotal_after_discount * (self.TAX_PERCENTAGE / 100)
+
+        # Total
+        total = subtotal_after_discount + gst
+
+        return subtotal, discount_amount, gst, total
+    
+    def update_totals(self, save=True):
+        self.subtotal_amount, self.discount_amount, self.gst_amount, self.total_amount = self.calculate_totals()
+        if save:
+            self.save(update_fields=["subtotal_amount", "discount_amount", "gst_amount", "total_amount"])
+
+
+    def save(self, *args, **kwargs):
+    # Calculate only if this object already has items (avoid errors on first create)
+        # Recalculate totals if there are items
+        if hasattr(self, 'item_details') and self.item_details.exists():
+            self.update_totals(save=False)  # update totals but don't save yet
+        super().save(*args, **kwargs)
+    
+
+
     
     def validate_for_publish(self):
         errors = {}
@@ -1031,6 +1110,11 @@ class DraftInvoice(models.Model):
             errors['invoice_number'] = "Invoice number is required."
         if self.item_details.count() == 0:
             errors['item_details'] = "At least one invoice item is required."
+        if self.discount_percentage < 0:
+            errors['discount_percentage'] = "Discount cannot be negative."
+        if self.discount_percentage > 100:
+            errors['discount_percentage'] = "Discount cannot exceed 100%."
+
         if errors:
             raise ValidationError(errors)
 
@@ -1058,6 +1142,8 @@ class DraftInvoice(models.Model):
                     'invoice_date': self.invoice_date,
                     'due_date': self.due_date,
                     'subtotal_amount': self.subtotal_amount,
+                    'discount_percentage': self.discount_percentage,
+                    'discount_amount': self.discount_amount,  # new field
                     'gst_amount': self.gst_amount,
                     'total_amount': self.total_amount,
                     'customer_notes': self.customer_notes,

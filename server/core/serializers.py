@@ -1623,6 +1623,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "customer_notes",
             "terms_and_conditions",
             "subtotal_amount",
+            "discount_percentage",  # frontend can send percentage
+            "discount_amount",
             "gst_amount",
             "total_amount",
             "attached_files",
@@ -1636,6 +1638,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
         "id",
         "created_at",
         "customer",
+        "subtotal_amount",
+        "discount_amount",
+        "gst_amount",
+        "total_amount",
         "attached_files",
         "invoice_files",
     ]
@@ -1650,13 +1656,11 @@ class InvoiceSerializer(serializers.ModelSerializer):
         if attached_files:
             invoice.files.set(attached_files)
         for idx, item_data in enumerate(item_details_data, 1):
-            if "amount" not in item_data:
-                item_data["amount"] = (
-                    item_data.get("quantity", 0) * item_data.get("rate", 0)
-                )
             InvoiceItem.objects.create(
                 invoice=invoice, invoice_item_number=idx, **item_data
             )  # pylint: disable=no-member
+            
+        invoice.update_totals()
         invoice.refresh_from_db()
         return invoice
 
@@ -1672,15 +1676,13 @@ class InvoiceSerializer(serializers.ModelSerializer):
         if item_details_data is not None:
             invoice.item_details.all().delete()
             for idx, item_data in enumerate(item_details_data, 1):
-                if "amount" not in item_data:
-                    item_data["amount"] = (
-                        item_data.get("quantity", 0) * item_data.get("rate", 0)
-                    )
+                
                 InvoiceItem.objects.create(
                     invoice=invoice,
                     invoice_item_number=idx,
                     **item_data
                 )
+        invoice.update_totals()
 
         return invoice
 
@@ -1696,6 +1698,7 @@ class DraftInvoiceItemSerializer(serializers.ModelSerializer):
             'amount',
             'invoice_item_number',
         ]
+        read_only_fields = ["id", "amount"]
 
 class DraftInvoiceSerializer(serializers.ModelSerializer):
     item_details = DraftInvoiceItemSerializer(many=True)
@@ -1736,6 +1739,7 @@ class DraftInvoiceSerializer(serializers.ModelSerializer):
         draft_invoice.files.set(files_data)
         for idx, item_data in enumerate(item_details_data, 1):
             DraftInvoiceItem.objects.create(draft_invoice=draft_invoice, invoice_item_number=idx, **item_data)
+        draft_invoice.update_totals()
         return draft_invoice
 
     def update(self, instance, validated_data):
@@ -1772,7 +1776,8 @@ class DraftInvoiceSerializer(serializers.ModelSerializer):
             else:
                 # Create new item without id
                 DraftInvoiceItem.objects.create(draft_invoice=instance, invoice_item_number=idx, **item_data)
-
+                
+        instance.update_totals()
         return instance
 
 class PaymentSerializer(serializers.ModelSerializer):
