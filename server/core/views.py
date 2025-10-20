@@ -469,7 +469,7 @@ class InvoiceViewSet(
     filterset_class = InvoiceFilter
 
 class DraftInvoiceViewSet(viewsets.ModelViewSet):
-    queryset = DraftInvoice.objects.all()
+    queryset = DraftInvoice.objects.all().order_by('-created_at')
     serializer_class = DraftInvoiceSerializer  # Define serializers for DraftInvoice and DraftInvoiceItem
 
     @action(detail=True, methods=['post'])

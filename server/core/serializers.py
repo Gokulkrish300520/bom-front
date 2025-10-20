@@ -1700,6 +1700,9 @@ class DraftInvoiceItemSerializer(serializers.ModelSerializer):
 class DraftInvoiceSerializer(serializers.ModelSerializer):
     item_details = DraftInvoiceItemSerializer(many=True)
     files = serializers.PrimaryKeyRelatedField(many=True, queryset=CustomerDocument.objects.all(), required=False)
+    
+    customer_name = serializers.CharField(source='customer.display_name', read_only=True)
+    deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
 
     class Meta:
         model = DraftInvoice
@@ -1707,9 +1710,11 @@ class DraftInvoiceSerializer(serializers.ModelSerializer):
             'id',
             'status',
             'customer',
+            'customer_name',
             'invoice_number',
             'place_of_supply',
             'deal',
+            'deal_no',
             'invoice_date',
             'due_date',
             'subtotal_amount',
@@ -1722,7 +1727,7 @@ class DraftInvoiceSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at','customer_name', 'deal_no']
 
     def create(self, validated_data):
         item_details_data = validated_data.pop('item_details', [])
