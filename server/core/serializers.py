@@ -15,7 +15,9 @@ from .models import (
     Quote,
     QuoteItem,
     Vendor,
-    Deal
+    Deal,
+    DraftInvoice,
+    DraftInvoiceItem
 )
 from django.db.models import Sum,Q
 from django.db import models
@@ -1611,7 +1613,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "customer",
             "customer_id",
             "invoice_number",
-            "order_number",
+            "place_of_supply",
             "deal_no",
             "deal_id",
             "invoice_date",
@@ -1669,16 +1671,104 @@ class InvoiceSerializer(serializers.ModelSerializer):
             invoice.files.set(attached_files)
         if item_details_data is not None:
             invoice.item_details.all().delete()
-            for item_data in item_details_data:
+            for idx, item_data in enumerate(item_details_data, 1):
                 if "amount" not in item_data:
                     item_data["amount"] = (
                         item_data.get("quantity", 0) * item_data.get("rate", 0)
                     )
                 InvoiceItem.objects.create(
-                    invoice=invoice, **item_data
-                )  # pylint: disable=no-member
+                    invoice=invoice,
+                    invoice_item_number=idx,
+                    **item_data
+                )
+
         return invoice
 
+class DraftInvoiceItemSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)  #
+    class Meta:
+        model = DraftInvoiceItem
+        fields = [
+            'id',
+            'item',
+            'quantity',
+            'rate',
+            'amount',
+            'invoice_item_number',
+        ]
+
+class DraftInvoiceSerializer(serializers.ModelSerializer):
+    item_details = DraftInvoiceItemSerializer(many=True)
+    files = serializers.PrimaryKeyRelatedField(many=True, queryset=CustomerDocument.objects.all(), required=False)
+
+    class Meta:
+        model = DraftInvoice
+        fields = [
+            'id',
+            'status',
+            'customer',
+            'invoice_number',
+            'place_of_supply',
+            'deal',
+            'invoice_date',
+            'due_date',
+            'subtotal_amount',
+            'gst_amount',
+            'total_amount',
+            'customer_notes',
+            'terms_and_conditions',
+            'files',
+            'item_details',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+    def create(self, validated_data):
+        item_details_data = validated_data.pop('item_details', [])
+        files_data = validated_data.pop('files', [])
+        draft_invoice = DraftInvoice.objects.create(**validated_data)
+        draft_invoice.files.set(files_data)
+        for idx, item_data in enumerate(item_details_data, 1):
+            DraftInvoiceItem.objects.create(draft_invoice=draft_invoice, invoice_item_number=idx, **item_data)
+        return draft_invoice
+
+    def update(self, instance, validated_data):
+        item_details_data = validated_data.pop('item_details', [])
+        files_data = validated_data.pop('files', [])
+
+        # Update fields on DraftInvoice instance
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Update files M2M
+        instance.files.set(files_data)
+
+        # Map existing items by their id for quick lookup
+        existing_items = {item.id: item for item in instance.item_details.all()}
+        incoming_ids = [item_data.get('id') for item_data in item_details_data if item_data.get('id')]
+
+        # Delete items not present in incoming data
+        for existing_id in existing_items:
+            if existing_id not in incoming_ids:
+                existing_items[existing_id].delete()
+
+        # Update existing items or create new items
+        for idx, item_data in enumerate(item_details_data, 1):
+            item_id = item_data.get('id', None)
+            if item_id and item_id in existing_items:
+                # Update existing item
+                item_instance = existing_items[item_id]
+                for attr, value in item_data.items():
+                    setattr(item_instance, attr, value)
+                item_instance.invoice_item_number = idx
+                item_instance.save()
+            else:
+                # Create new item without id
+                DraftInvoiceItem.objects.create(draft_invoice=instance, invoice_item_number=idx, **item_data)
+
+        return instance
 
 class PaymentSerializer(serializers.ModelSerializer):
     """Serializer for Payment model, includes invoice details."""
@@ -1765,7 +1855,7 @@ class QuoteSerializer(serializers.ModelSerializer):
             "quote_number",
             "deal_no",
             "deal_id",
-            "reference_number",
+            "place_of_supply",
             "quote_date",
             "expiry_date",
             "salesperson",
@@ -1891,7 +1981,7 @@ class ProformaInvoiceSerializer(serializers.ModelSerializer):
             "invoice_number",
             "deal_no",
             "deal_id",
-            "reference_number",
+            "place_of_supply",
             "invoice_date",
             "expiry_date",
             "salesperson",
@@ -2020,7 +2110,7 @@ class DeliveryChallanSerializer(serializers.ModelSerializer):
             "challan_number",
             "deal_no",
             "deal_id",
-            "reference_number",
+            "place_of_supply",
             "date",
             "challan_type",
             "status",

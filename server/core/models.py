@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from datetime import date, timedelta
 from django.utils import timezone
+from django.db import transaction
 
 
 class DailySummary(models.Model):
@@ -648,7 +649,7 @@ class Quote(models.Model):
         Customer, related_name="quotes", on_delete=models.CASCADE
     )
     quote_number = models.CharField(max_length=50, unique=True)
-    reference_number = models.CharField(max_length=50, blank=True)
+    place_of_supply = models.CharField(max_length=50, blank=True)
     quote_date = models.DateField()
     expiry_date = models.DateField()
     salesperson = models.CharField(max_length=100, blank=True)
@@ -756,7 +757,7 @@ class ProformaInvoice(models.Model):
         Customer, related_name="proforma_invoices", on_delete=models.CASCADE
     )
     invoice_number = models.CharField(max_length=50, unique=True)
-    reference_number = models.CharField(max_length=50, blank=True)
+    place_of_supply = models.CharField(max_length=50, blank=True)
     invoice_date = models.DateField()
     expiry_date = models.DateField()
     deal = models.ForeignKey(Deal, on_delete=models.CASCADE, related_name="proforma_invoices")
@@ -865,7 +866,7 @@ class DeliveryChallan(models.Model):
         Customer, related_name="delivery_challans", on_delete=models.CASCADE
     )
     challan_number = models.CharField(max_length=50, unique=True)
-    reference_number = models.CharField(max_length=50, blank=True)
+    place_of_supply = models.CharField(max_length=50, blank=True)
     date = models.DateField()
     challan_type = models.CharField(
         max_length=20,
@@ -939,7 +940,6 @@ class Invoice(models.Model):
         ("CANCELLED", "Cancelled"),
         ("SENT", "Sent")
     ]
-
     due_date = models.DateField(null=True, blank=True, db_index=True)
     status = models.CharField(
         max_length=16, choices=STATUS_CHOICES, default="DRAFT", db_index=True
@@ -956,7 +956,7 @@ class Invoice(models.Model):
         on_delete=models.CASCADE,
     )
     invoice_number = models.CharField(max_length=50, unique=True)
-    order_number = models.CharField(max_length=50, blank=True)
+    place_of_supply = models.CharField(max_length=50, blank=True)
     deal = models.ForeignKey(Deal, on_delete=models.CASCADE, related_name="invoices")
     invoice_date = models.DateField(db_index=True)
     customer_notes = models.TextField(blank=True)
@@ -987,3 +987,112 @@ try:
     import server.core.banking.signals  # noqa: F401
 except ImportError:
     pass
+
+#draft workflow models
+class DraftInvoice(models.Model):
+    STATUS_CHOICES = [
+        ("DRAFT", "Draft"),
+        ("UNPAID", "Unpaid"),
+        ("PAID", "Paid"),
+        ("PARTIAL", "Partial"),
+        ("CANCELLED", "Cancelled"),
+        ("SENT", "Sent")
+    ]
+    
+    status = models.CharField(
+        max_length=16, choices=STATUS_CHOICES, default="DRAFT", db_index=True
+    )
+    customer = models.ForeignKey("Customer", on_delete=models.CASCADE, null=True, blank=True)
+    invoice_number = models.CharField(max_length=50, blank=True, null=True)
+    place_of_supply = models.CharField(max_length=50, blank=True)
+    deal = models.ForeignKey("Deal", on_delete=models.CASCADE, null=True, blank=True)
+    invoice_date = models.DateField(null=True, blank=True)
+    due_date = models.DateField(null=True, blank=True)
+    subtotal_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
+    gst_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    customer_notes = models.TextField(blank=True)
+    terms_and_conditions = models.TextField(blank=True)
+    files = models.ManyToManyField("CustomerDocument", blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def validate_for_publish(self):
+        errors = {}
+        if not self.customer:
+            errors['customer'] = "Customer is required."
+        if not self.invoice_date:
+            errors['invoice_date'] = "Invoice date is required."
+        if not self.due_date:
+            errors['due_date'] = "Due date is required."
+        if not self.invoice_number:
+            errors['invoice_number'] = "Invoice number is required."
+        if self.item_details.count() == 0:
+            errors['item_details'] = "At least one invoice item is required."
+        if errors:
+            raise ValidationError(errors)
+
+    
+    def publish(self):
+        self.validate_for_publish()
+        
+        with transaction.atomic():
+            if not self.invoice_number:
+                raise ValidationError("Invoice number is required before publishing.")
+
+            existing_invoice = Invoice.objects.filter(invoice_number=self.invoice_number).first()
+
+            if existing_invoice and existing_invoice.pk != getattr(self, 'final_invoice_id', None):
+            # If you want to prevent duplicates:
+                raise ValidationError(f"Invoice number {self.invoice_number} already exists.")
+            
+            # Create or update the final Invoice instance
+            invoice, created = Invoice.objects.update_or_create(
+                invoice_number=self.invoice_number,
+                defaults={
+                    'customer': self.customer,
+                    'place_of_supply': self.place_of_supply,
+                    'deal': self.deal,
+                    'invoice_date': self.invoice_date,
+                    'due_date': self.due_date,
+                    'subtotal_amount': self.subtotal_amount,
+                    'gst_amount': self.gst_amount,
+                    'total_amount': self.total_amount,
+                    'customer_notes': self.customer_notes,
+                    'terms_and_conditions': self.terms_and_conditions,
+                    'status': 'UNPAID',  # Set to appropriate non-draft status
+                },
+            )
+            invoice.save()
+
+            # Clear existing InvoiceItems if updating
+            invoice.item_details.all().delete()
+
+            # Copy draft invoice items into final InvoiceItems
+            for draft_item in self.item_details.all():
+                InvoiceItem.objects.create(
+                    invoice=invoice,
+                    item=draft_item.item,
+                    quantity=draft_item.quantity,
+                    rate=draft_item.rate,
+                    amount=draft_item.amount,
+                    invoice_item_number=draft_item.invoice_item_number,
+                )
+
+            # Copy files
+            invoice.files.set(self.files.all())
+            invoice.save()
+
+            # Delete draft and its items
+            self.delete()
+        
+        transaction.on_commit(lambda: invoice.refresh_from_db())
+
+        return invoice
+
+class DraftInvoiceItem(DocumentItemBase):
+    draft_invoice = models.ForeignKey(DraftInvoice, related_name='item_details', on_delete=models.CASCADE)
+    invoice_item_number = models.PositiveIntegerField(null=True, blank=True)
+

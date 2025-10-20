@@ -17,7 +17,8 @@ from .serializers import (
     NonGstSerializer,
     BillorderSerializer,
     PaymentTransactionSerializer,
-    PendingTransactionSerializer
+    PendingTransactionSerializer,
+    DraftInvoiceSerializer
 )
 from .filters_extra import (
     InvoiceFilter,
@@ -47,11 +48,12 @@ from .models import (
     Quote,
     Vendor,
     Deal,
+    DraftInvoice
 )
 from .purchase_models import Freight,ImportBill,Duty,Gst,NonGst,Billorder,PaymentTransaction
 from django.db.models import F
 from rest_framework import generics
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -466,6 +468,21 @@ class InvoiceViewSet(
     filter_backends = [DjangoFilterBackend]
     filterset_class = InvoiceFilter
 
+class DraftInvoiceViewSet(viewsets.ModelViewSet):
+    queryset = DraftInvoice.objects.all()
+    serializer_class = DraftInvoiceSerializer  # Define serializers for DraftInvoice and DraftInvoiceItem
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        draft = self.get_object()
+        try:
+            invoice = draft.publish()
+        except ValidationError as e:
+            return Response(e.message_dict if hasattr(e, 'message_dict') else str(e),
+                            status=status.HTTP_400_BAD_REQUEST)
+        serializer = InvoiceSerializer(invoice)
+        return Response({"message": "Published successfully", "invoice_id": invoice.pk})
+
 
 class VendorViewSet(
     viewsets.ModelViewSet
@@ -803,6 +820,7 @@ def send_report_email(request):
         return JsonResponse({"message": "Email sent successfully"})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
     
 import boto3
 from django.conf import settings
@@ -918,11 +936,7 @@ class GenerateDocumentPdfView(APIView):
             html_string = render_to_string('pdf/pdf_template.html', context)
             font_config = FontConfiguration()
             pdf_file = HTML(
-    string=html_string, 
-    base_url=request.build_absolute_uri('/')
-).write_pdf(font_config=font_config)
-
-
+            string=html_string, base_url=request.build_absolute_uri('/')).write_pdf(font_config=font_config)
             response = HttpResponse(pdf_file, content_type='application/pdf')
             filename = f"{doc_type}_{context['document_number'] or 'document'}.pdf"
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
