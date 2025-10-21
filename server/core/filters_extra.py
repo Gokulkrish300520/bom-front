@@ -5,8 +5,26 @@ from .purchase_models import Freight,ImportBill,Duty,Gst,NonGst,Billorder,Paymen
 
 # Bill filter for vendor_id
 class TransactionFilter(django_filters.FilterSet):
+    
     start_date = django_filters.DateFilter(field_name="paid_on", lookup_expr='gte')
     end_date = django_filters.DateFilter(field_name="paid_on", lookup_expr='lte')
+    paid_by = django_filters.ChoiceFilter(
+        field_name="paid_by",
+        choices=PaymentTransaction.PAID_BY_CHOICES
+    )
+    
+    # --- Pending Filter (boolean toggle) ---
+    pending = django_filters.BooleanFilter(method='filter_pending')
+
+    class Meta:
+        model = PaymentTransaction
+        fields = ["start_date", "end_date", "paid_by", "pending"]
+
+    def filter_pending(self, queryset, name, value):
+        """If ?pending=true, return only pending transactions"""
+        if value:
+            return queryset.pending()
+        return queryset
 class GstFilter(django_filters.FilterSet):
     vendor_id = django_filters.NumberFilter(field_name="vendor_id")
     vendor_name = django_filters.CharFilter(field_name="vendor__display_name", lookup_expr='icontains')

@@ -503,10 +503,6 @@ class GstSerializer(serializers.ModelSerializer):
                     tx = serializer.save()
                     sent_tx_ids.append(tx.id)
 
-            # Delete removed transactions
-            for tx_id, tx in existing_txs.items():
-                if tx_id not in sent_tx_ids:
-                    tx.delete()
 
             instance.update_status()
                 
@@ -667,9 +663,6 @@ class NonGstSerializer(serializers.ModelSerializer):
                     tx = serializer.save()
                     sent_tx_ids.append(tx.id)
 
-            for tx_id, tx in existing_txs.items():
-                if tx_id not in sent_tx_ids:
-                    tx.delete()
 
             instance.update_status()
         return instance
@@ -2067,6 +2060,23 @@ class DraftQuoteSerializer(serializers.ModelSerializer):
             DraftQuoteItem.objects.create(draft_quote=draft_quote, quote_item_number=idx, **item_data)
         draft_quote.update_totals()
         return draft_quote
+    
+    def validate_invoice_number(self, value):
+        """
+        Ensure invoice_number is unique across both Invoice and DraftInvoice tables.
+        """
+        if value:  # only validate if provided
+            from core.models import Quote, DraftQuote
+
+            # Check in Invoice model (finalized invoices)
+            if Quote.objects.filter(quote_number=value).exists():
+                raise serializers.ValidationError(f"Quote number '{value}' already exists in published quotes.")
+
+            # Check in DraftInvoice model (other drafts)
+            if DraftQuote.objects.filter(quote_number=value).exclude(id=self.instance.id if self.instance else None).exists():
+                raise serializers.ValidationError(f"quote number '{value}' already exists in draft quotes.")
+
+        return value
 
     def update(self, instance, validated_data):
         item_details_data = validated_data.pop('item_details', [])
