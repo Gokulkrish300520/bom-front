@@ -1718,6 +1718,8 @@ class DraftInvoiceSerializer(serializers.ModelSerializer):
             'invoice_date',
             'due_date',
             'subtotal_amount',
+            'discount_percentage',
+            'discount_amount',
             'gst_amount',
             'adjustment_amount',
             'total_amount',
@@ -1728,7 +1730,7 @@ class DraftInvoiceSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['created_at', 'updated_at','customer_name', 'deal_no']
+        read_only_fields = ['created_at', 'updated_at','customer_name','discount_amount', 'deal_no']
 
     def create(self, validated_data):
         item_details_data = validated_data.pop('item_details', [])
@@ -1745,7 +1747,7 @@ class DraftInvoiceSerializer(serializers.ModelSerializer):
         Ensure invoice_number is unique across both Invoice and DraftInvoice tables.
         """
         if value:  # only validate if provided
-            from core.models import Invoice, DraftInvoice
+            from .models import Invoice, DraftInvoice
 
             # Check in Invoice model (finalized invoices)
             if Invoice.objects.filter(invoice_number=value).exists():
@@ -2061,12 +2063,12 @@ class DraftQuoteSerializer(serializers.ModelSerializer):
         draft_quote.update_totals()
         return draft_quote
     
-    def validate_invoice_number(self, value):
+    def validate_quote_number(self, value):
         """
         Ensure invoice_number is unique across both Invoice and DraftInvoice tables.
         """
         if value:  # only validate if provided
-            from core.models import Quote, DraftQuote
+            from .models import Quote, DraftQuote
 
             # Check in Invoice model (finalized invoices)
             if Quote.objects.filter(quote_number=value).exists():
