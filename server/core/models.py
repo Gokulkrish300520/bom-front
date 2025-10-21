@@ -6,6 +6,7 @@ from django.core.validators import FileExtensionValidator
 from datetime import date, timedelta
 from django.utils import timezone
 from django.db import transaction
+from decimal import Decimal
 
 
 class DailySummary(models.Model):
@@ -907,6 +908,8 @@ class InvoiceItem(DocumentItemBase):
         else:
             self._old_quantity = None
             self._old_item_id = None
+        
+        self.amount = self.quantity * self.rate
         super().save(*args, **kwargs)
 
     """Model representing an item entry in an Invoice."""
@@ -968,6 +971,8 @@ class Invoice(models.Model):
     )
     gst_amount = models.DecimalField(
         max_digits=12, decimal_places=2, default=0)
+    adjustment_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
     total_amount = models.DecimalField(
         max_digits=12, decimal_places=2, default=0)
     files = models.ManyToManyField(
@@ -996,24 +1001,24 @@ class Invoice(models.Model):
         gst = subtotal_after_discount * (self.TAX_PERCENTAGE / 100)
 
         # Total
-        total = subtotal_after_discount + gst
+        total = subtotal_after_discount + gst + self.adjustment_amount
 
         return subtotal, discount_amount, gst, total
     
     def update_totals(self, save=True):
         self.subtotal_amount, self.discount_amount, self.gst_amount, self.total_amount = self.calculate_totals()
         if save:
-            self.save(update_fields=["subtotal_amount", "discount_amount", "gst_amount", "total_amount"])
+            super().save(update_fields=["subtotal_amount", "discount_amount", "gst_amount", "total_amount"])
     
     def save(self, *args, **kwargs):
-    # Calculate only if this object already has items (avoid errors on first create)
-         # Recalculate totals if there are items
-        if hasattr(self, 'item_details') and self.item_details.exists():
-            self.update_totals(save=False)  # update totals but don't save yet
+
+        # Step 1: Save first so the object has a primary key
         super().save(*args, **kwargs)
 
-
-
+        # Step 2: Recalculate totals if there are items
+        if hasattr(self, 'item_details') and self.item_details.exists():
+            self.update_totals(save=False)  # Now safe to save because PK exists
+            
 
     def __str__(self):
         return (
@@ -1058,6 +1063,8 @@ class DraftInvoice(models.Model):
     )
     gst_amount = models.DecimalField(
         max_digits=12, decimal_places=2, default=0)
+    adjustment_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     customer_notes = models.TextField(blank=True)
     terms_and_conditions = models.TextField(blank=True)
@@ -1071,31 +1078,31 @@ class DraftInvoice(models.Model):
         """Calculate subtotal, GST, and total dynamically from items."""
         subtotal = sum(item.quantity * item.rate for item in self.item_details.all())
         
-        discount_amount = (subtotal * self.discount_percentage / 100) if self.discount_pct else 0
+        discount_amount = (subtotal * self.discount_percentage / 100) if self.discount_percentage else Decimal(0)
         subtotal_after_discount = subtotal - discount_amount
 
         # GST
-        gst = subtotal_after_discount * (self.TAX_PERCENTAGE / 100)
+        gst = subtotal_after_discount * (Decimal(self.TAX_PERCENTAGE) / Decimal(100))
 
         # Total
-        total = subtotal_after_discount + gst
+        total = subtotal_after_discount + gst + self.adjustment_amount
 
         return subtotal, discount_amount, gst, total
     
     def update_totals(self, save=True):
         self.subtotal_amount, self.discount_amount, self.gst_amount, self.total_amount = self.calculate_totals()
         if save:
-            self.save(update_fields=["subtotal_amount", "discount_amount", "gst_amount", "total_amount"])
+            super().save(update_fields=["subtotal_amount", "discount_amount", "gst_amount", "total_amount"])
 
 
     def save(self, *args, **kwargs):
-    # Calculate only if this object already has items (avoid errors on first create)
-        # Recalculate totals if there are items
-        if hasattr(self, 'item_details') and self.item_details.exists():
-            self.update_totals(save=False)  # update totals but don't save yet
-        super().save(*args, **kwargs)
-    
 
+        # Step 1: Save first to ensure a primary key exists
+        super().save(*args, **kwargs)
+
+        # Step 2: Recalculate totals if there are item_details
+        if hasattr(self, 'item_details') and self.item_details.exists():
+            self.update_totals(save=True)
 
     
     def validate_for_publish(self):
@@ -1181,4 +1188,9 @@ class DraftInvoice(models.Model):
 class DraftInvoiceItem(DocumentItemBase):
     draft_invoice = models.ForeignKey(DraftInvoice, related_name='item_details', on_delete=models.CASCADE)
     invoice_item_number = models.PositiveIntegerField(null=True, blank=True)
+    
+    def save(self, *args, **kwargs):
+        # Automatically calculate amount
+        self.amount = self.quantity * self.rate
+        super().save(*args, **kwargs)
 
