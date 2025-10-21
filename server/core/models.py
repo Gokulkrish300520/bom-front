@@ -1222,7 +1222,7 @@ class Invoice(models.Model):
         subtotal_after_discount = subtotal - discount_amount
 
         # GST
-        gst = subtotal_after_discount * (self.TAX_PERCENTAGE / 100)
+        gst = subtotal_after_discount * (Decimal(self.TAX_PERCENTAGE) / Decimal(100))
 
         # Total
         total = subtotal_after_discount + gst + self.adjustment_amount
