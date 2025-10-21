@@ -12,7 +12,10 @@ from .models import (
     InvoiceItem,
     Item,
     DraftInvoiceItem,
-    DraftInvoice
+    QuoteItem,
+    DraftInvoice,
+    DraftQuote,
+    DraftQuoteItem
 )
 from .purchase_models import PaymentTransaction,GstItem,NonGst,Duty,ImportBill,ImportBillItem,Billorder,DutyItem,NonGstItem,GstItem,DutyItem,BillorderItem
 from decimal import Decimal
@@ -329,4 +332,22 @@ def update_draftinvoice_totals_on_item_change(sender, instance, **kwargs):
     if instance.draft_invoice:
         instance.draft_invoice.update_totals(save=True)
 
-    
+# --- DRAFT INVOICE TOTALS UPDATE ---
+@receiver([post_save, post_delete], sender=QuoteItem)
+def update_quote_totals_on_item_change(sender, instance, **kwargs):
+    quote = instance.quote
+    if quote and not getattr(quote, "_updating_totals", False):
+        quote._updating_totals = True
+        quote.update_totals(save=True)
+        quote._updating_totals = False
+
+
+@receiver([post_save, post_delete], sender=DraftQuoteItem)
+def update_draftquote_totals_on_item_change(sender, instance, **kwargs):
+    draft_quote = instance.draft_quote
+    if draft_quote and not getattr(draft_quote, "_updating_totals", False):
+        draft_quote._updating_totals = True
+        draft_quote.update_totals(save=True)
+        draft_quote._updating_totals = False
+        
+# --- DRAFT QUOTE TOTALS UPDATE ---

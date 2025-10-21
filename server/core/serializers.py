@@ -17,7 +17,9 @@ from .models import (
     Vendor,
     Deal,
     DraftInvoice,
-    DraftInvoiceItem
+    DraftInvoiceItem,
+    DraftQuote,
+    DraftQuoteItem,
 )
 from django.db.models import Sum,Q
 from django.db import models
@@ -1442,6 +1444,7 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
         source="item",
         write_only=True,  # pylint: disable=no-member
     )
+    amount = serializers.ReadOnlyField()
 
     invoice_item_number = serializers.IntegerField(read_only=True)
     hsn_code = serializers.CharField(source="item.hsn_code", read_only=True)
@@ -1817,6 +1820,9 @@ class PaymentSerializer(serializers.ModelSerializer):
 
         return _InvoiceSerializer(obj.invoice).data if obj.invoice else None
 
+################################################################################
+
+############################ Quote Serializers #################################
 
 class QuoteItemSerializer(serializers.ModelSerializer):
     """Serializer for QuoteItem model."""
@@ -1830,6 +1836,15 @@ class QuoteItemSerializer(serializers.ModelSerializer):
         model = QuoteItem
         fields = ["quote_item_number", "item_id","hsn_code", "quantity", "rate", "amount"]
         read_only_fields = ["quote_item_number", "amount","hsn_code"]
+
+    def validate(self, data):
+        # Ensure quantity and rate are non-negative
+        if data.get("quantity", 0) < 0:
+            raise serializers.ValidationError("Quantity cannot be negative")
+        if data.get("rate", 0) < 0:
+            raise serializers.ValidationError("Rate cannot be negative")
+        return data
+
 
 
 class QuoteSerializer(serializers.ModelSerializer):
@@ -1869,26 +1884,27 @@ class QuoteSerializer(serializers.ModelSerializer):
             "deal_id",
             "place_of_supply",
             "quote_date",
-            "expiry_date",
+            "due_date",
             "salesperson",
             "project_name",
             "subject",
             "item_details",
             "customer_notes",
             "terms_and_conditions",
-            "subtotal",
-            "discount",
-            "tax_type",
+            "subtotal_amount",
+            "discount_percentage",
+            "discount_amount",
             "tax_percentage",
-            "adjustment",
+            "gst_amount",
+            "adjustment_amount",
             "total_amount",
             "status",
             "quote_file_ids",
             "quote_files",
             "created_at",
         ]
-
-    read_only_fields = ["id", "created_at"]
+    
+    read_only_fields = ["id", "created_at", "subtotal_amount", "discount_amount", "gst_amount","total_amount"]
 
     def create(self, validated_data):
         item_details_data = validated_data.pop("item_details", [])
@@ -1905,26 +1921,231 @@ class QuoteSerializer(serializers.ModelSerializer):
                 )
             QuoteItem.objects.create(
                 quote=quote, quote_item_number=idx, **item_data)
+            
+        quote.update_totals(save=True)
         return quote
 
     def update(self, instance, validated_data):
         item_details_data = validated_data.pop("item_details", None)
         quote_files = validated_data.pop("quote_files", None)
-        quote = super().update(instance, validated_data)
+        
+        # Update main Quote fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Update quote files if provided
         if quote_files is not None:
-            quote.quote_files.set(quote_files)
+            instance.quote_files.set(quote_files)
+
         if item_details_data is not None:
-            quote.item_details.all().delete()
+            # Map existing items by id
+            existing_items = {item.id: item for item in instance.item_details.all()}
+            incoming_ids = [item_data.get('id') for item_data in item_details_data if item_data.get('id')]
+
+            # Delete removed items
+            for existing_id in existing_items:
+                if existing_id not in incoming_ids:
+                    existing_items[existing_id].delete()
+
+            # Update or create items
             for idx, item_data in enumerate(item_details_data, start=1):
-                if "amount" not in item_data:
-                    item_data["amount"] = (
-                        item_data.get("quantity", 0) * item_data.get("rate", 0)
+                item_id = item_data.get('id', None)
+                if item_id and item_id in existing_items:
+                    item_instance = existing_items[item_id]
+                    for attr, value in item_data.items():
+                        setattr(item_instance, attr, value)
+                    item_instance.quote_item_number = idx
+                    # Recalculate amount if not provided
+                    if "amount" not in item_data:
+                        item_instance.amount = item_instance.quantity * item_instance.rate
+                    item_instance.save()
+                else:
+                    # New item
+                    if "amount" not in item_data:
+                        item_data["amount"] = item_data.get("quantity", 0) * item_data.get("rate", 0)
+                    QuoteItem.objects.create(
+                        quote=instance,
+                        quote_item_number=idx,
+                        **item_data
                     )
+
+        instance.update_totals(save=True)
+        return instance
+
+
+class DraftQuoteItemSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)  # for updating existing items
+    hsn_code = serializers.CharField(source='item.hsn_code', read_only=True)
+    
+    class Meta:
+        model = DraftQuoteItem
+        fields = [
+            'id',
+            'item',
+            'hsn_code',
+            'quantity',
+            'rate',
+            'amount',
+            'quote_item_number',
+        ]
+        read_only_fields = ["id", "amount", "hsn_code"]
+
+    def validate(self, data):
+        if data.get("quantity", 0) < 0:
+            raise serializers.ValidationError("Quantity cannot be negative")
+        if data.get("rate", 0) < 0:
+            raise serializers.ValidationError("Rate cannot be negative")
+        return data
+
+
+class DraftQuoteSerializer(serializers.ModelSerializer):
+    item_details = DraftQuoteItemSerializer(many=True)
+    quote_files = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=CustomerDocument.objects.all(), required=False
+    )
+    customer_name = serializers.CharField(source='customer.display_name', read_only=True)
+    deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
+
+    class Meta:
+        model = DraftQuote
+        fields = [
+            'id',
+            'status',
+            'customer',
+            'customer_name',
+            'quote_number',
+            'place_of_supply',
+            'deal',
+            'deal_no',
+            'quote_date',
+            'due_date',
+            'salesperson',
+            'project_name',
+            'subject',
+            'item_details',
+            'customer_notes',
+            'terms_and_conditions',
+            'subtotal_amount',
+            'discount_percentage',
+            'discount_amount',
+            'tax_percentage',
+            'gst_amount',
+            'adjustment_amount',
+            'total_amount',
+            'quote_files',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'customer_name', 'deal_no',
+                            'subtotal_amount', 'discount_amount', 'gst_amount', 'total_amount']
+
+    def create(self, validated_data):
+        item_details_data = validated_data.pop('item_details', [])
+        quote_files_data = validated_data.pop('quote_files', [])
+        draft_quote = DraftQuote.objects.create(**validated_data)
+        draft_quote.quote_files.set(quote_files_data)
+        for idx, item_data in enumerate(item_details_data, start=1):
+            DraftQuoteItem.objects.create(draft_quote=draft_quote, quote_item_number=idx, **item_data)
+        draft_quote.update_totals()
+        return draft_quote
+
+    def update(self, instance, validated_data):
+        item_details_data = validated_data.pop('item_details', [])
+        quote_files_data = validated_data.pop('quote_files', [])
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        instance.quote_files.set(quote_files_data)
+
+        # Map existing items by id
+        existing_items = {item.id: item for item in instance.item_details.all()}
+        incoming_ids = [item_data.get('id') for item_data in item_details_data if item_data.get('id')]
+
+        # Delete removed items
+        for existing_id in existing_items:
+            if existing_id not in incoming_ids:
+                existing_items[existing_id].delete()
+
+        # Update or create items
+        for idx, item_data in enumerate(item_details_data, start=1):
+            item_id = item_data.get('id', None)
+            if item_id and item_id in existing_items:
+                item_instance = existing_items[item_id]
+                for attr, value in item_data.items():
+                    setattr(item_instance, attr, value)
+                item_instance.quote_item_number = idx
+                item_instance.save()
+            else:
+                DraftQuoteItem.objects.create(draft_quote=instance, quote_item_number=idx, **item_data)
+
+        instance.update_totals()
+        return instance
+
+    def publish(self):
+        """Publish draft quote to final Quote."""
+        draft_quote = self.instance
+        if not draft_quote:
+            raise ValidationError("DraftQuote instance is required to publish.")
+
+        draft_quote.validate_for_publish()
+
+        with transaction.atomic():
+            existing_quote = Quote.objects.filter(quote_number=draft_quote.quote_number).first()
+            if existing_quote and existing_quote.pk != getattr(draft_quote, 'final_quote_id', None):
+                raise ValidationError(f"Quote number {draft_quote.quote_number} already exists.")
+
+            quote, created = Quote.objects.update_or_create(
+                quote_number=draft_quote.quote_number,
+                defaults={
+                    'customer': draft_quote.customer,
+                    'place_of_supply': draft_quote.place_of_supply,
+                    'deal': draft_quote.deal,
+                    'quote_date': draft_quote.quote_date,
+                    'expiry_date': draft_quote.due_date,
+                    'salesperson': draft_quote.salesperson,
+                    'project_name': draft_quote.project_name,
+                    'subject': draft_quote.subject,
+                    'subtotal_amount': draft_quote.subtotal_amount,
+                    'discount_percentage': draft_quote.discount_percentage,
+                    'discount_amount': draft_quote.discount_amount,
+                    'tax_percentage': draft_quote.tax_percentage,
+                    'gst_amount': draft_quote.gst_amount,
+                    'adjustment_amount': draft_quote.adjustment_amount,
+                    'total_amount': draft_quote.total_amount,
+                    'customer_notes': draft_quote.customer_notes,
+                    'terms_and_conditions': draft_quote.terms_and_conditions,
+                    'status': 'sent',
+                },
+            )
+
+            # Copy items
+            quote.item_details.all().delete()
+            for draft_item in draft_quote.item_details.all():
                 QuoteItem.objects.create(
-                    quote=quote, quote_item_number=idx, **item_data
+                    quote=quote,
+                    item=draft_item.item,
+                    quantity=draft_item.quantity,
+                    rate=draft_item.rate,
+                    amount=draft_item.amount,
+                    quote_item_number=draft_item.quote_item_number,
                 )
+
+            # Copy files
+            quote.quote_files.set(draft_quote.quote_files.all())
+            quote.save()
+
+            # Delete draft
+            draft_quote.delete()
+
+        transaction.on_commit(lambda: quote.refresh_from_db())
         return quote
 
+
+################################################################################
+
+######################### Proforma Invoice Serializers #########################
 
 class ProformaInvoiceItemSerializer(serializers.ModelSerializer):
     """Serializer for ProformaInvoiceItem model."""
@@ -2065,7 +2286,9 @@ class ProformaInvoiceSerializer(serializers.ModelSerializer):
                 )  # pylint: disable=no-member
         return proforma
 
+################################################################################
 
+######################## Delivery Challan Serializers ##########################
 class DeliveryChallanSerializer(serializers.ModelSerializer):
     """
     Serializer for DeliveryChallan model, includes customer,
@@ -2184,7 +2407,10 @@ class DeliveryChallanSerializer(serializers.ModelSerializer):
         challan.refresh_from_db()
         return challan
 
+################################################################################
 
+
+######################## Inventory Adjustment Serializers ######################
 class InventoryAdjustmentSerializer(serializers.ModelSerializer):
     """Serializer for InventoryAdjustment model."""
     

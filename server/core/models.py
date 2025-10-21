@@ -631,14 +631,27 @@ class Payment(models.Model):
             f"{self.invoice.invoice_number}"  # pylint: disable=no-member
         )  # pylint: disable=no-member
 
+###############################################################################
+
+####################### Item Base Abstract Class ##############################
+class DocumentItemBase(models.Model):
+    """Abstract base class for document item models."""
+
+    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    rate = models.DecimalField(max_digits=12, decimal_places=2)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Meta options for DocumentItemBase (abstract base class)."""
+
+        abstract = True
+        
+#################### QUOTE and its draft MODELS ##############################
 
 class Quote(models.Model):
     """Represents a sales quote sent to a customer."""
 
-    TAX_TYPE_CHOICES = [
-        ("TDS", "TDS"),
-        ("TCS", "TCS"),
-    ]
     TAX_PERCENTAGE_CHOICES = [
         ("0", "0%"),
         ("5", "5%"),
@@ -652,23 +665,26 @@ class Quote(models.Model):
     quote_number = models.CharField(max_length=50, unique=True)
     place_of_supply = models.CharField(max_length=50, blank=True)
     quote_date = models.DateField()
-    expiry_date = models.DateField()
+    due_date = models.DateField()
     salesperson = models.CharField(max_length=100, blank=True)
     project_name = models.CharField(max_length=255, blank=True)
     subject = models.CharField(max_length=255, blank=True)
     customer_notes = models.TextField(blank=True)
     terms_and_conditions = models.TextField(blank=True)
-    subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    discount = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    tax_type = models.CharField(
-        max_length=3,
-        choices=TAX_TYPE_CHOICES,
-        default="TDS",
+    subtotal_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
+    discount_percentage = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0, help_text="Discount percentage"
+    )
+    discount_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0, help_text="Discount amount"
     )
     tax_percentage = models.CharField(
         max_length=3, choices=TAX_PERCENTAGE_CHOICES, default="0"
     )
-    adjustment = models.DecimalField(
+    gst_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
+    adjustment_amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
         default=0,
@@ -695,26 +711,33 @@ class Quote(models.Model):
         blank=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    def calculate_total(self):
+        subtotal = sum(item.quantity * item.rate for item in self.item_details.all())
+        discount_amount = (subtotal * self.discount_percentage / 100) if self.discount_percentage else 0
+        subtotal_after_discount = subtotal - discount_amount
+        gst = (subtotal_after_discount * Decimal(self.tax_percentage) / 100) if self.tax_percentage else 0
+        total = subtotal_after_discount + gst + self.adjustment_amount
+        
+        return subtotal, discount_amount, gst, total
+    
+    def update_totals(self, save=True):
+        self.subtotal_amount, self.discount_amount, self.gst_amount, self.total_amount = self.calculate_total()
+        if save:
+            super().save(update_fields=["subtotal_amount", "discount_amount", "gst_amount", "total_amount"])
+    
+    def save(self, *args, **kwargs):
+
+        super().save(*args, **kwargs)
+
+        if hasattr(self, 'item_details') and self.item_details.exists():
+            self.update_totals(save=False)
+        
 
     def __str__(self):
         return (
             f"Quote {self.quote_number} - {self.customer.display_name}"
         )  # pylint: disable=no-member
-
-
-class DocumentItemBase(models.Model):
-    """Abstract base class for document item models."""
-
-    item = models.ForeignKey(Item, on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField()
-    rate = models.DecimalField(max_digits=12, decimal_places=2)
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
-
-    class Meta:  # pylint: disable=too-few-public-methods
-        """Meta options for DocumentItemBase (abstract base class)."""
-
-        abstract = True
-
 
 class QuoteItem(DocumentItemBase):
     """Model representing an item entry in a Quote."""
@@ -735,6 +758,206 @@ class QuoteItem(DocumentItemBase):
             f"for Quote {self.quote.quote_number}"
         )  # pylint: disable=no-member
 
+class DraftQuote(models.Model):
+
+    TAX_PERCENTAGE_CHOICES = [
+        ("0", "0%"),
+        ("5", "5%"),
+        ("12", "12%"),
+        ("18", "18%"),
+        ("28", "28%"),
+    ]
+    customer = models.ForeignKey(
+        Customer, related_name="draft_quotes", on_delete=models.CASCADE
+    )
+    quote_number = models.CharField(max_length=50, unique=True,null=True,blank=True)
+    place_of_supply = models.CharField(max_length=50, null=True,blank=True)
+    quote_date = models.DateField(null=True,blank=True)
+    due_date = models.DateField(null=True,blank=True)
+    salesperson = models.CharField(max_length=100, null=True,blank=True)
+    project_name = models.CharField(max_length=255, null=True,blank=True)
+    subject = models.CharField(max_length=255, null=True,blank=True)
+    customer_notes = models.TextField(null=True,blank=True)
+    terms_and_conditions = models.TextField(null=True,blank=True)
+    subtotal_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
+    discount_percentage = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0, help_text="Discount percentage"
+    )
+    discount_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0, help_text="Discount amount"
+    )
+    tax_percentage = models.CharField(
+        max_length=3, choices=TAX_PERCENTAGE_CHOICES, default="0"
+    )
+    gst_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0)
+    adjustment_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    total_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("draft", "Draft"),
+            ("sent", "Sent"),
+            ("accepted", "Accepted"),
+            ("rejected", "Rejected"),
+            ("expired", "Expired"),
+        ],
+        default="draft",
+    )
+    deal = models.ForeignKey(Deal, on_delete=models.CASCADE, related_name="draft_quotes")
+    quote_files = models.ManyToManyField(
+        "CustomerDocument",
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def calculate_total(self):
+        subtotal = sum(item.quantity * item.rate for item in self.item_details.all())
+        discount_amount = (subtotal * self.discount_percentage / 100) if self.discount_percentage else 0
+        subtotal_after_discount = subtotal - discount_amount
+        gst = (subtotal_after_discount * Decimal(self.tax_percentage) / 100) if self.tax_percentage else 0
+        total = subtotal_after_discount + gst + self.adjustment_amount
+        
+        return subtotal, discount_amount, gst, total
+    
+    def update_totals(self, save=True):
+        self.subtotal_amount, self.discount_amount, self.gst_amount, self.total_amount = self.calculate_total()
+        if save:
+            super().save(update_fields=["subtotal_amount", "discount_amount", "gst_amount", "total_amount"])
+    
+    def save(self, *args, **kwargs):
+
+        super().save(*args, **kwargs)
+
+        if hasattr(self, 'item_details') and self.item_details.exists():
+            self.update_totals(save=False)
+    
+    def validate_for_publish(self):
+        errors = {}
+        if not self.customer:
+            errors['customer'] = "Customer is required."
+        if not self.quote_date:
+            errors['quote_date'] = "Invoice date is required."
+        if not self.due_date:
+            errors['due_date'] = "Due date is required."
+        if not self.quote_number:
+            errors['quote_number'] = "Quote number is required."
+        if self.item_details.count() == 0:
+            errors['item_details'] = "At least one Quote item is required."
+        if self.discount_percentage < 0:
+            errors['discount_percentage'] = "Discount cannot be negative."
+        if self.discount_percentage > 100:
+            errors['discount_percentage'] = "Discount cannot exceed 100%."
+
+        if errors:
+            raise ValidationError(errors)
+
+    
+    def publish(self):
+        self.validate_for_publish()
+        
+        with transaction.atomic():
+            if not self.quote_number:
+                raise ValidationError("Quote number is required before publishing.")
+
+            existing_quote= Quote.objects.filter(quote_number=self.quote_number).first()
+
+            if existing_quote and existing_quote.pk != getattr(self, 'final_quote_id', None):
+            # If you want to prevent duplicates:
+                raise ValidationError(f"Quote number {self.quote_number} already exists.")
+            
+            # Create or update the final Invoice instance
+            quote, created = Quote.objects.update_or_create(
+                quote_number=self.quote_number,
+                defaults={
+                    'customer': self.customer,
+                    'place_of_supply': self.place_of_supply,
+                    'deal': self.deal,
+                    'quote_date': self.quote_date,
+                    'due_date': self.due_date,
+                    'subtotal_amount': self.subtotal_amount,
+                    'discount_percentage': self.discount_percentage,
+                    'discount_amount': self.discount_amount,  # new field
+                    'gst_amount': self.gst_amount,
+                    'adjustment_amount': self.adjustment_amount,
+                    'total_amount': self.total_amount,
+                    'customer_notes': self.customer_notes,
+                    'terms_and_conditions': self.terms_and_conditions,
+                    'status': 'sent',  # Set to appropriate non-draft status
+                },
+            )
+            quote.save()
+
+            # Clear existing InvoiceItems if updating
+            quote.item_details.all().delete()
+
+            # Copy draft invoice items into final InvoiceItems
+            for draft_item in self.item_details.all():
+                QuoteItem.objects.create(
+                    quote=quote,
+                    item=draft_item.item,
+                    quantity=draft_item.quantity,
+                    rate=draft_item.rate,
+                    amount=draft_item.amount,
+                    quote_item_number=draft_item.quote_item_number,
+                )
+
+            # Copy files
+            quote.quote_files.set(self.quote_files.all())
+            quote.save()
+
+            # Delete draft and its items
+            self.delete()
+        
+        transaction.on_commit(lambda: quote.refresh_from_db())
+
+        return quote
+
+        
+
+    def __str__(self):
+        return (
+            f"Quote {self.quote_number} - {self.customer.display_name}"
+        )  # pylint: disable=no-memb
+
+class DraftQuoteItem(DocumentItemBase):
+    """Model representing an item entry in a Quote."""
+
+    draft_quote = models.ForeignKey(
+        DraftQuote,
+        related_name="item_details",
+        on_delete=models.CASCADE,
+    )
+    quote_item_number = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("draft_quote", "quote_item_number")
+    
+    def save(self, *args, **kwargs):
+        # Automatically calculate amount
+        self.amount = self.quantity * self.rate
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return (
+            f"[{self.quote_item_number}] {self.item.name} x {self.quantity} "
+            f"for Quote {self.draft_quote.quote_number}"
+        )  # pylint: disable=no-member
+        
+
+##########################################################################
+
+#######.#################### Proforma Invoice Models ###########################
 
 class ProformaInvoice(models.Model):
     """Model representing a Proforma Invoice."""
@@ -898,6 +1121,7 @@ class DeliveryChallan(models.Model):
             f"{self.customer.display_name}"  # pylint: disable=no-member
         )
 
+###############    INVOICE MODELS BELOW            ###############
 
 class InvoiceItem(DocumentItemBase):
     def save(self, *args, **kwargs):
@@ -1026,12 +1250,6 @@ class Invoice(models.Model):
             f"{self.customer.display_name}"  # pylint: disable=no-member
         )
 
-
-# Register banking signals
-try:
-    import server.core.banking.signals  # noqa: F401
-except ImportError:
-    pass
 
 #draft workflow models
 class DraftInvoice(models.Model):
@@ -1193,4 +1411,16 @@ class DraftInvoiceItem(DocumentItemBase):
         # Automatically calculate amount
         self.amount = self.quantity * self.rate
         super().save(*args, **kwargs)
+        
+        
+
+
+#######################################################################
+
+
+# Register banking signals
+try:
+    import server.core.banking.signals  # noqa: F401
+except ImportError:
+    pass
 

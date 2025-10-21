@@ -18,7 +18,8 @@ from .serializers import (
     BillorderSerializer,
     PaymentTransactionSerializer,
     PendingTransactionSerializer,
-    DraftInvoiceSerializer
+    DraftInvoiceSerializer,
+    DraftQuoteSerializer,
 )
 from .filters_extra import (
     InvoiceFilter,
@@ -48,11 +49,13 @@ from .models import (
     Quote,
     Vendor,
     Deal,
-    DraftInvoice
+    DraftInvoice,
+    DraftQuote
 )
 from .purchase_models import Freight,ImportBill,Duty,Gst,NonGst,Billorder,PaymentTransaction
 from django.db.models import F
 from rest_framework import generics
+from rest_framework.exceptions import ValidationError
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -550,6 +553,21 @@ class QuoteViewSet(
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = QuoteFilter
+    
+class DraftQuoteViewSet(viewsets.ModelViewSet):
+    queryset = DraftQuote.objects.all().order_by('-created_at')
+    serializer_class = DraftQuoteSerializer  # Define serializers for DraftInvoice and DraftInvoiceItem
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        draft = self.get_object()
+        try:
+            quote = draft.publish()
+        except ValidationError as e:
+            return Response(e.message_dict if hasattr(e, 'message_dict') else str(e),
+                            status=status.HTTP_400_BAD_REQUEST)
+        serializer = InvoiceSerializer(quote)
+        return Response({"message": "Published successfully", "quote_id": quote.pk})
 
 
 class ProformaInvoiceViewSet(
