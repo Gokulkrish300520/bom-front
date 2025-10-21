@@ -1266,7 +1266,7 @@ class DraftInvoice(models.Model):
         max_length=16, choices=STATUS_CHOICES, default="DRAFT", db_index=True
     )
     customer = models.ForeignKey("Customer", on_delete=models.CASCADE, null=True, blank=True)
-    invoice_number = models.CharField(max_length=50, blank=True, null=True)
+    invoice_number = models.CharField(max_length=50, blank=True, null=True,unique=True)
     place_of_supply = models.CharField(max_length=50, blank=True)
     deal = models.ForeignKey("Deal", on_delete=models.CASCADE, null=True, blank=True)
     invoice_date = models.DateField(null=True, blank=True)

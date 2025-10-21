@@ -1746,6 +1746,24 @@ class DraftInvoiceSerializer(serializers.ModelSerializer):
             DraftInvoiceItem.objects.create(draft_invoice=draft_invoice, invoice_item_number=idx, **item_data)
         draft_invoice.update_totals()
         return draft_invoice
+    
+    def validate_invoice_number(self, value):
+        """
+        Ensure invoice_number is unique across both Invoice and DraftInvoice tables.
+        """
+        if value:  # only validate if provided
+            from core.models import Invoice, DraftInvoice
+
+            # Check in Invoice model (finalized invoices)
+            if Invoice.objects.filter(invoice_number=value).exists():
+                raise serializers.ValidationError(f"Invoice number '{value}' already exists in published invoices.")
+
+            # Check in DraftInvoice model (other drafts)
+            if DraftInvoice.objects.filter(invoice_number=value).exclude(id=self.instance.id if self.instance else None).exists():
+                raise serializers.ValidationError(f"Invoice number '{value}' already exists in draft invoices.")
+
+        return value
+
 
     def update(self, instance, validated_data):
         item_details_data = validated_data.pop('item_details', [])
