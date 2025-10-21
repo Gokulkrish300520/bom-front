@@ -1236,7 +1236,7 @@ class BillorderSerializer(serializers.ModelSerializer):
         model = Billorder
         fields = [
             "id", "vendor", "vendor_id", "deal_no", "deal_id",
-            "bill_number", "payment_status", "paid_by", "payment_reference_no",
+            "bill_number","payment_request", "payment_status", "paid_by", "payment_reference_no",
             "bill_date", "due_date", "notes", "tax_type", "tax_percentage",
             "adjustments", "subtotal", "total_amount", "paid_amount",
             "amount_to_pay", "created_at", "created_by",

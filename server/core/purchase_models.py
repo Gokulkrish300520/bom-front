@@ -524,6 +524,7 @@ class DutyItem(models.Model):
         super().save(*args, **kwargs)
 
 class Billorder(models.Model):
+    payment_choices =[("Low","low"),("High","high")]
     paid_by_choices = [("SBI","sbi"),("IOB","iob"),("ICICI","icici"),("Petty Cash","petty cash"),("None", "none")]
     STATUS_CHOICES = [("Paid", "Paid"), ("Unpaid", "Unpaid"), ("Paid Partially", "Paid Partially")]
     TAX_TYPE_CHOICES = [("TDS", "TDS"), ("TCS", "TCS")]
@@ -538,6 +539,7 @@ class Billorder(models.Model):
     due_date = models.DateField()
     notes = models.TextField(blank=True)
     tax_type = models.CharField(max_length=3, choices=TAX_TYPE_CHOICES, default="TDS")
+    payment_request = models.CharField(max_length=20, choices=payment_choices, default="Low")
     tax_percentage = models.CharField(max_length=3, choices=TAX_PERCENTAGE_CHOICES, default="0")
     adjustments = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     paid_by = models.CharField(max_length=12, choices=paid_by_choices, default="None")
