@@ -1,215 +1,406 @@
-{% load static %}
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Quotation / Invoice</title>
-<style>
-  @font-face {
-      font-family: "Noto Sans";
-      src: url("{% static 'fonts/NotoSans-Regular.ttf' %}") format("truetype");
-      font-weight: normal;
-      font-style: normal;
-  }
-  @font-face {
-      font-family: "Noto Sans";
-      src: url("{% static 'fonts/NotoSans-Bold.ttf' %}") format("truetype");
-      font-weight: bold;
-      font-style: normal;
-  }
-  body { font-family: "Noto Sans", "DejaVu Sans", sans-serif; font-size: 12px; }
-  @page { size: A4; margin: 10mm; }
-  html,body {
-    margin:0; padding:0;
-    background:#fff; color:#1a2e1a;
-    font-size: 12px;
-  }
-  .page { width:100%; min-height:297mm; padding:18mm; box-sizing:border-box; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        @page {
+            size: A4;
+            margin: 15mm;
+        }
+        
+        body {
+            font-family: "DejaVu Sans", Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #000;
+            background: #fff;
+        }
+        
+        .container {
+            max-width: 210mm;
+            margin: 0 auto;
+            background: white;
+        }
+        
+        /* Header Section */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+        
+        .company-logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 10px;
+        }
+        
+        .company-info {
+            flex: 1;
+        }
+        .supply-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
 
-  /* HEADER */
-  .header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:18px; }
-  .company { max-width:60%; }
-  .company h1 { margin:0; font-size:22px; color:#14532d; }
-  .company .small { font-size:12px; color:#4b604b; margin-top:6px; line-height:1.4; }
-  .meta { text-align:right; font-size:13px; }
-  .meta .title { font-weight:700; font-size:18px; color:#14532d; }
-  .meta .muted { color:#4b604b; font-size:12px; margin-top:6px; }
-  hr.sep { border:none; border-top:2px solid #d1e7d1; margin:14px 0 18px; }
+      .supply-place {
+          font-size: 10pt;
+          font-weight: bold;
+      }
 
-  /* INFO BLOCKS */
-  .buckets { display:flex; gap:18px; margin-bottom:14px; }
-  .bucket {
-    flex:1; background:#f0fdf4;
-    padding:12px; border-radius:6px;
-    border:1px solid #bbf7d0;
-  }
-  .bucket h4 { margin:0 0 6px; font-size:13px; color:#065f46; }
-  .bucket p { margin:0; font-size:13px; color:#064e3b; line-height:1.35; }
-
-  /* TABLE */
-  table.items { width:100%; border-collapse:collapse; margin-bottom:12px; font-size:13px; }
-  table.items thead th {
-    background:#bbf7d0; color:#064e3b;
-    text-align:left; padding:10px;
-    font-weight:600; border:1px solid #a7f3d0;
-  }
-  table.items tbody td { padding:10px; border:1px solid #d1fae5; vertical-align:top; }
-  table.items tbody tr:nth-child(even) td { background:#f0fdf4; }
-
-  .right { text-align:right; }
-  .center { text-align:center; }
-
-  /* TOTALS */
-  .totals {
-    width:320px; margin-left:auto; margin-top:8px; font-size:13px;
-    border:1px solid #bbf7d0; border-radius:6px; overflow:hidden;
-  }
-  .totals .row { display:flex; justify-content:space-between; padding:8px 10px; border-bottom:1px solid #e2f6e9; }
-  .totals .row.total { font-weight:700; font-size:16px; background:#bbf7d0; color:#064e3b; }
-
-  /* NOTES */
-  .notes { margin-top:18px; font-size:12px; color:#1a2e1a; }
-  .bank {
-    margin-top:14px; background:#f0fdf4; padding:10px;
-    border-radius:6px; border:1px solid #bbf7d0;
-    font-size:12px; color:#064e3b;
-  }
-
-  /* PRINT */
-  @media print { body { background: white; } .page { box-shadow:none; margin:0; } }
-
-  .badge { display:inline-block; padding:5px 8px; background:#059669; color:#fff; border-radius:4px; font-size:12px; }
-  @font-face {
-  font-family: "DejaVu Sans";
-  src: local("DejaVu Sans");
-}
-
-</style>
+        .company-name {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 5px;
+        }
+        
+        .company-address {
+            font-size: 10pt;
+            line-height: 1.5;
+            margin-bottom: 3px;
+        }
+        
+        .gstin {
+            font-size: 10pt;
+            margin-top: 5px;
+        }
+        
+        .meta {
+            text-align: right;
+        }
+        
+        .title {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .muted {
+            font-size: 10pt;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        
+        /* Address Section */
+        .address-section {
+            margin-bottom: 10px;
+            page-break-inside: avoid;
+        }
+        
+        .address-box {
+            padding: 0;
+            margin-bottom: 15px;
+            page-break-inside: avoid;
+        }
+        
+        .address-title {
+            font-weight: bold;
+            font-size: 11pt;
+            margin-bottom: 8px;
+        }
+        
+        .address-content {
+            font-size: 10pt;
+            line-height: 1.5;
+        }
+        
+        .supply-place {
+            font-size: 10pt;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        table thead {
+            display: table-header-group; /* Repeat header on each page */
+        }
+        
+        table tbody {
+            display: table-row-group;
+        }
+        
+        table th {
+            background-color: #454545;
+            color: white;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+            border-left: none;
+            border-right: none;
+            padding: 8px;
+            text-align: left;
+            font-size: 10pt;
+            font-weight: bold;
+        }
+        
+        table td {
+            border-top: none;
+            border-bottom: 1px solid #000;
+            border-left: none;
+            border-right: none;
+            padding: 8px;
+            font-size: 10pt;
+            page-break-inside: avoid;
+        }
+        
+        table tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+        
+        .text-right {
+            text-align: right;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .item-description {
+            font-size: 9pt;
+            color: #333;
+            line-height: 1.4;
+        }
+        
+        /* Summary Section */
+        .summary-section {
+            page-break-inside: avoid;
+            margin-top: 5px;
+        }
+        
+        .summary-table {
+            width: 40%;
+            margin-left: auto;
+            margin-bottom: 10px;
+        }
+        
+        .summary-table td {
+            padding: 6px 10px;
+            border: none;
+        }
+        
+        .summary-table .label {
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        .summary-table .total-row {
+            font-weight: bold;
+            font-size: 11pt;
+            background-color: #f0f0f0;
+            border-top: 2px solid #000;
+        }
+        
+        .amount-words {
+            font-size: 10pt;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            page-break-inside: avoid;
+        }
+        
+        /* Footer Section */
+        .footer-section {
+            margin-top: 30px;
+            page-break-inside: avoid;
+        }
+        
+        .section-title {
+            font-weight: bold;
+            font-size: 11pt;
+            margin-bottom: 10px;
+            text-decoration: underline;
+        }
+        
+        .bank-details, .terms {
+            font-size: 10pt;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .signature {
+            margin-top: 50px;
+            text-align: right;
+            font-weight: bold;
+            page-break-inside: avoid;
+        }
+        
+        /* Force keep summary and footer together */
+        .keep-together {
+            page-break-inside: avoid;
+        }
+        
+        /* Orphan and widow control */
+        p, div {
+            orphans: 3;
+            widows: 3;
+        }
+        
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            
+            .container {
+                max-width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="page">
-    <!-- HEADER -->
-    <div class="header">
-      <div class="company">
-        <h1>GLONIX ELECTRONICS PRIVATE LIMITED</h1>
-        <div class="small">
-          Plot No.54, 2nd Floor, Door No.SF1,<br>
-          Anna nagar 2nd Street, Tansi nagar, Velachery,<br>
-          Chennai - 600 042.<br>
-          GSTIN: <strong>33AAHCGO729N2ZG</strong>
+    <div class="container">
+        <!-- Header -->
+        <div class="page-header">
+            <div class="company-info">
+                <img src="{{ logo_base64 }}" alt="Company Logo" class="company-logo">
+                <div class="company-name">GLONIX ELECTRONICS PRIVATE LIMITED</div>
+                <div class="company-address">
+                    Plot No.54, 2nd Floor, Door No.SF1,<br>
+                    Anna nagar 2nd Street, Tansi nagar, Velachery,<br>
+                    Chennai - 600 042.
+                </div>
+                <div class="gstin">GSTIN : 33AAHCGO729N2ZG</div>
+            </div>
+            <div class="meta">
+                <div class="title">
+                    {% if document_type == "quote" %}
+                        Quotation
+                    {% elif document_type == "invoice" %}
+                        Invoice
+                    {% elif document_type == "proforma" %}
+                        Proforma Invoice
+                    {% elif document_type == "delivery_challan" %}
+                        Delivery Challan
+                    {% else %}
+                        Document
+                    {% endif %}
+                </div>
+                <div class="muted">{{ document_number_label }}: <strong>{{ document_number }}</strong></div>
+            </div>
         </div>
-      </div>
-      <div class="meta">
-        <div class="title">
-          {% if document_type == "quote" %}
-              Quotation
-          {% elif document_type == "invoice" %}
-              Invoice
-          {% elif document_type == "proforma" %}
-              Proforma Invoice
-          {% elif document_type == "delivery_challan" %}
-              Delivery Challan
-          {% else %}
-              Document
-          {% endif %}
+        
+        <!-- Addresses -->
+        <div class="address-section">
+            <div class="address-box">
+                <div class="address-title">Bill To</div>
+                <div class="address-content">
+                    {{ billing_info.name }}<br>
+                    {{ billing_info.address }}<br>
+                    {{ billing_info.city }}<br>
+                    GSTIN: {{ billing_info.gstin }}
+                </div>
+            </div>
+            <div class="address-box">
+                <div class="address-title">Ship To</div>
+                <div class="address-content">
+                    {{ shipping_info.name }}<br>
+                    {{ shipping_info.address }}<br>
+                    {{ shipping_info.city }}
+                </div>
+            </div>
         </div>
-        <div class="muted">{{ document_number_label }}: <strong>{{ document_number }}</strong></div>
+
+        <div class="supply-row">
+        <div class="supply-place">Place Of Supply: {{ place_of_supply }}</div>
         <div class="muted">{{ document_date_label }}: <strong>{{ document_date }}</strong></div>
-        <div style="margin-top:8px;"><span class="badge">Important</span></div>
-      </div>
     </div>
-
-    <hr class="sep">
-
-    <!-- CUSTOMER DETAILS -->
-    <div class="buckets">
-      <div class="bucket">
-        <h4>Bill To</h4>
-        <p>
-          {{ billing_info.name }}<br>
-          {{ billing_info.address }}<br>
-          {{ billing_info.city }}<br>
-          GSTIN: {{ billing_info.gstin }}
-        </p>
-      </div>
-      <div class="bucket">
-        <h4>Ship To</h4>
-        <p>
-          {{ shipping_info.name }}<br>
-          {{ shipping_info.address }}<br>
-          {{ shipping_info.city }}
-        </p>
-        <div style="margin-top:10px;">
-          <h4>Place Of Supply</h4>
-          <p>{{ place_of_supply }}</p>
-        </div>
-      </div>
+        
+        <!-- Items Table -->
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 40%;">Item & Description</th>
+                    <th style="width: 12%;">HSN/SAC</th>
+                    <th style="width: 10%;" class="text-right">Qty</th>
+                    <th style="width: 12%;" class="text-right">Rate</th>
+                    <th style="width: 13%;" class="text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td class="text-center">{{ forloop.counter }}</td>
+                    <td>
+                        <strong>{{ item.name }}</strong><br>
+                        <span class="item-description">
+                            {{ item.description|linebreaksbr }}
+                        </span>
+                    </td>
+                    <td>{{ item.hsn }}</td>
+                    <td class="text-right">{{ item.quantity }}</td>
+                    <td class="text-right">{{ item.rate }}</td>
+                    <td class="text-right">{{ item.amount }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+          <div class="summary-section">
+                <table class="summary-table">
+                    <tr>
+                        <td class="label">Sub Total</td>
+                        <td class="text-right">₹ {{ totals.subtotal }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">IGST18 (18%)</td>
+                        <td class="text-right">₹ {{ totals.gst_amount }}</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td class="label">Total</td>
+                        <td class="text-right">₹ {{ totals.total }}</td>
+                    </tr>
+                </table>
+                
+                <div class="amount-words">
+                    <strong>Total In Words:</strong><br>
+                    {{ total_in_words }}
+                </div>
+            </div>
+            
+            <!-- Footer Section -->
+            <div class="footer-section">
+                <div class="section-title">Notes</div>
+                <div class="section-title">Bank Details:</div>
+                <div class="bank-details">
+                    NAME : GLONIX ELECTRONICS PRIVATE LIMITED<br>
+                    AC NO : 611905056215<br>
+                    BANK: ICICI BANK<br>
+                    BRANCH: SALEM MAIN BRANCH<br>
+                    IFSC: ICIC0006119<br>
+                    Swift code: ICICINBBCTS
+                </div>
+                
+                <div class="section-title">Terms & Conditions</div>
+                <div class="terms">
+                    1. Delivery Terms – 7 to 10 Working Days<br>
+                    2. Payment terms – 100% Advance Payment.<br>
+                    3. If change the qty means, Unit price will be change.
+                </div>
+            </div>
+            
+            <div class="signature">
+                Authorized Signature
+            </div>
     </div>
-
-    <!-- ITEMS TABLE -->
-    <table class="items">
-      <thead>
-        <tr>
-          <th style="width:6%;">#</th>
-          <th style="width:42%;">Item & Description</th>
-          <th style="width:12%;">HSN/SAC</th>
-          <th style="width:10%;" class="center">Qty</th>
-          <th style="width:15%;" class="right">Rate</th>
-          <th style="width:15%;" class="right">Amount</th>
-        </tr>
-      </thead>
-      <tbody id="items-body">
-        {% for item in items %}
-        <tr>
-          <td>{{ forloop.counter }}</td>
-          <td>{{ item.name }}</td>
-          <td>{{ item.hsn }}</td>
-          <td class="center">{{ item.quantity }}</td>
-          <td class="right">{{ item.rate }}</td>
-          <td class="right">{{ item.amount }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-<br>
-<br>
-<br>
-    <!-- TOTALS -->
-    <div class="totals">
-      <div class="row"><div>Sub Total</div><div class="right">₹ {{totals.subtotal}}</div></div>
-      <div class="row"><div>CGST (9%)</div><div class="right">₹ {{totals.cgst}}</div></div>
-      <div class="row"><div>SGST (9%)</div><div class="right">₹ {{totals.sgst}}</div></div>
-      <div class="row total"><div>Total</div><div class="right">₹ {{totals.total}}</div></div>
-    </div>
-
-    <!-- NOTES & BANK -->
-    <div class="notes">
-      <strong>Total In Words:</strong>
-      <div style="margin-top:6px;">{{total_in_words}}</div>
-      <div style="margin-top:10px;">
-        <strong>Notes</strong>
-        <ol style="padding-left:18px; margin:6px 0 0;">
-          {% for note in notes %}
-          <li>{{ note }}</li>
-          {% endfor %}
-        </ol>
-      </div>
-
-      <!-- Bank details moved below Total in Words -->
-      <div class="bank">
-        <strong>Bank Details</strong><br>
-        NAME: {{ bank_details.name }}<br>
-        AC NO: {{ bank_details.number }}<br>
-        BANK: {{ bank_details.bank_name }}<br>
-        IFSC: {{ bank_details.ifsc }}<br>
-        Swift code: {{ bank_details.swift }}
-      </div>
-    </div>
-
-    <div style="margin-top:18px; font-size:12px; color:#4b604b;">
-      <em>Authorized Signature</em>
-    </div>
-  </div>
 </body>
 </html>

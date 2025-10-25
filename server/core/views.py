@@ -21,6 +21,8 @@ from .serializers import (
     DraftInvoiceSerializer,
     DraftQuoteSerializer,
 )
+import base64
+from pathlib import Path
 from .filters_extra import (
     InvoiceFilter,
     ProformaInvoiceFilter,
@@ -881,12 +883,26 @@ from weasyprint import HTML
 from weasyprint.text.fonts import FontConfiguration
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
+from django.contrib.staticfiles import finders
 from .models import Customer
 from rest_framework.decorators import permission_classes
-import logging
 
 @permission_classes([IsAuthenticated])
 class GenerateDocumentPdfView(APIView):
+    
+    logo_path = finders.find('images/company-logo.jpeg')
+    
+    if not logo_path:
+        raise FileNotFoundError(f"Logo file not found at: {logo_path}")
+    
+    @staticmethod
+    def get_logo_base64():
+        logo_path = finders.find('images/company-logo.jpeg')
+        with open(logo_path, 'rb') as image_file:
+            encoded = base64.b64encode(image_file.read()).decode()
+        return f"data:image/jpeg;base64,{encoded}"
+    
     def post(self, request):
         try:
             data = request.data
@@ -911,14 +927,17 @@ class GenerateDocumentPdfView(APIView):
                 'gstin': getattr(customer, 'billing_gstin', ''),  # if GSTIN field exists
                 # add other fields as necessary
             }
+            
             shipping_info = {
                 'name': customer.display_name,
                 'address': f"{customer.shipping_street1} {customer.shipping_street2}".strip(),
                 'city': customer.shipping_city,
                 # other shipping fields...
             }
-
+            
+            
             context = {
+                'logo_base64': self.get_logo_base64(),
                 'document_type': doc_type,
                 'document_number_label': {
                     'quote': 'Quote #',
@@ -926,23 +945,22 @@ class GenerateDocumentPdfView(APIView):
                     'proforma': 'Proforma Invoice #',
                     'delivery_challan': 'Challan #'
                 }.get(doc_type, 'Document #'),
+                
                 'document_date_label': {
                     'quote': 'Quote Date',
                     'invoice': 'Invoice Date',
                     'proforma': 'Proforma Date',
                     'delivery_challan': 'Challan Date'
                 }.get(doc_type, 'Date'),
-
-
+                
+        
                 'document_number': doc_data.get('document_number', ''),
                 'document_date': doc_data.get('document_date', ''),
                 'billing_info': billing_info,
                 'shipping_info': shipping_info,
                 'place_of_supply': doc_data.get('place_of_supply', ''),
 
-
                 'items': doc_data.get('items', []),
-
 
                 'totals': doc_data.get('totals', {}),
 
