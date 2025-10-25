@@ -382,12 +382,11 @@
                 <div class="section-title">Notes</div>
                 <div class="section-title">Bank Details:</div>
                 <div class="bank-details">
-                    NAME : GLONIX ELECTRONICS PRIVATE LIMITED<br>
-                    AC NO : 611905056215<br>
-                    BANK: ICICI BANK<br>
-                    BRANCH: SALEM MAIN BRANCH<br>
-                    IFSC: ICIC0006119<br>
-                    Swift code: ICICINBBCTS
+                    NAME : {{ bank_details.name }}<br>
+                    AC NO : {{ bank_details.number }}<br>
+                    BANK : {{ bank_details.bank_name }}<br>
+                    IFSC : {{ bank_details.ifsc }}<br>
+                    Swift code : {{ bank_details.swift }}
                 </div>
                 
                 <div class="section-title">Terms & Conditions</div>

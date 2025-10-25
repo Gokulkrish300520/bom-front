@@ -841,7 +841,31 @@ def send_report_email(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
-    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_mail(request):
+    recipient = request.data.get('recipient_email')
+    subject = request.data.get('subject', 'Profit and Loss Report')
+    pdf_base64 = request.data.get('pdf_base64')
+
+    if not recipient or not pdf_base64:
+        return JsonResponse({'error': 'recipient_email and pdf_base64 are required'}, status=400)
+
+    try:
+        pdf_bytes = base64.b64decode(pdf_base64)
+
+        email = EmailMessage(
+            subject,
+            "Please find attached your pdf.",
+            to=[recipient],
+        )
+        email.attach("document.pdf", pdf_bytes, "application/pdf")
+        email.send()
+
+        return JsonResponse({"message": "Email sent successfully"})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
 import boto3
 from django.conf import settings
 from rest_framework.views import APIView
@@ -924,7 +948,7 @@ class GenerateDocumentPdfView(APIView):
                 'name': customer.display_name,
                 'address': f"{customer.billing_street1} {customer.billing_street2}".strip(),
                 'city': customer.billing_city,
-                'gstin': getattr(customer, 'billing_gstin', ''),  # if GSTIN field exists
+                'gstin': getattr(customer, 'GSTIN', ''),  # if GSTIN field exists
                 # add other fields as necessary
             }
             
@@ -934,7 +958,6 @@ class GenerateDocumentPdfView(APIView):
                 'city': customer.shipping_city,
                 # other shipping fields...
             }
-            
             
             context = {
                 'logo_base64': self.get_logo_base64(),

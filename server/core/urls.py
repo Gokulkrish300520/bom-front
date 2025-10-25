@@ -10,7 +10,7 @@ from django.conf import settings
 from .views import current_user
 from .views import NewProfitAndLossReportView,PaymentTransactionViewSet
 from rest_framework.routers import DefaultRouter
-from .views import PendingTransactionsList
+from .views import PendingTransactionsList,send_mail
 from .views import (
     CustomerViewSet,
     InvoiceViewSet,
@@ -93,7 +93,8 @@ urlpatterns = [
     ),
     path("auth/me/", current_user, name="current_user"),
     path("auth/logout/", TokenBlacklistView.as_view(), name="token_blacklist"),
-    path('api/send-report-email/', send_report_email, name='send_report_email'),
+    path('send-report-email/', send_report_email, name='send_report_email'),
+    path('send-mail/', send_mail, name='send_mail'),
     path("generate-presigned-url/", GeneratePresignedUrlView.as_view(), name="generate-presigned-url"),
     path('generate-pdf/', GenerateDocumentPdfView.as_view(), name='generate_document_pdf'),
 ]
