@@ -1895,7 +1895,7 @@ class QuoteSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
-    bank_detail = BankDetailSerializer(read_only=True)
+    bank_details = BankDetailSerializer(read_only=True)
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta options for QuoteSerializer."""

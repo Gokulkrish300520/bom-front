@@ -721,7 +721,7 @@ class Quote(models.Model):
         "CustomerDocument",
         blank=True,
     )
-    bank_detail = models.ForeignKey(
+    bank_details = models.ForeignKey(
         BankDetail,
         on_delete=models.SET_NULL,
         null=True,
