@@ -27,5 +27,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Expose the port the app runs on
 EXPOSE 8000
 
+RUN python -m server.manage collectstatic --noinput
+
 # Run the app
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "server.wsgi:application"]
