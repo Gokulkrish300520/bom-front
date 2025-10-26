@@ -1925,7 +1925,7 @@ class QuoteSerializer(serializers.ModelSerializer):
             "adjustment_amount",
             "total_amount",
             "bank_detail_id",  # write
-            "bank_detail",     # read
+            "bank_details",     # read
             "status",
             "quote_file_ids",
             "quote_files",
