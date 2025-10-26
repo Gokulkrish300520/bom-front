@@ -20,6 +20,7 @@ from .models import (
     DraftInvoiceItem,
     DraftQuote,
     DraftQuoteItem,
+    BankDetail
 )
 from django.db.models import Sum,Q
 from django.db import models
@@ -34,7 +35,11 @@ from .purchase_models import (
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-        
+
+class BankDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BankDetail
+        fields = ["id", "name", "account_number", "bank_name", "ifsc", "swift", "is_active","created_at"]
 class PaymentTransactionSerializer(serializers.ModelSerializer):
     content_object_type = serializers.SerializerMethodField(read_only=True)
     vendor_name = serializers.SerializerMethodField(read_only=True)
@@ -1883,6 +1888,14 @@ class QuoteSerializer(serializers.ModelSerializer):
     
     deal_no = serializers.CharField(source='deal.deal_no', read_only=True)
     deal_id = serializers.PrimaryKeyRelatedField(queryset=Deal.objects.all(), source='deal', write_only=True)
+    
+    bank_detail_id = serializers.PrimaryKeyRelatedField(
+        queryset=BankDetail.objects.all(),
+        source="bank_detail",
+        write_only=True,
+        required=False
+    )
+    bank_detail = BankDetailSerializer(read_only=True)
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta options for QuoteSerializer."""
@@ -1911,6 +1924,8 @@ class QuoteSerializer(serializers.ModelSerializer):
             "gst_amount",
             "adjustment_amount",
             "total_amount",
+            "bank_detail_id",  # write
+            "bank_detail",     # read
             "status",
             "quote_file_ids",
             "quote_files",

@@ -33,7 +33,8 @@ from .views import (
     NonGstViewSet,
     BillorderViewSet,
     DraftInvoiceViewSet,
-    DraftQuoteViewSet
+    DraftQuoteViewSet,
+    BankDetailViewSet
 )
 from .views import DealViewSet
 
@@ -63,6 +64,7 @@ router.register(r"draft-invoices", DraftInvoiceViewSet, basename="draft-invoice"
 router.register(r"payments", PaymentViewSet, basename="payment")
 router.register(r"quotes", QuoteViewSet, basename="quote")
 router.register(r"draft-quotes", DraftQuoteViewSet, basename="draft-quote")
+router.register(r"bank-details", BankDetailViewSet, basename="bank-detail")
 router.register(
     r"proformainvoices",
     ProformaInvoiceViewSet,

@@ -20,6 +20,7 @@ from .serializers import (
     PendingTransactionSerializer,
     DraftInvoiceSerializer,
     DraftQuoteSerializer,
+    BankDetailSerializer
 )
 import base64,os
 from pathlib import Path
@@ -52,7 +53,8 @@ from .models import (
     Vendor,
     Deal,
     DraftInvoice,
-    DraftQuote
+    DraftQuote,
+    BankDetail
 )
 from .purchase_models import Freight,ImportBill,Duty,Gst,NonGst,Billorder,PaymentTransaction
 from django.db.models import F
@@ -79,6 +81,11 @@ from django.contrib.auth.models import User
 from .serializers import ProfitLossSerializer
 from .utils import calculate_profit_and_loss
 from django.shortcuts import get_object_or_404
+
+class BankDetailViewSet(viewsets.ModelViewSet):
+    queryset = BankDetail.objects.all().order_by('-created_at')
+    serializer_class = BankDetailSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 class PaymentTransactionViewSet(viewsets.ModelViewSet):
     queryset = PaymentTransaction.objects.all().order_by('-paid_on')

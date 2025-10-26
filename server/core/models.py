@@ -8,7 +8,18 @@ from django.utils import timezone
 from django.db import transaction
 from decimal import Decimal
 
+class BankDetail(models.Model):
+    name = models.CharField(max_length=255, help_text="Company / Account Holder Name")
+    account_number = models.CharField(max_length=50)
+    bank_name = models.CharField(max_length=255)
+    ifsc = models.CharField(max_length=20)
+    swift = models.CharField(max_length=20, blank=True, null=True)
+    is_active = models.BooleanField(default=True)  # For easy selection of active bank accounts
+    created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return f"{self.name} - {self.bank_name} ({self.account_number})"
+    
 class DailySummary(models.Model):
     """Model representing a daily summary of invoices, bills, and payments."""
 
@@ -709,6 +720,13 @@ class Quote(models.Model):
     quote_files = models.ManyToManyField(
         "CustomerDocument",
         blank=True,
+    )
+    bank_detail = models.ForeignKey(
+        BankDetail,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="quotes"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     
