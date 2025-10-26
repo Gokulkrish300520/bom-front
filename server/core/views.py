@@ -21,7 +21,7 @@ from .serializers import (
     DraftInvoiceSerializer,
     DraftQuoteSerializer,
 )
-import base64
+import base64,os
 from pathlib import Path
 from .filters_extra import (
     InvoiceFilter,
@@ -841,29 +841,56 @@ def send_report_email(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
-@api_view(['POST'])
+
+from .email_utils import send_email_resend
+
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def send_mail(request):
-    recipient = request.data.get('recipient_email')
-    subject = request.data.get('subject', 'Profit and Loss Report')
-    pdf_base64 = request.data.get('pdf_base64')
+    recipient = request.data.get("recipient_email")
+    subject = request.data.get("subject", "Attached Document")
+    pdf_base64 = request.data.get("pdf_base64")
+    filename = request.data.get("filename", "quotation.pdf")
 
-    if not recipient or not pdf_base64:
-        return JsonResponse({'error': 'recipient_email and pdf_base64 are required'}, status=400)
+    if not recipient:
+        return JsonResponse({"error": "recipient_email is required"}, status=400)
+    
+    if not pdf_base64:
+        return JsonResponse({"error": "Attachment is required"}, status=400)
 
     try:
+        # Decode the base64 PDF to bytes
         pdf_bytes = base64.b64decode(pdf_base64)
 
-        email = EmailMessage(
-            subject,
-            "Please find attached your pdf.",
-            to=[recipient],
-        )
-        email.attach("document.pdf", pdf_bytes, "application/pdf")
-        email.send()
+        html_message = """
+        <p>Dear Customer,</p>
+        <p>Please find attached your document.</p>
+        <br>
+        <p>Best regards,<br>
+        <strong>Glonix Electronics Private Limited</strong><br>
+        Plot No.54, 2nd Floor, Door No.SF1,<br>
+        Anna nagar 2nd Street, Tansi nagar, Velachery,<br>
+        Chennai - 600 042.<br>
+        Email: noreply@glonix.in</p>
+        """
 
-        return JsonResponse({"message": "Email sent successfully"})
+        # Send email WITH the PDF attachment
+        response = send_email_resend(
+            to_email=recipient,
+            subject=subject,
+            html_content=html_message,
+            pdf_bytes=pdf_bytes,      # ← Pass the PDF bytes here
+            filename=filename          # ← Pass the filename here
+        )
+        
+        return JsonResponse({
+            "message": "Email sent successfully",
+            "email_id": response.get("id")
+        })
+
     except Exception as e:
+        import traceback
+        print(traceback.format_exc())  # Debug
         return JsonResponse({"error": str(e)}, status=500)
 
 import boto3
@@ -1003,4 +1030,6 @@ class GenerateDocumentPdfView(APIView):
 
         except Exception as e:
             return HttpResponseBadRequest(f"Error generating PDF: {e}")
+
+
 
