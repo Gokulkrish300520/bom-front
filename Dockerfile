@@ -28,7 +28,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 8000
 
 # Collect static files at build time
-RUN python manage.py collectstatic --noinput
+RUN python -m server.manage collectstatic --noinput
 
 
 # Run the app
