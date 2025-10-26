@@ -89,8 +89,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://bom-front.vercel.app",
     "https://bom-front-production.up.railway.app",
     "https://bom-front-production-140a.up.railway.app",
-    "http://web-production-6baf3.up.railway.app",
-    "https://bom-front-dgh6-git-feature-backend-herpulse.vercel.app"
+    "http://web-production-6baf3.up.railway.app"
     # Add other addresses if needed
 ]
 
@@ -253,42 +252,3 @@ AWS_STORAGE_BUCKET_NAME = "glonix"
 AWS_S3_REGION_NAME = "us-east-1"
 
 MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
-
-
-
-import sys
-import os
-
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
-            "style": "{",
-        },
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "stream": sys.stdout,  # ensures Railway & Docker see logs
-            "formatter": "verbose",
-        },
-    },
-    "root": {
-        "handlers": ["console"],
-        "level": os.getenv("DJANGO_LOG_LEVEL", "DEBUG"),
-    },
-    "loggers": {
-        "django": {
-            "handlers": ["console"],
-            "level": "INFO",
-            "propagate": True,
-        },
-        "django.server": {
-            "handlers": ["console"],
-            "level": "ERROR",
-            "propagate": False,
-        },
-    },
-}
