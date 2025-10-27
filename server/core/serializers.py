@@ -1892,7 +1892,7 @@ class QuoteSerializer(serializers.ModelSerializer):
     
     bank_detail_id = serializers.PrimaryKeyRelatedField(
         queryset=BankDetail.objects.all(),
-        source="bank_detail",
+        source="bank_details",
         write_only=True,
         required=False
     )
