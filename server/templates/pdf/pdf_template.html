@@ -379,11 +379,12 @@
             
             <!-- Footer Section -->
             <div class="footer-section">
-                <div class="section-title">Notes</div>
+                <div class="section-title">Notes : {{notes}}
+                </div>
                 <div class="section-title">Bank Details:</div>
                 <div class="bank-details">
                     NAME : {{ bank_details.name }}<br>
-                    AC NO : {{ bank_details.number }}<br>
+                    AC NO : {{ bank_details.account_number }}<br>
                     BANK : {{ bank_details.bank_name }}<br>
                     IFSC : {{ bank_details.ifsc }}<br>
                     Swift code : {{ bank_details.swift }}
