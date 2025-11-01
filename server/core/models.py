@@ -765,16 +765,50 @@ class QuoteItem(DocumentItemBase):
         related_name="item_details",
         on_delete=models.CASCADE,
     )
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, null=True, blank=True)
+    
+    # Manual entry fields
+    is_manual_item = models.BooleanField(default=False)
+    manual_item_name = models.CharField(max_length=255, blank=True, null=True)
+    manual_item_description = models.TextField(blank=True, null=True)
+    manual_hsn_code = models.CharField(max_length=20, blank=True, null=True)
+    
     quote_item_number = models.PositiveIntegerField()
 
     class Meta:
         unique_together = ("quote", "quote_item_number")
+    
+    def clean(self):
+        """Validate each item independently"""
+        if self.is_manual_item:
+            if not self.manual_item_name:
+                raise ValidationError("Manual item name is required")
+            if self.item:
+                raise ValidationError("Cannot have both inventory item and manual entry")
+        else:
+            if not self.item:
+                raise ValidationError("Must select an inventory item")
+    
+    def get_item_name(self):
+        return self.manual_item_name if self.is_manual_item else self.item.name
+    
+    def get_hsn_code(self):
+        if self.is_manual_item:
+            return self.manual_hsn_code or ""
+        return self.item.hsn_code if self.item else ""
+    
+    def get_description(self):
+        if self.is_manual_item:
+            return self.manual_item_description or ""
+        return self.item.sales_description if self.item else ""
 
     def __str__(self):
+        item_name = self.get_item_name()  # ✅ Use helper method
         return (
-            f"[{self.quote_item_number}] {self.item.name} x {self.quantity} "
+            f"[{self.quote_item_number}] {item_name} x {self.quantity} "
             f"for Quote {self.quote.quote_number}"
-        )  # pylint: disable=no-member
+        ) # pylint: disable=no-member
+
 
 class DraftQuote(models.Model):
 

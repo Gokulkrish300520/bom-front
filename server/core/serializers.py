@@ -1841,27 +1841,82 @@ class PaymentSerializer(serializers.ModelSerializer):
 ################################################################################
 
 ############################ Quote Serializers #################################
-
 class QuoteItemSerializer(serializers.ModelSerializer):
-    """Serializer for QuoteItem model."""
-    hsn_code = serializers.CharField(source="item.hsn_code", read_only=True)
-    item_description = serializers.CharField(source="item.sales_description", read_only=True)
+    """Serializer for QuoteItem model - Flat structure without nested item."""
+    
+    # Write-only field for selecting inventory item
     item_id = serializers.PrimaryKeyRelatedField(
-        queryset=Item.objects.all(), source="item"
+        queryset=Item.objects.all(), 
+        source="item", 
+        write_only=True,
+        required=False,
+        allow_null=True
     )
+    
+    # Computed fields - always populated for both inventory and manual items
+    item_name = serializers.SerializerMethodField()
+    hsn_code = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
     quote_item_number = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = QuoteItem
-        fields = ["quote_item_number", "item_id","hsn_code", "item_description","quantity", "rate", "amount"]
-        read_only_fields = ["quote_item_number", "amount","hsn_code"]
+        fields = [
+            "id",
+            "item_id",                     # Just ID for reference
+            "is_manual_item",
+            "manual_item_name",
+            "manual_item_description",
+            "manual_hsn_code",
+            "item_name",                   # Always computed
+            "hsn_code",                    # Always computed
+            "description",                 # Always computed                   
+            "quantity",
+            "rate",
+            "amount",
+            "quote_item_number",
+        ]
+        read_only_fields = ["id", "amount", "item_name", "hsn_code", "description", "unit"]
+    
+    def get_item_name(self, obj):
+        """Get name from manual entry or inventory item"""
+        return obj.get_item_name()
+    
+    def get_hsn_code(self, obj):
+        """Get HSN from manual entry or inventory item"""
+        return obj.get_hsn_code()
+    
+    def get_description(self, obj):
+        """Get description from manual entry or inventory item"""
+        return obj.get_description()
 
     def validate(self, data):
+        # For updates, check instance values if not in data
+        is_manual = data.get('is_manual_item', self.instance.is_manual_item if self.instance else False)
+        item = data.get('item', self.instance.item if self.instance else None)
+        manual_name = data.get('manual_item_name', self.instance.manual_item_name if self.instance else None)
+        
+        if is_manual:
+            if not manual_name:
+                raise serializers.ValidationError({
+                    'manual_item_name': 'This field is required for manual items.'
+                })
+            if item:
+                raise serializers.ValidationError({
+                    'item_id': 'Cannot provide both inventory item and manual entry.'
+                })
+        else:
+            if not item:
+                raise serializers.ValidationError({
+                    'item_id': 'This field is required for inventory items.'
+                })
+        
         # Ensure quantity and rate are non-negative
         if data.get("quantity", 0) < 0:
             raise serializers.ValidationError("Quantity cannot be negative")
         if data.get("rate", 0) < 0:
             raise serializers.ValidationError("Rate cannot be negative")
+        
         return data
 
 
