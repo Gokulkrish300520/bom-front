@@ -212,8 +212,6 @@
             font-size: 10pt;
             margin-bottom: 20px;
             padding: 10px;
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
             page-break-inside: avoid;
         }
         
@@ -227,7 +225,6 @@
             font-weight: bold;
             font-size: 11pt;
             margin-bottom: 10px;
-            text-decoration: underline;
         }
         
         .bank-details, .terms {
@@ -361,10 +358,35 @@
                         <td class="label">Sub Total</td>
                         <td class="text-right">₹ {{ totals.subtotal_amount }}</td>
                     </tr>
+                    <!-- Discount Row (if exists) -->
+                    {% if totals.discount_amount and totals.discount_amount != "0.00" %}
+                    <tr>
+                        <td class="label">
+                            Discount
+                            {% if totals.discount_percentage %}
+                            ({{ totals.discount_percentage }}%)
+                            {% endif %}
+                        </td>
+                        <td class="text-right">- ₹ {{ totals.discount_amount }}</td>
+                    </tr>
+                    {% endif %}
                     <tr>
                         <td class="label">IGST18 (18%)</td>
                         <td class="text-right">₹ {{ totals.gst_amount }}</td>
                     </tr>
+                    <!-- Adjustment Row (if exists) -->
+                    {% if totals.adjustment_amount and totals.adjustment_amount != "0.00" %}
+                    <tr>
+                        <td class="label">Adjustment</td>
+                        <td class="text-right">
+                            {% if totals.adjustment_amount|floatformat:2|slice:":1" == "-" %}
+                                {{ totals.adjustment_amount }}
+                            {% else %}
+                                + ₹ {{ totals.adjustment_amount }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
                     <tr class="total-row">
                         <td class="label">Total</td>
                         <td class="text-right">₹ {{ totals.total_amount }}</td>
@@ -373,7 +395,7 @@
                 
                 <div class="amount-words">
                     <strong>Total In Words:</strong><br>
-                    {{ total_in_words }}
+                    Rupees {{ total_in_words }}
                 </div>
             </div>
             

@@ -945,6 +945,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.staticfiles import finders
 from .models import Customer
 from rest_framework.decorators import permission_classes
+from num2words import num2words
 
 @permission_classes([IsAuthenticated])
 class GenerateDocumentPdfView(APIView):
@@ -992,6 +993,18 @@ class GenerateDocumentPdfView(APIView):
                 'city': customer.shipping_city,
                 # other shipping fields...
             }
+            totals = doc_data.get('totals', {})
+            # Add discount and adjustment to totals if they exist
+            totals_with_extras = {
+                'subtotal_amount': totals.get('subtotal_amount', '0.00'),
+                'discount_amount': totals.get('discount_amount', '0.00'),
+                'discount_percentage': totals.get('discount_percentage', ''),
+                'gst_amount': totals.get('gst_amount', '0.00'),
+                'adjustment_amount': totals.get('adjustment_amount', '0.00'),
+                'total_amount': totals.get('total_amount', '0.00'),
+            }
+            total_amount = float(doc_data.get('totals', {}).get('total_amount', 0))
+            total_in_words = num2words(total_amount) + " only"
             
             context = {
                 'logo_base64': self.get_logo_base64(),
@@ -1020,8 +1033,7 @@ class GenerateDocumentPdfView(APIView):
                 'items': doc_data.get('items', []),
 
                 'totals': doc_data.get('totals', {}),
-
-                'total_in_words': doc_data.get('total_in_words', ''),
+                'total_in_words': total_in_words,
                 'notes': doc_data.get('notes', []),
                 'bank_details': doc_data.get('bank_details', {}),
             }
