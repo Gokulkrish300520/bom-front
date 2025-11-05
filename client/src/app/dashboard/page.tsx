@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Card from '@/components/Card';
 import { Book, LayoutDashboard } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { isTokenExpired, refreshAccessToken } from "@/utils/auth";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function validateTokens() {
@@ -14,34 +16,31 @@ export default function DashboardPage() {
       const refreshToken = localStorage.getItem("refreshToken");
 
       if (!accessToken || !refreshToken) {
-        // No tokens, redirect to login
         router.push("/login");
         return;
       }
 
-      try {
-        // Attempt silent refresh of access token
-        const res = await fetch("https://web-production-6baf3.up.railway.app/api/auth/token/refresh/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refresh: refreshToken }),
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to refresh token");
+      if (isTokenExpired(accessToken)) {
+        const newAccess = await refreshAccessToken(refreshToken);
+        if (!newAccess) {
+          router.push("/login");
+          return;
         }
-
-        const data = await res.json();
-        localStorage.setItem("accessToken", data.access);
-      } catch (err) {
-        // Refresh failed, clear tokens and redirect to login
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        router.push("/login");
       }
+
+      setLoading(false);
     }
+
     validateTokens();
   }, [router]);
+
+  if (loading)
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-[#008060]"></div>
+    </div>
+  );
+
 
   return (
     <div className="min-h-screen px-6 py-12 bg-gradient-to-br from-[#e6f4f1] to-[#d0ebe3] font-poppins">

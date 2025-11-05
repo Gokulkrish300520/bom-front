@@ -4,6 +4,7 @@ import { Upload, Plus } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { fetchWithAuth } from "@/auth/tokenservice";
+import toast from "react-hot-toast";
 
 type CustomerType = {
   id: number;
@@ -227,7 +228,7 @@ export default function ConvertProformaToInvoicePage() {
   // Save invoice + delete proforma invoice
   const saveInvoice = async (status: "DRAFT" | "SENT") => {
     if (!selectedCustomerId) {
-      alert("Please select a customer");
+      toast.error("Please select a customer");
       return;
     }
 
@@ -268,7 +269,7 @@ export default function ConvertProformaToInvoicePage() {
       });
       if (!res.ok) {
         const err = await res.json();
-        alert(`Failed to save invoice: ${JSON.stringify(err)}`);
+        toast.error(`Failed to save invoice: ${JSON.stringify(err)}`);
         return;
       }
 
@@ -280,10 +281,10 @@ export default function ConvertProformaToInvoicePage() {
         console.warn("Failed to delete proforma invoice after conversion");
       }
 
-      alert(`Invoice ${status === "SENT" ? "Sent" : "saved as Draft"} successfully.`);
+      toast.success(`Invoice ${status === "SENT" ? "Sent" : "saved as Draft"} successfully.`);
       router.push("/books/sales/invoice");
     } catch (err) {
-      alert("Error saving invoice.");
+      toast.error("Error saving invoice.");
       console.error(err);
     }
   };

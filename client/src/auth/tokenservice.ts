@@ -13,7 +13,9 @@ export async function refreshAccessToken() {
   if (!res.ok) throw new Error("Failed to refresh token");
 
   const data = await res.json();
-  localStorage.setItem("accessToken", data.access);
+  if (data.access) localStorage.setItem("accessToken", data.access);
+  if (data.refresh) localStorage.setItem("refreshToken", data.refresh);
+
   return data.access;
 }
 

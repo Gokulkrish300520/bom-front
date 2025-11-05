@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchWithAuth } from "@/auth/tokenservice";
 import { FaEnvelope, FaPhone, FaUser } from "react-icons/fa";
+import toast from "react-hot-toast";
 
 type ContactPerson = {
   salutation?: string;
@@ -21,6 +22,9 @@ type Item = {
   sales_description?: string;
 };
 
+type BankDetails = {
+  name : string;
+}
 type Customer = {
   id: number;
   customer_type: string;
@@ -67,22 +71,25 @@ type Quote = {
   customer: Customer;
   quote_number: string;
   reference_number: string;
+  deal_no:string;
   quote_date: string;
-  expiry_date: string;
+  due_date: string;
   salesperson: string;
   project_name: string;
   subject: string;
   item_details: unknown[];
   customer_notes?: string;
   terms_and_conditions?: string;
-  subtotal: string;
-  discount: string;
-  tax_type: string;
+  subtotal_amount: string;
+  discount_amount: string;
   tax_percentage: string;
-  adjustment: string;
+  discount_percentage: string;
+  gst_amount: string;
+  adjustment_amount: string;
   total_amount: string;
   status: string;
   created_at: string;
+  bank_details: BankDetails;
 };
 
 type QuotesApiResponse = {
@@ -164,9 +171,12 @@ export default function QuoteDetailPage() {
           Back
         </button>
       </div>
+      <h2 className="text-xl font-semibold text-green-800">
+          Deal No: {quote.deal_no}
+        </h2>
 
       {/* Associated Customer Info */}
-      <div className="mb-6">
+      <div className="mt-4 mb-6">
         <h3 className="font-semibold text-green-700 mb-2">Customer Info</h3>
         <div className="flex gap-6">
           <div className="flex items-center gap-2 text-green-700">
@@ -186,18 +196,18 @@ export default function QuoteDetailPage() {
           Type: {quote.customer.customer_type === "business" ? "Business" : "Individual"}
         </div>
         <div className="text-sm mt-4">
-  GST Number: {getGSTNumber(quote.customer.custom_fields) ?? "N/A"}
-</div>
-
+        GST Number: {getGSTNumber(quote.customer.custom_fields) ?? "N/A"}
       </div>
+      </div>
+
 
       {/* Quote Details */}
       <div className="mt-6">
         <h3 className="font-semibold text-green-700 mb-2">Quote Details</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
           <div>
-            <span className="text-gray-700">Reference Number:</span>{" "}
-            <span className="text-gray-900">{quote.reference_number}</span>
+            <span className="text-gray-700">Bank Details:</span>{" "}
+            <span className="text-gray-900">{quote.bank_details.name}</span>
           </div>
           <div>
             <span className="text-gray-700">Quote Date:</span>{" "}
@@ -205,7 +215,7 @@ export default function QuoteDetailPage() {
           </div>
           <div>
             <span className="text-gray-700">Expiry Date:</span>{" "}
-            <span className="text-gray-900">{quote.expiry_date}</span>
+            <span className="text-gray-900">{quote.due_date}</span>
           </div>
           <div>
             <span className="text-gray-700">Salesperson:</span>{" "}
@@ -227,31 +237,51 @@ export default function QuoteDetailPage() {
       </div>
 
       {/* Financial Section */}
-      <div className="mt-8">
-        <h3 className="font-semibold text-green-700 mb-2">Amount Details</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-          <div>
-            <span className="text-gray-700">Subtotal:</span>{" "}
-            <span className="text-gray-900">₹{parseFloat(quote.subtotal).toFixed(2)}</span>
+      <div className="mt-10 border rounded-xl shadow-sm bg-green-50/30 p-6">
+        <h3 className="font-semibold text-green-800 mb-4 text-lg border-b border-green-200 pb-2">
+          Amount Summary
+        </h3>
+
+        <div className="flex flex-col gap-3 text-sm text-gray-800">
+          <div className="flex justify-between">
+            <span>Subtotal</span>
+            <span className="font-medium">₹{parseFloat(quote.subtotal_amount).toFixed(2)}</span>
           </div>
-          <div>
-            <span className="text-gray-700">Discount:</span>{" "}
-            <span className="text-gray-900">{quote.discount}%</span>
-          </div>
-          <div>
-            <span className="text-gray-700">Tax Type:</span>{" "}
-            <span className="text-gray-900">{quote.tax_type} ({quote.tax_percentage}%)</span>
-          </div>
-          <div>
-            <span className="text-gray-700">Adjustment:</span>{" "}
-            <span className="text-gray-900">₹{parseFloat(quote.adjustment).toFixed(2)}</span>
-          </div>
-          <div>
-            <span className="text-gray-700">Total Amount:</span>{" "}
-            <span className="text-gray-900 font-bold">₹{parseFloat(quote.total_amount).toFixed(2)}</span>
+
+          {parseFloat(quote.discount_percentage) > 0 && (
+            <div className="flex justify-between">
+              <span>Discount ({quote.discount_percentage}%)</span>
+              <span className="text-red-600">- ₹{parseFloat(quote.discount_amount).toFixed(2)}</span>
+            </div>
+          )}
+
+          {parseFloat(quote.tax_percentage) > 0 && (
+            <div className="flex justify-between">
+              <span>GST ({quote.tax_percentage}%)</span>
+              <span className="text-blue-600">+ ₹{parseFloat(quote.gst_amount).toFixed(2)}</span>
+            </div>
+          )}
+
+          {parseFloat(quote.adjustment_amount) !== 0 && (
+            <div className="flex justify-between">
+              <span>Adjustment</span>
+              <span className={parseFloat(quote.adjustment_amount) < 0 ? "text-red-600" : "text-green-600"}>
+                {parseFloat(quote.adjustment_amount) < 0 ? "-" : "+"} ₹{Math.abs(parseFloat(quote.adjustment_amount)).toFixed(2)}
+              </span>
+            </div>
+          )}
+
+          <div className="border-t border-green-200 my-2"></div>
+
+          <div className="flex justify-between text-base font-semibold text-green-800">
+            <span>Total Amount</span>
+            <span className="text-green-900 font-bold text-lg">
+              ₹{parseFloat(quote.total_amount).toFixed(2)}
+            </span>
           </div>
         </div>
       </div>
+
 
       {/* Notes and Terms */}
       {quote.customer_notes && (

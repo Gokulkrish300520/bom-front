@@ -1,58 +1,36 @@
 "use client";
 
-import SecondarySidebar from "./components/SecondarySidebar";
+import { useState } from "react";
+import { usePathname } from "next/navigation";
 import Sidebar from "./components/Sidebar";
 import TopNavbar from "./components/TopNavbar";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
 
 export default function CRMLayout({ children }: { children: React.ReactNode }) {
-    const router = useRouter();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const pathname = usePathname();
 
-    const handleLogout = async () => {
-    try {
-      const refresh = localStorage.getItem("refresh"); // stored refresh token
-      if (!refresh) {
-        router.push("/login");
-        return;
-      }
-
-      await fetch("https://web-production-6baf3.up.railway.app/api/auth/logout/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ refresh }),
-      });
-
-      // Clear tokens from storage
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-
-      router.push("/login"); // redirect after logout
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
   return (
-    <>
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Navbar */}
-        <header className="border-b border-gray-200">
-           <TopNavbar onLogout={handleLogout} />
-        </header>
-      </div>
-      <div className="flex h-screen">
-        {/* Sidebar */}
-        <aside className="border-r border-gray-200">
-          <Sidebar />
-        </aside>
+    <div className="flex min-h-screen flex-col">
+      {/* Top Navigation Bar - appears on all CRM pages */}
+      <TopNavbar onOpenSidebar={() => setMobileSidebarOpen(true)} />
 
-        {/* Page Content */}
-        <main className="flex-1 overf   low-y-auto p-4">{children}</main>
+      <div className="flex flex-1">
+        {/* Desktop sidebar (visible md and up) */}
+        <div className="hidden md:block border-r border-gray-200">
+          <Sidebar />
+        </div>
+
+        {/* Mobile sidebar (only visible on small screens) */}
+        <div className="md:hidden">
+          <Sidebar
+            isMobileOpen={mobileSidebarOpen}
+            onMobileClose={() => setMobileSidebarOpen(false)}
+          />
+        </div>
+
+        {/* Page Content - children will include their own navbars if needed */}
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
-    </>
+    </div>
   );
 }

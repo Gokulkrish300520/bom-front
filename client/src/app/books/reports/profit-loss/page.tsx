@@ -44,25 +44,35 @@ export default function ProfitLossPage() {
 
   // Fetch customers and deals
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [custRes, dealsRes] = await Promise.all([
-          fetchWithAuth("https://web-production-6baf3.up.railway.app/api/customers/"),
-          fetchWithAuth("https://web-production-6baf3.up.railway.app/api/deals/"),
-        ]);
+  async function fetchData() {
+    try {
+      // Fetch customers
+      const custRes = await fetchWithAuth(
+        "https://web-production-6baf3.up.railway.app/api/customers/"
+      );
+      const custData = await custRes.json();
+      setCustomers(custData?.results ?? []);
 
-        const custData = await custRes.json();
+      // Fetch all deals recursively
+      let allDeals: Deal[] = [];
+      let nextUrl: string | null = "https://web-production-6baf3.up.railway.app/api/deals/";
+
+      while (nextUrl) {
+        const dealsRes = await fetchWithAuth(nextUrl);
         const dealsData = await dealsRes.json();
-
-        setCustomers(custData?.results ?? []);
-        setDeals(dealsData?.results ?? []);
-      } catch (err) {
-        console.error(err);
-        alert("Failed to fetch customers or deals.");
+        allDeals = [...allDeals, ...(dealsData.results ?? [])];
+        nextUrl = dealsData.next; // go to next page if exists
       }
+
+      setDeals(allDeals);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch customers or deals.");
     }
-    fetchData();
-  }, []);
+  }
+  fetchData();
+}, []);
+
 
   // Fetch Profit & Loss report
   const handleFetchReport = async () => {
@@ -189,9 +199,11 @@ export default function ProfitLossPage() {
           {/* Chart */}
           {chartData && (
             <div className="bg-white shadow rounded p-4">
-              <h2 className="text-xl font-semibold mb-4">Breakdown Chart</h2>
-              <Bar data={chartData} />
+            <h2 className="text-xl font-semibold mb-4">Breakdown Chart</h2>
+            <div className="h-64 md:h-96">
+              <Bar data={chartData} options={{ maintainAspectRatio: false }} />
             </div>
+          </div>
           )}
         </div>
       )}

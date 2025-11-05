@@ -2,6 +2,8 @@
 
 import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
+import toast from "react-hot-toast";
+import Breadcrumb from "@/app/breadcrumb";
 import {
   FaUser,
   FaEnvelope,
@@ -363,12 +365,13 @@ export default function EditVendorPage() {
       });
       if (!res.ok) {
         const err = await res.json();
-        alert("Failed to save vendor: " + JSON.stringify(err));
+        toast.error("Failed to save vendor: " + JSON.stringify(err));
         return;
       }
+      toast.success("Vendor Updated Successfully")
       router.push("/books/purchase/vendors");
     } catch (e) {
-      alert("Network error, please try again.");
+      toast.error("Network error, please try again.");
       console.error(e);
     }
   }
@@ -379,6 +382,7 @@ export default function EditVendorPage() {
   return (
     <div className="min-h-screen p-6 bg-green-50 sm:p-8">
       <div className="max-w-6xl p-6 mx-auto bg-white border border-green-200 rounded-lg shadow">
+        <div><Breadcrumb/></div>
         <h1 className="mb-6 text-2xl font-semibold text-green-700">Edit Vendor</h1>
 
         {/* Vendor Type */}

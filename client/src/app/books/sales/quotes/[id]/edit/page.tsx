@@ -3,6 +3,7 @@
 import { useRouter, useParams } from "next/navigation";
 import { useMemo, useState, useEffect, ChangeEvent } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
+import toast from "react-hot-toast";
 
 type ItemRow = { id: string; name: string; qty: number; rate: number };
 
@@ -119,15 +120,15 @@ export default function EditQuotePage() {
 
   async function updateQuote() {
     if (!quoteNumber.trim()) {
-      alert("Quote Number is required");
+      toast.error("Quote Number is required");
       return;
     }
     if (!customerName.trim()) {
-      alert("Customer Name is required");
+      toast.error("Customer Name is required");
       return;
     }
     if (!quoteDate) {
-      alert("Quote Date is required");
+      toast.error("Quote Date is required");
       return;
     }
 
@@ -166,12 +167,12 @@ export default function EditQuotePage() {
       });
       if (!res.ok) {
         const errorData = await res.json();
-        alert("Failed to update quote: " + JSON.stringify(errorData));
+        toast.error("Failed to update quote: " + JSON.stringify(errorData));
         return;
       }
       router.push("/books/sales/quotes");
     } catch (err) {
-      alert("Unexpected error updating quote.");
+      toast.error("Unexpected error updating quote.");
       console.error(err);
     }
   }

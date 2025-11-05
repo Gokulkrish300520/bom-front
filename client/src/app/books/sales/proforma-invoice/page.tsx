@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { FaTrash } from "react-icons/fa"; // import at top
 import { LuMerge } from "react-icons/lu";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { TbPlayerStop } from "react-icons/tb";
 
 type CustomerType = {
   id: number;
@@ -25,7 +27,7 @@ type ProformaInvoice = {
   customer: CustomerType;
   invoice_number: string;
   invoice_date: string; // ISO date
-  due_date : string;
+  expiry_date : string;
   total_amount: string | number;
   status: ProformaStatus;
   notes: string;
@@ -56,8 +58,9 @@ export default function ProformaInvoicesPage() {
     });
     if (!res.ok) throw new Error("Failed to delete proforma invoice");
     setProformas(curr => curr.filter(inv => inv.id !== id));
+    toast.success("Proforma-invoice Deleted Successfully")
   } catch (err) {
-    alert("Failed to delete proforma invoice");
+    toast.error("Failed to delete proforma invoice");
     console.error(err);
   }
 };
@@ -95,7 +98,7 @@ export default function ProformaInvoicesPage() {
     });
     if (!res.ok) {
       const err = await res.json();
-      alert(`Failed to update status: ${JSON.stringify(err)}`);
+      toast.error(`Failed to update status: ${JSON.stringify(err)}`);
       return;
     }
     setProformas((curr) =>
@@ -107,7 +110,7 @@ export default function ProformaInvoicesPage() {
       return updated;
     });
   } catch (err) {
-    alert("Network error updating status");
+    toast.error("Network error updating status");
     console.error(err);
   }
 }
@@ -168,8 +171,10 @@ export default function ProformaInvoicesPage() {
               <th className="p-3 text-left">Date</th>
               <th className="p-3 text-left">Invoice Number</th>
               <th className="p-3 text-left">Customer Name</th>
-              <th className="p-3 text-left">Status</th>
+              <th className="p-3 text-left">Expiry Date</th>
               <th className="p-3 text-left">Amount</th>
+              <th className="p-3 text-left">Created at</th>
+              <th className="p-3 text-left">Status</th>
               <th className="p-3 text-left">Actions</th>
             </tr>
           </thead>
@@ -189,10 +194,18 @@ export default function ProformaInvoicesPage() {
           className="transition border-b hover:bg-green-50"
         >
           <td className="p-3">{formatDate(inv.invoice_date)}</td>
-          <td className="p-3">
+          <td className="p-3 text-green-700">
               {inv.invoice_number}
           </td>
           <td className="p-3">{inv.customer.display_name}</td>
+          <td className="p-3">{inv.expiry_date}</td>
+          <td className="p-3">₹{Number(inv.total_amount).toLocaleString()}</td>
+          <td className="p-4">
+            {new Date(inv.created_at).toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })} </td>
           <td className="p-3">
             {editing ? (
               <select
@@ -222,8 +235,8 @@ export default function ProformaInvoicesPage() {
               </span>
             )}
           </td>
-          <td className="p-3">₹{Number(inv.total_amount).toLocaleString()}</td>
-          <td className="p-3 flex gap-2 items-center">
+          
+          <td className=" p-3 flex gap-2 items-center ">
             {editing ? (
               <>
                 <button

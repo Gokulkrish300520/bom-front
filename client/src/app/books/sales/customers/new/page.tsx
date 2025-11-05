@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, ChangeEvent } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
+import toast from "react-hot-toast";
 
 import {
   FaUser,
@@ -330,12 +331,13 @@ export default function NewCustomerPage() {
       if (!res.ok) {
         const errorData = await res.json();
         console.error("Backend validation error:", errorData);
-        alert("Failed to save customer: " + (errorData.detail || JSON.stringify(errorData)));
+        toast.error("Failed to save customer: " + (errorData.detail || JSON.stringify(errorData)));
         return;
       }
+      toast.success("Customer Saved Successfully")
       router.push("/books/sales/customers");
     } catch (err) {
-      alert("Error saving customer.");
+      toast.error("Error saving customer.");
       console.error(err);
     }
   }

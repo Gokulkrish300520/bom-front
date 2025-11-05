@@ -7,7 +7,7 @@ import { fetchWithAuth } from "@/auth/tokenservice";
 import { FaTrash, FaMix } from "react-icons/fa";
 import { LuMerge  } from "react-icons/lu";
 import { useRouter } from "next/navigation";
-
+import toast from "react-hot-toast";
 
 type CustomerType = {
   id: number;
@@ -27,7 +27,7 @@ type Quote = {
   quote_number: string;
   reference_number: string;
   quote_date: string;
-  expiry_date: string;
+  due_date: string;
   salesperson: string;
   project_name: string;
   subject: string;
@@ -96,7 +96,7 @@ export default function QuotesPage() {
     });
     if (!res.ok) {
       const err = await res.json();
-      alert(`Failed to update status: ${JSON.stringify(err)}`);
+      toast.error(`Failed to update status: ${JSON.stringify(err)}`);
       return;
     }
     setQuotes((curr) =>
@@ -108,7 +108,7 @@ export default function QuotesPage() {
       return updated;
     });
   } catch (err) {
-    alert("Network error updating status");
+    toast.error("Network error updating status");
     console.error(err);
   }
   }
@@ -140,8 +140,9 @@ export default function QuotesPage() {
       const res = await fetchWithAuth(`${baseApiUrl}${id}/`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete quote");
       setQuotes((curr) => curr.filter((q) => q.id !== id));
+      toast.success("Deleted Successfully")
     } catch (err) {
-      alert("Failed to delete quote");
+      toast.error("Failed to delete quote");
       console.error(err);
     }
   };
@@ -187,7 +188,7 @@ export default function QuotesPage() {
             <tr>
               <th className="px-4 py-3 font-semibold text-left">Date</th>
               <th className="px-4 py-3 font-semibold text-left">Quote Number</th>
-              <th className="px-4 py-3 font-semibold text-left">Customer</th>
+              <th className="px-4 py-3 font-semibold text-left">Customer Name</th>
               <th className="px-4 py-3 font-semibold text-left">Expiry Date</th>
               <th className="px-4 py-3 font-semibold text-right">Amount</th>
               <th className="px-4 py-3 font-semibold text-right">Created_at</th>
@@ -212,7 +213,7 @@ export default function QuotesPage() {
             {q.quote_number}
           </td>
           <td className="px-4 py-3">{q.customer.display_name}</td>
-          <td className="px-4 py-3">{formatDate(q.expiry_date)}</td>
+          <td className="px-4 py-3">{formatDate(q.due_date)}</td>
           <td className="px-4 py-3 font-medium text-right">₹{q.total_amount}</td>
           <td className="px-5 py-3 text-right">
             {new Date(q.created_at).toLocaleTimeString("en-GB", {

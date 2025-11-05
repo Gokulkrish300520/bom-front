@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
+import toast from "react-hot-toast";
 
 type Customer = {
   id: number;
@@ -242,14 +243,14 @@ export default function NewProformaInvoice() {
     );
     if (!res.ok) {
       const err = await res.json();
-      alert(`Failed to save proforma invoice: ${JSON.stringify(err)}`);
+      toast.error(`Failed to save proforma invoice: ${JSON.stringify(err)}`);
       return;
     }
 
-
+    toast.success("Proforma-Created Successfully")
     router.push("/books/sales/proforma-invoice");
   } catch (err) {
-    alert("Error saving proforma invoice.");
+    toast.error("Error saving proforma invoice.");
     console.error(err);
   }
 };

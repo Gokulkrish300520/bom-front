@@ -1,140 +1,194 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { FaDownload } from "react-icons/fa";
+import { useRouter, useParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { fetchWithAuth } from "@/auth/tokenservice";
+import toast from "react-hot-toast";
+import Breadcrumb from "@/app/breadcrumb";
 
-type VendorType = {
+interface BillOrderItem {
   id: number;
-  display_name: string;
-};
-
-type ItemRow = {
-  id: number;
-  item: string;
-  qty: number;
-  rate: number;
-  amount: number;
-};
-
-type BillOrder = {
-  id: string;
-  vendor: VendorType;
-  bill_number: string;
-  bill_date: string;
-  deal_number?: string;
-  total_amount: number;
-  country?: string;
-  vendor_address?: string;
-  vendor_state?: string;
-  items: ItemRow[];
-  exchange_rate?: number;
-  created_at: string;
-};
-
-interface Props {
-  params: { id: string };
+  item_name: string;
+  description: string;
+  item_specification: string;
+  brand: string;
+  hsn_code: string;
+  quantity: string;
+  unit_price: string;
+  total_price: string;
 }
 
-export default function BillOrderDetailPage({ params }: Props) {
-  const router = useRouter();
-  const { id } = params;
+interface PaymentTransaction {
+  id: number;
+  amount: string;
+  paid_by: string;
+  payment_reference_no: string;
+  paid_on: string;
+}
 
+interface BillOrder {
+  id: number;
+  vendor: string;
+  deal_no: string;
+  bill_number: string;
+  status: string;
+  bill_date: string;
+  due_date: string;
+  notes: string;
+  subtotal: string;
+  tax_type: string;
+  tax_percentage: string;
+  adjustments: string;
+  total_amount: string;
+  paid_amount: string;
+  amount_to_pay: string;
+  created_at: string;
+  created_by: string;
+  billorder_items: BillOrderItem[];
+  transactions?: PaymentTransaction[]; // new field
+}
+
+export default function VendorBillPage() {
+  const router = useRouter();
+  const params = useParams();
   const [bill, setBill] = useState<BillOrder | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
-    const stored = localStorage.getItem("bill_orders");
-    const bills = stored ? JSON.parse(stored) : [];
-    const found = bills.find((b: BillOrder) => b.id === id);
-    if (found) setBill(found);
-  }, [id]);
+    const fetchBill = async () => {
+      try {
+        if (!params?.id) return;
+        const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
-  const formatDate = (str: string) => {
-    try {
-      return new Date(str).toLocaleDateString();
-    } catch {
-      return str;
-    }
-  };
+        const res = await fetchWithAuth(
+          `https://web-production-6baf3.up.railway.app/api/billorders/${id}/`
+        );
 
-  const downloadBill = () => {
-    const element = document.getElementById("bill-detail");
-    if (!element) return;
+        if (!res.ok) throw new Error("Failed to fetch bill order");
 
-    import("html2canvas").then((html2canvas) => {
-      html2canvas.default(element).then((canvas) => {
-        const imgData = canvas.toDataURL("image/png");
-        import("jspdf").then((jsPDF) => {
-          const pdf = new jsPDF.default("p", "pt", "a4");
-          const imgProps = pdf.getImageProperties(imgData);
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-          pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-          pdf.save(`${bill?.bill_number || "bill"}.pdf`);
-        });
-      });
-    });
-  };
+        const data = await res.json();
+        setBill(data);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load bill order.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  if (!bill) return <p className="p-4">Loading bill details...</p>;
+    fetchBill();
+  }, [params?.id]);
+
+  if (loading) return <p className="p-6 text-green-700">Loading...</p>;
+  if (!bill) return <p className="p-6 text-red-700">Bill order not found.</p>;
+
+  const totalAmount = parseFloat(bill.total_amount || "0");
+  const paidAmount = parseFloat(bill.paid_amount || "0");
+  const toBePaid = parseFloat(bill.amount_to_pay || "0");
+  const subtotal = parseFloat(bill.subtotal || "0");
+  const adjustments = parseFloat(bill.adjustments || "0");
+  const tax = parseFloat(bill.tax_percentage || "0");
 
   return (
-    <div className="min-h-screen p-6 bg-[#f3fdf5]">
-      <div className="max-w-4xl p-6 mx-auto bg-white rounded shadow">
-        <div id="bill-detail">
-          <h1 className="mb-4 text-2xl font-bold text-green-900">Bill Order Details</h1>
-          <div className="mb-4 space-y-2">
-            <p><strong>Bill Number:</strong> {bill.bill_number}</p>
-            <p><strong>Deal Number:</strong> {bill.deal_number || "-"}</p>
-            <p><strong>Date:</strong> {formatDate(bill.bill_date)}</p>
-            <p><strong>Vendor:</strong> {bill.vendor.display_name}</p>
-            <p><strong>Country:</strong> {bill.country || "-"}</p>
-          </div>
+    <div className="min-h-screen p-6 bg-gray-50">
+      <div><Breadcrumb/></div>
 
-          <table className="w-full border border-collapse border-gray-300">
+      {/* Back Button */}
+      <button
+        onClick={() => router.back()}
+        className="flex items-center mb-6 px-3 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200 transition"
+      >
+        <ArrowLeft className="mr-2" /> Back
+      </button>
+
+      {/* Page Title */}
+      <h1 className="mb-6 text-3xl font-bold text-green-900">Bill Order Details</h1>
+
+      {/* Bill Info */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 bg-white p-6 rounded shadow">
+        <div>
+          <p><span className="font-semibold">Vendor:</span> {bill.vendor}</p>
+          <p><span className="font-semibold">Deal Number:</span> {bill.deal_no}</p>
+          <p><span className="font-semibold">Bill Number:</span> {bill.bill_number}</p>
+          <p><span className="font-semibold">Bill Date:</span> {bill.bill_date}</p>
+          <p><span className="font-semibold">Due Date:</span> {bill.due_date}</p>
+        </div>
+        <div>
+          <p><span className="font-semibold">Status:</span> {bill.status}</p>
+          <p><span className="font-semibold">Notes:</span> {bill.notes}</p>
+          <p><span className="font-semibold">Subtotal:</span> ₹{subtotal.toLocaleString()}</p>
+          <p><span className="font-semibold">Tax ({bill.tax_type} {bill.tax_percentage}%):</span> ₹{((subtotal * tax) / 100).toLocaleString()}</p>
+          <p><span className="font-semibold">Adjustments:</span> ₹{adjustments.toLocaleString()}</p>
+        </div>
+      </div>
+
+      {/* Items Table */}
+      <div className="overflow-x-auto rounded shadow mb-8">
+        <table className="min-w-full divide-y divide-green-200 table-auto">
+          <thead className="bg-green-100 sticky top-0">
+            <tr>
+              {["Item", "Description", "Specification", "HSN Code", "Brand", "Qty", "Unit Price", "Total"].map((header) => (
+                <th key={header} className="px-4 py-2 text-left text-green-900 font-semibold">
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-green-200">
+            {bill.billorder_items.map((row) => (
+              <tr key={row.id} className="hover:bg-green-50 transition-colors">
+                <td className="px-4 py-2">{row.item_name}</td>
+                <td className="px-4 py-2">{row.description}</td>
+                <td className="px-4 py-2">{row.item_specification}</td>
+                <td className="px-4 py-2">{row.hsn_code}</td>
+                <td className="px-4 py-2">{row.brand}</td>
+                <td className="px-4 py-2">{Number(row.quantity).toLocaleString()}</td>
+                <td className="px-4 py-2">₹{Number(row.unit_price).toFixed(2)}</td>
+                <td className="px-4 py-2 font-semibold text-green-900">₹{Number(row.total_price).toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Transaction History Section */}
+      {bill.transactions && bill.transactions.length > 0 && (
+        <div className="bg-white p-6 rounded shadow mb-8">
+          <h2 className="text-2xl font-bold text-green-900 mb-4">Payment Transactions</h2>
+          <table className="min-w-full divide-y divide-green-200 table-auto">
             <thead className="bg-green-100">
               <tr>
-                <th className="p-2 border">Item</th>
-                <th className="p-2 border">Qty</th>
-                <th className="p-2 border">Rate</th>
-                <th className="p-2 border">Amount</th>
+                {["Date", "Amount", "Paid By", "Reference No"].map((header) => (
+                  <th key={header} className="px-4 py-2 text-left text-green-900 font-semibold">
+                    {header}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody>
-              {bill.items.map((row) => (
-                <tr key={row.id}>
-                  <td className="p-2 border">{row.item}</td>
-                  <td className="p-2 text-center border">{row.qty}</td>
-                  <td className="p-2 text-right border">₹{row.rate}</td>
-                  <td className="p-2 text-right border">₹{row.amount.toFixed(2)}</td>
+            <tbody className="bg-white divide-y divide-green-200">
+              {bill.transactions.map((txn) => (
+                <tr key={txn.id} className="hover:bg-green-50">
+                  <td className="px-4 py-2">{new Date(txn.paid_on).toLocaleString()}</td>
+                  <td className="px-4 py-2 font-semibold text-green-800">₹{Number(txn.amount).toLocaleString()}</td>
+                  <td className="px-4 py-2">{txn.paid_by}</td>
+                  <td className="px-4 py-2">{txn.payment_reference_no || "-"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-
-          <div className="flex justify-between mt-4">
-            <p><strong>Total Amount:</strong> ₹{bill.total_amount.toLocaleString()}</p>
-            {bill.exchange_rate && (
-              <p><strong>Exchange Rate:</strong> {bill.exchange_rate}</p>
-            )}
-          </div>
         </div>
+      )}
 
-        <div className="flex gap-4 mt-6">
-          <button
-            onClick={downloadBill}
-            className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700"
-          >
-            <FaDownload /> Download
-          </button>
-          <button
-            onClick={() => router.back()}
-            className="px-4 py-2 text-gray-700 border rounded hover:bg-gray-100"
-          >
-            Back
-          </button>
-        </div>
+      {/* Totals */}
+      <div className="mt-6 text-right text-xl font-bold text-green-900">
+        Total Amount: ₹{totalAmount.toLocaleString()}
+      </div>
+      <div className="mt-2 text-right text-lg font-semibold text-green-800">
+        Amount Paid: ₹{paidAmount.toLocaleString()}
+      </div>
+      <div className="mt-2 text-right text-lg font-semibold text-green-800">
+        Remaining Amount: ₹{toBePaid.toLocaleString()}
       </div>
     </div>
   );

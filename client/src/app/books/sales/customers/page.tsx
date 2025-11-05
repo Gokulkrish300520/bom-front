@@ -6,6 +6,7 @@ import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { FaTrash } from "react-icons/fa";
 import { fetchWithAuth } from "@/auth/tokenservice";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 type Customer = {
   id: number;
@@ -14,6 +15,7 @@ type Customer = {
   company_name: string;
   email: string;
   work_phone: string;
+  mobile:string;
 };
 
 export default function CustomersPage() {
@@ -61,8 +63,9 @@ export default function CustomersPage() {
       });
       if (!res.ok) throw new Error("Delete failed");
       setCustomers((curr) => curr.filter((c) => c.id !== id));
+      toast.success("Customer Deleted Successfully")
     } catch (err) {
-      alert("Failed to delete customer");
+      toast.error("Failed to delete customer");
       console.error(err);
     }
   };
@@ -108,6 +111,7 @@ export default function CustomersPage() {
               <th className="px-4 py-3 font-semibold text-left">Company</th>
               <th className="px-4 py-3 font-semibold text-left">Email</th>
               <th className="px-4 py-3 font-semibold text-left">Work Phone</th>
+              <th className="px-4 py-3 font-semibold text-left">Mobile Phone</th>
               <th className="px-4 py-3 font-semibold text-left">Actions</th>
             </tr>
           </thead>
@@ -128,11 +132,12 @@ export default function CustomersPage() {
                   className="transition border-b hover:bg-green-200"
                 >
                   <td className="px-4 py-3 font-medium text-green-700">
-                      {c.display_name}
+                      {c.salutation.charAt(0).toUpperCase() + c.salutation.slice(1)} {c.display_name}
                   </td>
                   <td className="px-4 py-3">{c.company_name}</td>
                   <td className="px-4 py-3">{c.email}</td>
                   <td className="px-4 py-3">{c.work_phone}</td>
+                  <td className="px-4 py-3">{c.mobile}</td>
                   <td className="flex gap-2 px-4 py-3">
                     <button
                       onClick={() => router.push(`/books/sales/customers/${c.id}`)}

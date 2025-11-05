@@ -3,6 +3,7 @@
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState, ChangeEvent } from "react";
 import { fetchWithAuth } from "@/auth/tokenservice";
+import toast from "react-hot-toast";
 import {
   FaUser,
   FaEnvelope,
@@ -225,7 +226,7 @@ export default function EditCustomerPage() {
           setRemarks(data.remarks || "");
         }
       } catch (err) {
-        alert("Failed to fetch customer.");
+        toast.error("Failed to fetch customer.");
       } finally {
         setIsLoading(false);
       }
@@ -395,12 +396,13 @@ export default function EditCustomerPage() {
       );
       if (!res.ok) {
         const errorData = await res.json();
-        alert("Failed to update customer: " + JSON.stringify(errorData));
+        toast.error("Failed to update customer: " + JSON.stringify(errorData));
         return;
       }
+      toast.success("Customer Updated Successfully")
       router.push("/books/sales/customers");
     } catch (err) {
-      alert("Error updating customer.");
+      toast.error("Error updating customer.");
       console.error(err);
     }
   }

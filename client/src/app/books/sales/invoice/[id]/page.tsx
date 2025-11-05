@@ -74,14 +74,19 @@ type Invoice = {
   customer: Customer;
   deal_no: string;
   invoice_number: string;
-  order_number: string;
+  place_of_supply: string;
   invoice_date: string;
   due_date: string; // assuming a due_date exists, replace or remove if not
   status:string;
+  subtotal_amount: string;
   item_details: InvoiceItemDetail[];
   customer_notes?: string;
   terms_and_conditions?: string;
   total_amount: string;
+  discount_percentage?: string;
+  discount_amount?: string;
+  gst_amount?: string;
+  adjustment_amount?: string;
   attached_files?: { id: number; file: string; uploaded_at: string }[];
   invoice_files?: { id: number; file: string; uploaded_at: string }[];
   created_at: string;
@@ -153,6 +158,8 @@ export default function InvoiceDetailPage() {
         </div>
         <div className="text-sm mt-4">
           Company: {invoice.customer.company_name || ""} <br />
+        </div>
+        <div className="text-sm mt-4">
           Type: {invoice.customer.customer_type === "business" ? "Business" : "Individual"}
         </div>
       </div>
@@ -162,8 +169,8 @@ export default function InvoiceDetailPage() {
         <h3 className="font-semibold text-green-700 mb-2">Invoice Details</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
           <div>
-            <span className="text-gray-700">Order Number:</span>{" "}
-            <span className="text-gray-900">{invoice.order_number}</span>
+            <span className="text-gray-700">place Of Supply:</span>{" "}
+            <span className="text-gray-900">{invoice.place_of_supply || "N/A"}</span>
           </div>
           <div>
             <span className="text-gray-700">Invoice Date:</span>{" "}
@@ -177,17 +184,6 @@ export default function InvoiceDetailPage() {
           <div>
             <span className="text-gray-700">Status:</span>{" "}
             <span className="text-gray-900">{invoice.status}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Financial Section */}
-      <div className="mt-8">
-        <h3 className="font-semibold text-green-700 mb-2">Amount Details</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-          <div>
-            <span className="text-gray-700">Total Amount:</span>{" "}
-            <span className="text-gray-900 font-bold">₹{parseFloat(invoice.total_amount).toFixed(2)}</span>
           </div>
         </div>
       </div>
@@ -228,6 +224,53 @@ export default function InvoiceDetailPage() {
           <div className="text-gray-800">{invoice.customer.remarks}</div>
         </div>
       )}
+
+      {/* Financial Section */}
+      <div className="mt-8">
+        <h3 className="font-semibold text-green-700 mb-3 text-lg">Amount Details</h3>
+
+        <div className="w-full md:w-1/2 border rounded-lg p-4 bg-green-50 shadow-sm">
+          <div className="flex justify-between mb-2 text-sm">
+            <span className="text-gray-700">Subtotal:</span>
+            <span className="text-gray-900 font-medium">
+              ₹{parseFloat(invoice.subtotal_amount || "0").toFixed(2)}
+            </span>
+          </div>
+
+          <div className="flex justify-between mb-2 text-sm">
+            <span className="text-gray-700">Discount (%):</span>
+            <span className="text-gray-900 font-medium">
+              {invoice.discount_percentage ? `${invoice.discount_percentage}%` : "0%"}
+            </span>
+          </div>
+
+          <div className="flex justify-between mb-2 text-sm">
+            <span className="text-gray-700">Discount Amount:</span>
+            <span className="text-gray-900 font-medium">
+              ₹{parseFloat(invoice.discount_amount || "0").toFixed(2)}
+            </span>
+          </div>
+
+          <div className="flex justify-between mb-2 text-sm">
+            <span className="text-gray-700">GST Amount (18%):</span>
+            <span className="text-gray-900 font-medium">
+              ₹{parseFloat(invoice.gst_amount || "0").toFixed(2)}
+            </span>
+          </div>
+
+          <div className="flex justify-between mb-2 text-sm">
+            <span className="text-gray-700">Adjustment Amount:</span>
+            <span className="text-gray-900 font-medium">
+              ₹{parseFloat(invoice.adjustment_amount || "0").toFixed(2)}
+            </span>
+          </div>
+
+          <div className="border-t mt-3 pt-2 flex justify-between text-base font-bold text-green-800">
+            <span>Total Amount:</span>
+            <span>₹{parseFloat(invoice.total_amount || "0").toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
 
       {/* Item Details */}
       <div className="mt-8">

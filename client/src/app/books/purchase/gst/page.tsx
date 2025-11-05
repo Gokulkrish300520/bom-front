@@ -1,404 +1,608 @@
 "use client";
 
-import { useState, useMemo, useEffect, FC } from "react";
-import { v4 as uuidv4 } from "uuid";
-// Removed: import { useRouter } from "next/navigation";
-// Removed: import * as XLSX from "xlsx";
-// Removed: import { saveAs } from "file-saver";
+import { useEffect, useState } from "react";
+import { saveAs } from "file-saver";
+import * as XLSX from "xlsx";
+import { useRouter } from "next/navigation";
+import { fetchWithAuth } from "@/auth/tokenservice"; // your auth fetch helper
+import toast from "react-hot-toast";
+import Breadcrumb from "@/app/breadcrumb";
 
-// The XLSX and FileSaver libraries are expected to be available globally,
-// typically loaded via <script> tags in the main HTML file.
-declare var XLSX: any;
-declare var saveAs: any;
-
-
-// --- Type Definitions ---
-// This is the main data structure for a GST entry.
-export type PurchaseEntry = {
-  id: string;
-  vendor: string;
-  gstNumber: string; // <-- Added GST Number
-  dealNumber: string;
-  item: string;
+interface Row {
+  item_name: string;
   description: string;
-  itemSpecification: string;
-  hsnCode: string; // GST-specific field
+  item_specification: string;
+  hsn_code: string;
   brand: string;
-  quantity: number;
-  unitPriceINR: number;
-  total: number;
-  invoiceDate: string;
-  billUpload: string; // Stores the Base64 data of the PDF for viewing
-  paymentRequest: "High" | "Low";
-  paymentStatus: "Paid" | "Unpaid" | "Partially paid";
-  paymentReferenceNo: string;
-  paidBy: "SBI" | "ICICI" | "IOB" | "Petty Cash" | "N/A";
-};
+  quantity: string;
+  unit_price: string;
+  total_price: string;
+}
 
-// --- Prop Type Definitions ---
-type InputFieldProps = {
-  label: string;
-  name: string;
-  type?: string;
-  value: string | number;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
-  required?: boolean;
-  readOnly?: boolean;
-};
+interface Transaction {
+  id: number;
+  amount: string;
+  paid_by: string;
+  payment_reference_no: string;
+  paid_on: string;
+}
 
-type SelectFieldProps = {
-  label: string;
-  name: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  options: string[];
-  required?: boolean;
-};
+interface ImportBill {
+  id: number;
+  vendor: { display_name: string };
+  deal_no: string;
+  date: string;
+  currency: string;
+  payment_request: "High" | "Low";
+  payment_status: string;
+  payment_reference_no?: string;
+  paid_by?:string;
+  paid_amount: number;
+  amount_to_pay: number;
+  total_amount: string;
+  bill_items: Row[];
+  transactions: Transaction[];
+}
 
-// --- Reusable UI Components ---
-const InputField: FC<InputFieldProps> = ({ label, name, type = "text", value, onChange, required = false, readOnly = false }) => (
-  <div>
-    <label className="block text-sm font-medium text-green-800">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    <input
-      type={type}
-      name={name}
-      value={value}
-      onChange={onChange}
-      required={required}
-      readOnly={readOnly}
-      className={`w-full p-2 mt-1 border rounded-md focus:ring-green-500 focus:border-green-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
-    />
-  </div>
-);
+export default function ImportBillsPage() {
+  const router = useRouter();
 
-const SelectField: FC<SelectFieldProps> = ({ label, name, value, onChange, options, required = false }) => (
-  <div>
-    <label className="block text-sm font-medium text-green-800">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    <select name={name} value={value} onChange={onChange} required={required} className="w-full p-2 mt-1 border rounded-md focus:ring-green-500 focus:border-green-500">
-      {options.map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
-    </select>
-  </div>
-);
-
-// --- Entry Form Modal Component ---
-const EntryForm = ({ entry, onSave, onCancel }: { entry?: PurchaseEntry; onSave: (entry: PurchaseEntry) => void; onCancel: () => void; }) => {
-  const emptyEntry: Omit<PurchaseEntry, "id" | "total"> = {
-    vendor: "", gstNumber: "", dealNumber: "", item: "", description: "", itemSpecification: "", hsnCode: "",
-    brand: "", quantity: 0, unitPriceINR: 0, invoiceDate: "", billUpload: "",
-    paymentRequest: "Low", paymentStatus: "Unpaid", paymentReferenceNo: "", paidBy: "N/A",
-  };
-
-  const [formData, setFormData] = useState(entry ? { ...entry } : emptyEntry);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
-
-  useEffect(() => {
-    if (entry?.billUpload && entry.billUpload.startsWith("data:application/pdf")) {
-      setPreviewUrl(entry.billUpload);
-    }
-    return () => { if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl); };
-  }, [entry, previewUrl]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    const isNumeric = ["quantity", "unitPriceINR"].includes(name);
-    setFormData((prev) => ({ ...prev, [name]: isNumeric ? (value === "" ? 0 : Number(value)) : value }));
-  };
-
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setFormData(prev => ({ ...prev, billUpload: entry?.billUpload || "" }));
-      setPreviewUrl(entry?.billUpload || null);
-      return;
-    }
-    if (file.type !== "application/pdf") return alert("Please upload a PDF file only.");
-    if (file.size > 5 * 1024 * 1024) return alert("File size must be less than 5MB.");
-    
-    try {
-      const base64Data = await convertFileToBase64(file);
-      setFormData(prev => ({ ...prev, billUpload: base64Data }));
-      if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(URL.createObjectURL(file));
-    } catch (error) {
-      console.error("Error converting file to Base64:", error);
-      alert("There was an error processing the file.");
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.billUpload) {
-      alert("A bill upload (PDF) is required before saving.");
-      return;
-    }
-    const total = (formData.quantity || 0) * (formData.unitPriceINR || 0);
-    const finalEntry: PurchaseEntry = { ...formData, id: entry?.id || uuidv4(), total };
-    onSave(finalEntry);
-  };
-
-  return (
-    <>
-      {showPreview && previewUrl && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-75" onClick={() => setShowPreview(false)}>
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-xl font-bold text-gray-800">Bill Preview</h3>
-              <button onClick={() => setShowPreview(false)} className="px-3 py-1 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Close</button>
-            </div>
-            <iframe src={previewUrl} className="w-full h-full border-0" title="Bill Preview" />
-          </div>
-        </div>
-      )}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-        <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <form onSubmit={handleSubmit} className="p-8">
-            <h2 className="mb-6 text-2xl font-bold text-green-700">{entry ? "Edit" : "Add"} GST Record</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <InputField label="Vendor" name="vendor" value={formData.vendor} onChange={handleChange} required />
-              <InputField label="GST Number" name="gstNumber" value={formData.gstNumber} onChange={handleChange} required />
-              <InputField label="Deal Number" name="dealNumber" value={formData.dealNumber} onChange={handleChange} required />
-              <InputField label="Item" name="item" value={formData.item} onChange={handleChange} />
-              <InputField label="Description" name="description" value={formData.description} onChange={handleChange} />
-              <InputField label="Item Specification" name="itemSpecification" value={formData.itemSpecification} onChange={handleChange} />
-              <InputField label="HSN Code" name="hsnCode" value={formData.hsnCode} onChange={handleChange} />
-              <InputField label="Brand" name="brand" value={formData.brand} onChange={handleChange} />
-              <InputField label="Quantity/PCS" name="quantity" type="number" value={String(formData.quantity)} onChange={handleChange} required />
-              <InputField label="Unit Price (INR)" name="unitPriceINR" type="number" value={String(formData.unitPriceINR)} onChange={handleChange} required />
-              <div className="p-3 bg-green-50 rounded-md">
-                <label className="block text-sm font-medium text-green-800">Total (INR)</label>
-                <div className="mt-1 text-lg font-semibold text-gray-800">{(formData.quantity * formData.unitPriceINR).toLocaleString("en-IN")}</div>
-              </div>
-              <InputField label="Invoice Date" name="invoiceDate" type="date" value={formData.invoiceDate} onChange={handleChange} required />
-              <div>
-                <label className="block text-sm font-medium text-green-800">Bill Upload (PDF only) <span className="text-red-500">*</span></label>
-                <input type="file" name="billUpload" onChange={handleFileChange} accept=".pdf" className="w-full p-1.5 mt-1 border rounded-md text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" />
-                {previewUrl && (
-                  <div className="mt-2">
-                    <p className="text-xs text-green-700">File is ready for preview.</p>
-                    <button type="button" onClick={() => setShowPreview(true)} className="text-sm font-semibold text-green-600 hover:text-green-800 hover:underline">Preview File</button>
-                  </div>
-                )}
-              </div>
-              <SelectField label="Payment Request" name="paymentRequest" value={formData.paymentRequest} onChange={handleChange} options={["Low", "High"]} />
-              <SelectField label="Payment Status" name="paymentStatus" value={formData.paymentStatus} onChange={handleChange} options={["Unpaid", "Partially paid", "Paid"]} />
-              <InputField label="Payment Reference No" name="paymentReferenceNo" value={formData.paymentReferenceNo} onChange={handleChange} />
-              <SelectField label="Paid By" name="paidBy" value={formData.paidBy} onChange={handleChange} options={["N/A", "SBI", "ICICI", "IOB", "Petty Cash"]} />
-            </div>
-            <div className="flex justify-end col-span-3 gap-4 mt-8 pt-4 border-t">
-              <button type="button" onClick={onCancel} className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancel</button>
-              <button type="submit" className="px-6 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700">{entry ? "Update" : "Save"}</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </>
-  );
-};
-
-// --- Main GST Page Component ---
-export default function GstPurchasePage() {
-  // Removed: const router = useRouter();
-  const [data, setData] = useState<PurchaseEntry[]>([]);
-  const [showForm, setShowForm] = useState<{ visible: boolean; entry?: PurchaseEntry }>({ visible: false });
+  const [data, setData] = useState<ImportBill[]>([]);
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
   const [searchVendor, setSearchVendor] = useState("");
   const [searchDeal, setSearchDeal] = useState("");
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [nextPage, setNextPage] = useState<string | null>(null);
+  const [prevPage, setPrevPage] = useState<string | null>(null);
+  const currencySymbols: Record<string, string> = {
+    INR: "₹",
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+    JPY: "¥",
+  };
+  const [loading, setLoading] = useState(false);
 
-  const LOCAL_STORAGE_KEY = "purchaseData"; // Key for GST records
+  // Payment Modal
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedBill, setSelectedBill] = useState<ImportBill | null>(null);
+  const [partialAmount, setPartialAmount] = useState<number>(0);
+  const [paidBy, setPaidBy] = useState<string>("None");
+  const [paymentReference, setPaymentReference] = useState<string>("");
 
-  useEffect(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (stored) {
-      try {
-        setData(JSON.parse(stored));
-      } catch (error) {
-        console.error("Could not parse GST data from localStorage:", error);
-        setData([]);
-      }
+  // Edit Transaction Modal
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [editAmount, setEditAmount] = useState<number>(0);
+  const [editPaidBy, setEditPaidBy] = useState<string>("None");
+  const [editPaymentReference, setEditPaymentReference] = useState<string>("");
+
+  // Open payment modal
+  const openPaymentModal = (bill: ImportBill) => {
+    setSelectedBill(bill);
+    setPartialAmount(0);
+    setPaidBy("SBI");
+    setPaymentReference("");
+    setShowPaymentModal(true);
+  };
+
+  // Open edit transaction modal
+  const openEditTransactionModal = (tx: Transaction) => {
+    setEditingTx(tx);
+    setEditAmount(Number(tx.amount));
+    setEditPaidBy(tx.paid_by);
+    setEditPaymentReference(tx.payment_reference_no);
+  };
+
+  // Handle new transaction creation
+  const handlePaymentSubmit = async () => {
+    if (!selectedBill) return;
+
+    if (!partialAmount || partialAmount <= 0) {
+      toast.error("Enter a valid payment amount");
+      return;
     }
-  }, []);
+    if (!paidBy || !paymentReference) {
+      toast.error("Please enter payment details");
+      return;
+    }
 
-  useEffect(() => {
+    const payload = {
+      transactions: [
+        {
+          amount: partialAmount.toString(),
+          paid_by: paidBy,
+          payment_reference_no: paymentReference,
+        },
+      ],
+    };
+
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-    } catch (error) {
-      console.error("Failed to save GST data to localStorage:", error);
-      alert("Error: Could not save data. Your browser's storage may be full.");
+      const res = await fetchWithAuth(
+        `https://web-production-6baf3.up.railway.app/api/gsts/${selectedBill.id}/`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to record payment");
+
+      toast.success("Payment recorded successfully!");
+      setShowPaymentModal(false);
+      fetchData(); // Refresh table
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to record payment");
     }
-  }, [data]);
-
-  const filteredData = useMemo(() =>
-    data.filter(d => {
-      let match = true;
-      if (filterFrom) match = match && d.invoiceDate >= filterFrom;
-      if (filterTo) match = match && d.invoiceDate <= filterTo;
-      if (searchVendor) match = match && d.vendor.toLowerCase().includes(searchVendor.toLowerCase());
-      if (searchDeal) match = match && d.dealNumber.toLowerCase().includes(searchDeal.toLowerCase());
-      return match;
-    }),
-    [data, filterFrom, filterTo, searchVendor, searchDeal]
-  );
-
-  const totals = useMemo(() =>
-    filteredData.reduce((acc, row) => {
-      acc.quantity += row.quantity;
-      acc.total += row.total;
-      return acc;
-    }, { quantity: 0, total: 0 }),
-    [filteredData]
-  );
-
-  const statusColors: Record<string, string> = {
-    Paid: "bg-green-100 text-green-800",
-    Unpaid: "bg-red-100 text-red-800",
-    "Partially paid": "bg-yellow-100 text-yellow-800",
   };
 
+  // Handle transaction update
+  const handleTransactionUpdate = async () => {
+    if (!editingTx) return;
+
+    if (!editAmount || editAmount <= 0) {
+      toast.error("Enter a valid payment amount");
+      return;
+    }
+
+    const payload = {
+      amount: editAmount.toString(),
+      paid_by: editPaidBy,
+      payment_reference_no: editPaymentReference,
+    };
+
+    try {
+      const res = await fetchWithAuth(
+        `https://web-production-6baf3.up.railway.app/api/transactions/${editingTx.id}/`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to update transaction");
+
+      toast.success("Transaction updated successfully!");
+      setEditingTx(null);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update transaction");
+    }
+  };
+
+  // Handle transaction delete
+  const handleTransactionDelete = async (txId: number) => {
+    if (!confirm("Are you sure you want to delete this transaction?")) return;
+
+    try {
+      const res = await fetchWithAuth(
+        `https://web-production-6baf3.up.railway.app/api/transactions/${txId}/`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) throw new Error("Failed to delete transaction");
+
+      toast.success("Transaction deleted successfully!");
+      fetchData();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message);
+    }
+  };
+
+  // Fetch data from API
+  const fetchData = async (url?: string) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+
+      if (filterFrom) params.append("start_date", filterFrom);
+      if (filterTo) params.append("end_date", filterTo);
+      if (searchVendor) params.append("vendor_name", searchVendor.trim());
+      if (searchDeal) params.append("deal_no", searchDeal.trim());
+
+      const fetchUrl = url || `https://web-production-6baf3.up.railway.app/api/gsts/?${params}`;
+      const res = await fetchWithAuth(fetchUrl);
+      if (!res.ok) throw new Error("Failed to fetch Gst bills");
+
+      const result = await res.json();
+      setData(result.results || []);
+      setNextPage(result.next);
+      setPrevPage(result.previous);
+    } catch (err) {
+      console.error(err);
+      setData([]);
+      setNextPage(null);
+      setPrevPage(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [filterFrom, filterTo, searchVendor, searchDeal]);
+
+  // Export to Excel
   const handleExport = () => {
-    if (typeof XLSX === 'undefined' || typeof saveAs === 'undefined') {
-        alert("Export functionality is unavailable. Please check your internet connection.");
-        return;
-    }
-    const dataForExport = filteredData.map(({ billUpload, ...rest }) => ({
-        ...rest, billUploaded: billUpload ? "Yes" : "No",
+    const exportData = data.map((bill) => ({
+      Vendor: bill.vendor.display_name,
+      "Deal Number": bill.deal_no,
+      "Invoice Date": bill.date,
+      "Payment Request": bill.payment_request,
+      "Payment Status": bill.payment_status,
+      "Payment Ref": bill.payment_reference_no || "-",
+      "Paid Amount": bill.paid_amount,
+      "Paid By": bill.paid_by,
+      "Total Amount": parseFloat(bill.total_amount).toFixed(2)
     }));
-    const ws = XLSX.utils.json_to_sheet(dataForExport);
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "GstPurchaseData");
-    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    saveAs(new Blob([buf]), "gst_purchase_data.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "GstBills");
+    const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    saveAs(new Blob([buf]), "Gst_bills.xlsx");
   };
 
-  const confirmDelete = () => {
-    if (deleteId) {
-      setData(data.filter(d => d.id !== deleteId));
-      setDeleteId(null);
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this entry?")) return;
+    try {
+      const res = await fetchWithAuth(`https://web-production-6baf3.up.railway.app/api/gsts/${id}/`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete entry");
+      toast.success("Gst Data Deleted successfully!");
+      setData((prev) => prev.filter((bill) => bill.id !== id));
+    } catch (err: any) {
+      toast.error(err.message);
     }
-  };
-
-  const handleSaveEntry = (entry: PurchaseEntry) => {
-    setData(prev => prev.some(d => d.id === entry.id) ? prev.map(d => d.id === entry.id ? entry : d) : [...prev, entry]);
-    setShowForm({ visible: false });
-  };
-  
-  // Use window.location for navigation instead of useRouter
-  const handleNavigate = (path: string) => {
-    window.location.href = path;
   };
 
   return (
     <div className="min-h-screen p-6 bg-white">
-      {showForm.visible && <EntryForm entry={showForm.entry} onSave={handleSaveEntry} onCancel={() => setShowForm({ visible: false })} />}
-      {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="p-8 bg-white rounded-lg shadow-2xl max-w-sm w-full">
-            <h2 className="mb-4 text-xl font-bold text-gray-800">Confirm Deletion</h2>
-            <p className="mb-6 text-gray-600">Are you sure you want to delete this record?</p>
-            <div className="flex justify-end gap-4">
-              <button onClick={() => setDeleteId(null)} className="px-4 py-2 font-semibold text-gray-800 bg-gray-200 rounded-lg hover:bg-gray-300">Cancel</button>
-              <button onClick={confirmDelete} className="px-4 py-2 font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700">Delete</button>
-            </div>
-          </div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+        <Breadcrumb />
+        <h1 className="text-2xl font-bold text-green-800">Gst Bills</h1>
         </div>
-      )}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold text-green-700">GST Records</h1>
         <div className="flex gap-3">
-          <button onClick={handleExport} className="px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700">Download Excel</button>
-          <button onClick={() => setShowForm({ visible: true })} className="px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700">+ New</button>
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700"
+          >
+            Download Excel
+          </button>
+          <button
+            onClick={() => router.push("/books/purchase/gst/new")}
+            className="px-4 py-2 text-white bg-green-700 rounded hover:bg-green-800"
+          >
+            + New
+          </button>
         </div>
       </div>
-      <div className="flex flex-wrap items-end gap-4 p-4 mb-6 bg-gray-50 border rounded-lg">
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-6 items-end">
         <label className="flex flex-col">
-          <span className="mb-1 text-sm font-medium text-gray-700">From Date</span>
-          <input type="date" className="px-2 py-1 border rounded" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} />
+          <span className="text-sm text-green-700">From Date</span>
+          <input
+            type="date"
+            className="px-2 py-1 border border-green-300 rounded"
+            value={filterFrom}
+            onChange={(e) => setFilterFrom(e.target.value)}
+          />
         </label>
         <label className="flex flex-col">
-          <span className="mb-1 text-sm font-medium text-gray-700">To Date</span>
-          <input type="date" className="px-2 py-1 border rounded" value={filterTo} onChange={e => setFilterTo(e.target.value)} />
+          <span className="text-sm text-green-700">To Date</span>
+          <input
+            type="date"
+            className="px-2 py-1 border border-green-300 rounded"
+            value={filterTo}
+            onChange={(e) => setFilterTo(e.target.value)}
+          />
         </label>
         <label className="flex flex-col">
-          <span className="mb-1 text-sm font-medium text-gray-700">Vendor</span>
-          <input type="text" placeholder="Search vendor..." className="px-2 py-1 border rounded" value={searchVendor} onChange={e => setSearchVendor(e.target.value)} />
+          <span className="text-sm text-green-700">Vendor</span>
+          <input
+            type="text"
+            placeholder="Search vendor"
+            className="px-2 py-1 border border-green-300 rounded"
+            value={searchVendor}
+            onChange={(e) => setSearchVendor(e.target.value)}
+          />
         </label>
         <label className="flex flex-col">
-          <span className="mb-1 text-sm font-medium text-gray-700">Deal No</span>
-          <input type="text" placeholder="Search deal no..." className="px-2 py-1 border rounded" value={searchDeal} onChange={e => setSearchDeal(e.target.value)} />
+          <span className="text-sm text-green-700">Deal No</span>
+          <input
+            type="text"
+            placeholder="Search deal no"
+            className="px-2 py-1 border border-green-300 rounded"
+            value={searchDeal}
+            onChange={(e) => setSearchDeal(e.target.value)}
+          />
         </label>
+        <button
+          onClick={() => {
+            setFilterFrom("");
+            setFilterTo("");
+            setSearchVendor("");
+            setSearchDeal("");
+          }}
+          className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+        >
+          Clear Filters
+        </button>
       </div>
+
+      {/* Table */}
       <div className="overflow-x-auto border rounded shadow">
         <table className="w-full border-collapse">
-          <thead className="text-green-800 bg-green-100">
+          <thead className="text-green-900 bg-green-100">
             <tr>
-              {["Vendor", "GST Number", "Deal Number", "Item", "Description", "Item Specification", "HSN Code", "Brand", "Qty/PCS", "Unit Price INR", "Total", "Invoice Date", "Bill Upload", "Payment Request", "Payment Status", "Payment Ref No", "Paid By", "Actions"].map(h => (
-                <th key={h} className="p-2 text-left border">{h}</th>
+              {[
+                "Vendor",
+                "Deal No",
+                "Invoice Date",
+                "Payment Request",
+                "Payment Status",
+                "Paid Amount",
+                "Total Amount",
+                "paid by",
+                "Actions",
+              ].map((header) => (
+                <th key={header} className="p-2 text-left border border-green-200">
+                  {header}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filteredData.length === 0 ? (
-              <tr><td colSpan={18} className="p-4 text-center text-gray-500">No records found.</td></tr>
-            ) : filteredData.map(row => (
-              <tr key={row.id} className="border-b hover:bg-green-50">
-                <td className="p-2 border">{row.vendor}</td>
-                <td className="p-2 border">{row.gstNumber}</td>
-                <td className="p-2 border">{row.dealNumber}</td>
-                <td className="p-2 border">{row.item}</td>
-                <td className="p-2 border">{row.description}</td>
-                <td className="p-2 border">{row.itemSpecification}</td>
-                <td className="p-2 border">{row.hsnCode}</td>
-                <td className="p-2 border">{row.brand}</td>
-                <td className="p-2 border text-right">{row.quantity.toLocaleString("en-IN")}</td>
-                <td className="p-2 border text-right">{row.unitPriceINR.toLocaleString("en-IN")}</td>
-                <td className="p-2 border text-right font-semibold">{row.total.toLocaleString("en-IN")}</td>
-                <td className="p-2 border">{row.invoiceDate}</td>
-                <td className="p-2 border">
-                  {row.billUpload ? (<span className="text-xs font-semibold text-green-600">Uploaded</span>) : (<span className="text-xs text-red-600">Missing</span>)}
-                </td>
-                <td className="p-2 border">
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${row.paymentRequest === "High" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"}`}>{row.paymentRequest}</span>
-                </td>
-                <td className="p-2 border">
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[row.paymentStatus]}`}>{row.paymentStatus}</span>
-                </td>
-                <td className="p-2 border">{row.paymentReferenceNo || "-"}</td>
-                <td className="p-2 border">{row.paidBy}</td>
-                <td className="flex gap-2 p-2 border">
-                  <button onClick={() => handleNavigate(`/books/purchase/gst/view?id=${row.id}`)} className="px-2 py-1 text-xs text-white bg-blue-500 rounded hover:bg-blue-600">View</button>
-                  <button onClick={() => setShowForm({ visible: true, entry: row })} className="px-2 py-1 text-xs text-white bg-yellow-500 rounded hover:bg-yellow-600">Edit</button>
-                  <button onClick={() => setDeleteId(row.id)} className="px-2 py-1 text-xs text-white bg-red-500 rounded hover:bg-red-600">Delete</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          {filteredData.length > 0 && (
-            <tfoot className="bg-green-50 font-bold">
+            {loading ? (
               <tr>
-                <td colSpan={8} className="p-2 border text-right">Totals:</td>
-                <td className="p-2 border text-right">{totals.quantity.toLocaleString("en-IN")}</td>
-                <td className="p-2 border"></td>
-                <td className="p-2 border text-right">{totals.total.toLocaleString("en-IN")}</td>
-                <td colSpan={7} className="p-2 border"></td>
+                <td colSpan={9} className="p-4 text-center text-green-600">
+                  Loading...
+                </td>
               </tr>
-            </tfoot>
-          )}
+            ) : data.length > 0 ? (
+              data.map((bill) => (
+                <tr key={bill.id} className="border-b hover:bg-green-50">
+                  <td className="p-2 border border-green-200">{bill.vendor.display_name}</td>
+                  <td className="p-2 border border-green-200">{bill.deal_no}</td>
+                  <td className="p-2 border border-green-200">{bill.date}</td>
+                  <td className="p-2 border border-green-200">{bill.payment_request}</td>
+                  <td className="p-2 border border-green-200">{bill.payment_status}</td>
+                  <td className="p-2 border border-green-200 text-right">
+                    ₹{bill.paid_amount.toLocaleString()}
+                  </td>
+                  <td className="p-2 border">
+                  {bill.total_amount
+                    ? `${currencySymbols[bill.currency ?? ""] ?? bill.currency ?? ""} ${parseFloat(bill.total_amount).toFixed(2)}`
+                    : "-"}
+                </td>
+                <td className="p-2 border border-green-200">{bill.paid_by}</td>
+                  <td className="flex gap-2 p-2 border border-green-200">
+                    <button
+                      onClick={() => router.push(`/books/purchase/gst/${bill.id}`)}
+                      className="px-2 py-1 text-white bg-blue-500 rounded hover:bg-green-700"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => openPaymentModal(bill)}
+                      className="px-2 py-1 text-white bg-purple-600 rounded hover:bg-purple-700"
+                    >
+                      Add Payment
+                    </button>
+                    <button
+                      onClick={() => router.push(`/books/purchase/gst/${bill.id}/edit`)}
+                      className="px-2 py-1 text-white bg-yellow-500 rounded hover:bg-yellow-600"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(bill.id)}
+                      className="px-2 py-1 text-white bg-red-500 rounded hover:bg-red-600"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={9} className="p-4 text-center text-green-600">
+                  No records found. Click "+ New" to add Gst bills.
+                </td>
+              </tr>
+            )}
+          </tbody>
         </table>
+      </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && selectedBill && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-lg font-bold text-green-800 mb-3">
+              Add Payment for Gst
+            </h2>
+            <p>Total: ₹{selectedBill.total_amount.toLocaleString()}</p>
+            <p className="mb-2">
+              Paid: ₹{selectedBill.paid_amount.toLocaleString()} | Remaining: ₹
+              {selectedBill.amount_to_pay.toLocaleString()}
+            </p>
+
+            {/* Payment Fields */}
+            <label className="flex flex-col mb-3">
+              <span>Amount</span>
+              <input
+                type="number"
+                value={partialAmount}
+                onChange={(e) => setPartialAmount(Number(e.target.value))}
+                className="p-2 border rounded"
+                max={selectedBill.amount_to_pay}
+              />
+            </label>
+
+            <label className="flex flex-col mb-3">
+              <span>Paid By</span>
+              <select
+                value={paidBy}
+                onChange={(e) => setPaidBy(e.target.value)}
+                className="p-2 border rounded"
+              >
+                <option value="SBI">SBI</option>
+                <option value="ICICI">ICICI</option>
+                <option value="IOB">IOB</option>
+                <option value="Petty Cash">Petty Cash</option>
+                <option value="None">None</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col mb-3">
+              <span>Reference Number</span>
+              <input
+                type="text"
+                value={paymentReference}
+                onChange={(e) => setPaymentReference(e.target.value)}
+                className="p-2 border rounded"
+                placeholder="Enter reference no"
+              />
+            </label>
+
+            {/* Transaction History */}
+            <div className="mt-4 border-t pt-2">
+              <h3 className="font-semibold mb-2 text-green-700 text-sm">
+                Previous Transactions:
+              </h3>
+              {selectedBill.transactions.length > 0 ? (
+                <ul className="text-sm space-y-1">
+                  {selectedBill.transactions.map((tx) => (
+                    <li key={tx.id} className="flex justify-between items-center">
+                      <span>
+                        ₹{tx.amount} — {tx.paid_by} ({tx.payment_reference_no})
+                      </span>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => openEditTransactionModal(tx)}
+                          className="px-2 py-0.5 text-white bg-blue-500 rounded text-xs hover:bg-blue-600"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleTransactionDelete(tx.id)}
+                          className="px-2 py-0.5 text-white bg-red-500 rounded text-xs hover:bg-red-600"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500 text-sm">No previous payments</p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePaymentSubmit}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                Add Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {editingTx && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-lg font-bold text-green-800 mb-3">
+              Edit Transaction #{editingTx.id}
+            </h2>
+
+            <label className="flex flex-col mb-3">
+              <span>Amount</span>
+              <input
+                type="number"
+                value={editAmount}
+                onChange={(e) => setEditAmount(Number(e.target.value))}
+                className="p-2 border rounded"
+              />
+            </label>
+
+            <label className="flex flex-col mb-3">
+              <span>Paid By</span>
+              <select
+                value={editPaidBy}
+                onChange={(e) => setEditPaidBy(e.target.value)}
+                className="p-2 border rounded"
+              >
+                <option value="SBI">SBI</option>
+                <option value="ICICI">ICICI</option>
+                <option value="IOB">IOB</option>
+                <option value="Petty Cash">Petty Cash</option>
+                <option value="None">None</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col mb-3">
+              <span>Reference Number</span>
+              <input
+                type="text"
+                value={editPaymentReference}
+                onChange={(e) => setEditPaymentReference(e.target.value)}
+                className="p-2 border rounded"
+              />
+            </label>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setEditingTx(null)}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTransactionUpdate}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      <div className="flex justify-between mt-4">
+        <button
+          disabled={!prevPage || loading}
+          onClick={() => prevPage && fetchData(prevPage)}
+          className="px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700 disabled:opacity-50"
+        >
+          Previous
+        </button>
+        <button
+          disabled={!nextPage || loading}
+          onClick={() => nextPage && fetchData(nextPage)}
+          className="px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700 disabled:opacity-50"
+        >
+          Next
+        </button>
       </div>
     </div>
   );

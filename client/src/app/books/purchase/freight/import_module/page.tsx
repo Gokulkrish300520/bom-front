@@ -7,28 +7,64 @@ import { useRouter } from "next/navigation";
 import { fetchWithAuth } from "@/auth/tokenservice";
 
 const requiredHeaders = [
-  "Choose Vendor",
-  "Deal Number",
-  "Item",
-  "Description",
-  "Item Specification",
-  "HSN Code",
-  "Brand",
-  "Qty/PCS",
-  "Unit Price USD",
-  "Total (USD)",
-  "Unit Price INR",
-  "Amount INR",
-  "Date",
-  "SF Number",
-  "Weight",
-  "Freight Type",
-];
+        "Choose Vendor",
+        "Deal Number",
+        "Currency",
+        "Item",
+        "Description",
+        "Item Specification",
+        "HSN Code",
+        "Brand",
+        "Qty/PCS",
+        "Unit Price",
+        "Date",
+        "SF Number",
+        "Weight",
+        "Freight Type",
+      ];
 
-export default function ImportModulePage() {
+export default function FreightExcelImport() {
   const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const workbook = XLSX.read(event.target?.result, { type: "binary" });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const parsedData: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+      const headers = Object.keys(parsedData[0]);
+      const missing = requiredHeaders.filter((h) => !headers.includes(h));
+      if (missing.length) {
+        alert(`❌ Missing headers: ${missing.join(", ")}`);
+        return;
+      }
+
+      setData(parsedData);
+    };
+    reader.readAsBinaryString(file);
+  };
+  
+
+  const convertToISODate = (dateStr: string | number) => {
+    if (!dateStr) return null;
+    if (typeof dateStr === "number") {
+      const excelDate = XLSX.SSF.parse_date_code(dateStr);
+      return new Date(
+        excelDate.y,
+        excelDate.m - 1,
+        excelDate.d
+      ).toISOString().split("T")[0];
+    }
+    const parsed = new Date(dateStr);
+    return isNaN(parsed.getTime()) ? null : parsed.toISOString().split("T")[0];
+  };
 
 
   const downloadSample = () => {
@@ -37,52 +73,15 @@ export default function ImportModulePage() {
     XLSX.utils.book_append_sheet(wb, ws, "Sample");
     XLSX.writeFile(wb, "Freight_Sample.xlsx");
   };
-const getNormalizedDate = (val: any) => {
-  if (typeof val === 'number') {
-    // Excel date number
-    const epoch = Date.parse('1899-12-30T00:00:00Z');
-    const date = new Date(epoch + val * 86400 * 1000);
-    return date.toISOString().split('T')[0]; // YYYY-MM-DD
-  } else if (val instanceof Date) {
-    // JS Date object
-    return val.toISOString().split('T')[0];
-  } else if (typeof val === 'string') {
-    // Date string, try to parse and format
-    const date = new Date(val);
-    if (!isNaN(date.getTime())) {
-      return date.toISOString().split('T')[0];
-    }
-  }
-  // fallback: return as is or empty string
-  return "";
-};
 
-
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const bstr = evt.target?.result;
-      const wb = XLSX.read(bstr, { type: "binary" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(ws, { defval: "" });
-
-      // Validate headers
-      const headers = Object.keys(json[0] || {});
-      const missing = requiredHeaders.filter((h) => !headers.includes(h));
-
-      if (missing.length > 0) {
-        alert("Invalid file! Missing columns: " + missing.join(", "));
-        return;
-      }
-
-      setData(json);
-    };
-    reader.readAsArrayBuffer(file);
+  const getNormalizedDate = (rawDate: any) => {
+    if (rawDate instanceof Date) return rawDate.toISOString().split("T")[0];
+    if (typeof rawDate === "string") return convertToISODate(rawDate);
+    if (typeof rawDate === "number") return convertToISODate(rawDate);
+    return null;
   };
+
+
 
 const importData = async () => {
   if (data.length === 0) {
@@ -91,79 +90,67 @@ const importData = async () => {
   }
   setLoading(true);
   
-  function convertToISODate(dateStr: any): string {
-  if (typeof dateStr !== 'string') {
-    return '';
-  }
-  const [day, month, year] = dateStr.split('/');
-  if (!day || !month || !year) {
-    return '';
-  }
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-}
-
-
   try {
-    for (const row of data) {
-        // Get vendor ID
+      const grouped: Record<string, any[]> = {};
+      for (const row of data) {
+        const vendor = row["Choose Vendor"]?.trim();
+        const deal = row["Deal Number"]?.trim();
+        const key = `${vendor}_${deal}`;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(row);
+      }
+
+      for (const [key, rows] of Object.entries(grouped)) {
+        const first = rows[0];
+
+        // Vendor lookup
         const vendorResp = await fetchWithAuth(
           `https://web-production-6baf3.up.railway.app/api/vendors?display_name=${encodeURIComponent(
-            row["Choose Vendor"]
+            first["Choose Vendor"]
           )}`
         );
-        if (!vendorResp.ok) throw new Error("Failed to fetch vendor");
-        const vendors = await vendorResp.json();
-        if (!vendors.results.length)
-          throw new Error(`Vendor not found: ${row["Choose Vendor"]}`);
-        const vendorId = vendors.results[0].id;
+        const vendorData = await vendorResp.json();
+        if (!vendorData.results?.length)
+          throw new Error(`Vendor not found: ${first["Choose Vendor"]}`);
+        const vendorId = vendorData.results[0].id;
 
-        // Get deal ID
+        // Deal lookup
         const dealResp = await fetchWithAuth(
           `https://web-production-6baf3.up.railway.app/api/deals?deal_no=${encodeURIComponent(
-            row["Deal Number"]
+            first["Deal Number"]
           )}`
         );
-        if (!dealResp.ok) throw new Error("Failed to fetch deal");
-        const deals = await dealResp.json();
-        if (!deals.results.length)
-          throw new Error(`Deal not found: ${row["Deal Number"]}`);
-        const dealId = deals.results[0].id;
+        const dealData = await dealResp.json();
+        if (!dealData.results?.length)
+          throw new Error(`Deal not found: ${first["Deal Number"]}`);
+        const dealId = dealData.results[0].id;
 
-        const item_name = row["Item"] ? String(row["Item"]).trim() : '';
-       const rawDate = row["Date"];
-        let isoDate = getNormalizedDate(rawDate);
-        if (!isoDate && typeof rawDate === "string") {
-          isoDate = convertToISODate(rawDate);
-        }
+        const date = getNormalizedDate(first["Date"]);
 
-        
+        const items = rows.map((r) => ({
+          item_name: String(r["Item"]).trim(),
+          description: r["Description"],
+          item_specification: r["Item Specification"],
+          brand: r["Brand"],
+          hsn_code: r["HSN Code"],
+          quantity: Number(r["Qty/PCS"]) || 0,
+          unit_price: Number(r["Unit Price"]) || 0,
+        }));
 
-
-        if (!item_name) throw new Error("Missing 'Item' in one row.");
-        if (!isoDate) throw new Error("Invalid 'Date' in one row.");
-        
-        // Map data to backend format
         const payload = {
           vendor_id: vendorId,
           deal_id: dealId,
-          item_name, // non-empty string
-          description: row["Description"],
-          item_specification: row["Item Specification"],
-          hsn_code: row["HSN Code"],
-          brand: row["Brand"],
-          quantity: Number(row["Qty/PCS"]),
-          unit_price_usd: Number(row["Unit Price USD"]),
-          total_price_usd: Number(row["Total (USD)"]),
-          unit_price_inr: Number(row["Unit Price INR"]),
-          total_price_inr: Number(row["Amount INR"]),
-          date: isoDate,
-          sf_number: row["SF Number"] || undefined,
-          weight: row["Weight"] || undefined,
-          freight_type: row["Freight Type"] || undefined,
+          currency: first["Currency"] || "USD",
+          date,
+          items,
+          sf_number: first["SF Number"] || "",
+          weight: first["Weight"] || "",
+          freight_type: first["Freight Type"] || "",
         };
-        console.log("Sending payload:", payload);
-        // Post freight data
-        const postResp = await fetchWithAuth(
+
+        console.log("📦 Sending payload:", payload);
+
+        const res = await fetchWithAuth(
           "https://web-production-6baf3.up.railway.app/api/freights/",
           {
             method: "POST",
@@ -171,18 +158,21 @@ const importData = async () => {
             body: JSON.stringify(payload),
           }
         );
-        const postData = await postResp.json();
-        console.log('POST response:', postResp.status, postData);
 
-        if (!postResp.ok) {
-        throw new Error(postData.detail || "Failed to save");
-      }
+        const resData = await res.json();
+        if (!res.ok) {
+          console.error("❌ Failed to import freight:", resData);
+          throw new Error(resData.detail || "Failed to save freight");
+        }
+
+        console.log("✅ Freight imported:", resData);
       }
 
-      alert("All rows imported successfully!");
+      alert("✅ All freights imported successfully!");
       router.push("/books/purchase/freight");
-    } catch (error:any) {
-  alert(`Import failed: ${error?.message || String(error)}`);
+    } catch (error: any) {
+      console.error("❌ Import failed:", error);
+      alert(`Import failed: ${error.message || error}`);
     } finally {
       setLoading(false);
     }
@@ -210,26 +200,57 @@ const importData = async () => {
           <input type="file" accept=".xlsx,.csv" className="hidden" onChange={handleFileUpload} />
         </label>
       </div>
+      
+      {data.length > 0 && (
+          <div className="flex justify-between items-center mb-5 ">
+            <p className="text-green-600 font-medium">
+              ✅ {data.length} rows loaded from Excel
+            </p>
+            <button
+              onClick={importData}
+              disabled={loading}
+              className={`px-6 py-2 rounded-md text-white font-semibold shadow-md ${
+                loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }`}
+            >
+              {loading ? "Importing..." : "🚀 Import Data"}
+            </button>
+          </div>
+        )}
 
       {/* Preview Data */}
       {data.length > 0 && (
-        <div className="mb-6 overflow-auto max-h-96">
-          <table className="min-w-full border-collapse border border-gray-300">
-            <thead className="bg-yellow-100 text-yellow-800">
+        <div className="overflow-x-auto border rounded-lg shadow-sm max-h-[70vh] mb-5">
+          <table className="min-w-full border-collapse text-sm">
+            <thead className="bg-gray-100 sticky top-0">
               <tr>
-                {requiredHeaders.map((header) => (
-                  <th className="border border-yellow-300 p-2" key={header}>
+                {Object.keys(data[0]).map((header) => (
+                  <th
+                    key={header}
+                    className="px-4 py-2 text-left font-semibold text-gray-700 border-b"
+                  >
                     {header}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {data.map((row, i) => (
-                <tr className={i % 2 === 0 ? "bg-yellow-50" : "bg-white"} key={i}>
-                  {requiredHeaders.map((header) => (
-                    <td className="border border-yellow-300 p-1" key={header}>
-                      {row[header]}
+              {data.map((row, idx) => (
+                <tr
+                  key={idx}
+                  className={`hover:bg-gray-50 ${
+                    idx % 2 === 0 ? "bg-white" : "bg-gray-50"
+                  }`}
+                >
+                  {Object.values(row).map((value: any, i) => (
+                    <td
+                      key={i}
+                      className="px-4 py-2 border-b text-gray-800 truncate max-w-[200px]"
+                      title={String(value)}
+                    >
+                      {String(value)}
                     </td>
                   ))}
                 </tr>

@@ -3,6 +3,9 @@
 import { fetchWithAuth } from "@/auth/tokenservice";
 import { useRouter } from "next/navigation";
 import { useState, ChangeEvent } from "react";
+import toast from "react-hot-toast";
+import Breadcrumb from "@/app/breadcrumb";
+
 import {
   FaUser,
   FaEnvelope,
@@ -309,15 +312,14 @@ export default function NewVendorPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        alert(`Error saving vendor: ${JSON.stringify(errorData)}`);
+        toast.error(`Error saving vendor: ${JSON.stringify(errorData)}`);
         return;
       }
-
-      // On success, navigate back to vendor list or as needed
+      toast.success("Vendor Created Successfully")
       router.push('/books/purchase/vendors');
 
     } catch (error) {
-      alert("Network error saving vendor. Please try again.");
+      toast.error("Network error saving vendor. Please try again.");
       console.error(error);
     }
   }
@@ -328,7 +330,9 @@ export default function NewVendorPage() {
     <div className="min-h-screen p-6 bg-green-50 sm:p-8">
       <div className="max-w-6xl p-6 mx-auto bg-white border border-green-200 rounded-lg shadow">
         {/* Header */}
+        <div><Breadcrumb/>
         <h1 className="mb-6 text-2xl font-semibold text-green-700">New Vendor</h1>
+        </div>
 
         {/* Vendor Type */}
         <div className="mb-5">

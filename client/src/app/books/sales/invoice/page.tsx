@@ -7,6 +7,7 @@ import { fetchWithAuth } from "@/auth/tokenservice";
 import { FaTrash } from "react-icons/fa";
 import { LuMerge } from "react-icons/lu";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 type CustomerType = {
   id: number;
@@ -97,9 +98,10 @@ export default function InvoiceListPage() {
       });
       if (!res.ok) {
         const err = await res.json();
-        alert(`Failed to update status: ${JSON.stringify(err)}`);
+        toast.error(`Failed to update status: ${JSON.stringify(err)}`);
         return;
       }
+      toast.success("Invoice Updated Successfully")
       setInvoices((curr) =>
         curr.map((inv) => (inv.id === id ? { ...inv, status: newStatus } : inv))
       );
@@ -109,7 +111,7 @@ export default function InvoiceListPage() {
         return updated;
       });
     } catch (err) {
-      alert("Network error updating status");
+      toast.error("Network error updating status");
       console.error(err);
     }
   }
@@ -138,8 +140,9 @@ export default function InvoiceListPage() {
       const res = await fetchWithAuth(`${baseApiUrl}${id}/`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete invoice");
       setInvoices((curr) => curr.filter((inv) => inv.id !== id));
+      toast.success("Invoice Deleted Successfully")
     } catch {
-      alert("Failed to delete invoice");
+        toast.error("Failed to delete invoice");
     }
   }
 
@@ -171,6 +174,21 @@ export default function InvoiceListPage() {
           <Plus size={16} /> New
         </Link>
       </div>
+      <div className="flex gap-4 mb-4">
+  <button
+    onClick={() => router.push("/books/sales/invoice")}
+    className={`px-3 py-1 rounded ${statusFilter === "Invoices" ? "bg-green-600 text-white" : "bg-gray-200"}`}
+  >
+    Invoices
+  </button>
+  <button
+    onClick={() => router.push("/books/sales/invoice/drafts/")}
+    className={`px-3 py-1 rounded ${statusFilter === "DRAFT" ? "bg-green-600 text-white" : "bg-gray-200"}`}
+  >
+    Drafts
+  </button>
+</div>
+
 
       <div className="overflow-hidden bg-white border border-green-100 shadow-sm rounded-xl">
         <table className="w-full text-sm">
@@ -178,9 +196,10 @@ export default function InvoiceListPage() {
             <tr>
               <th className="px-4 py-3 text-left">Date</th>
               <th className="px-4 py-3 text-left">Invoice Number</th>
-              <th className="px-4 py-3 text-left">Customer</th>
+              <th className="px-4 py-3 text-left">Customer Name</th>
               <th className="px-4 py-3 text-left">Due Date</th>
               <th className="px-4 py-3 text-right">Amount</th>
+              <th className="px-4 py-3 text-right">Created_at</th>
               <th className="px-4 py-3 text-left">Status</th>
               <th className="px-4 py-3 text-left">Actions</th>
             </tr>
@@ -207,6 +226,13 @@ export default function InvoiceListPage() {
                     <td className="px-4 py-3">{formatDate(inv.due_date)}</td>
                     <td className="px-4 py-3 text-right font-medium">
                       ₹{Number(inv.total_amount).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {new Date(inv.created_at).toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })}
                     </td>
                     <td className="px-4 py-3">
                       {editing ? (

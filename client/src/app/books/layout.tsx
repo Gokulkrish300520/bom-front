@@ -158,7 +158,7 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex min-h-screen font-sans">
       {/* Sidebar */}
-      <div className="flex flex-col w-64 bg-white border-r border-gray-200">
+      <div className="flex flex-col w-64 bg-white border-r border-gray-200 h-screen sticky top-0">
         <div className="px-4 py-2 border-b border-green-700">
           <Link href="/books" className="text-lg font-semibold text-green-600 cursor-pointer">
             Books
@@ -232,8 +232,9 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
 
       {/* Main Area */}
       <div className="flex-1 flex flex-col bg-gray-50">
-        {/* Top Navbar */}
-        <div className="h-11 bg-green-700 flex justify-end items-center px-4 shadow-md">
+       {/* Top Navbar */}
+      <div className="h-11 bg-green-700 flex justify-end items-center px-4 shadow-md sticky top-0 z-50">
+
           <div className="relative" ref={dropdownRef}>
             <div
               className="w-8 h-8 flex items-center justify-center rounded-full bg-white text-green-700 font-bold cursor-pointer"
@@ -272,7 +273,7 @@ export default function BooksLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Main content */}
-        <div className="flex-1 p-6 bg-gray-50">{children}</div>
+        <div className="flex-1 p-6 bg-gray-50 pt-11">{children}</div>
       </div>
     </div>
   );

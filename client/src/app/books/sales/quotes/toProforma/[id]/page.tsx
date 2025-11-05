@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchWithAuth } from "@/auth/tokenservice";
 import { FaEnvelope, FaPhone, FaUser } from "react-icons/fa";
+import toast from "react-hot-toast";
 
 type ContactPerson = {
   salutation?: string;
@@ -302,7 +303,7 @@ export default function NewProformaInvoice() {
   // Save handler for proforma invoice
   const saveInvoice = async (saveStatus: "draft" | "sent") => {
     if (!selectedCustomerId) {
-      alert("Please select a customer");
+      toast.error("Please select a customer");
       return;
     }
 
@@ -355,13 +356,14 @@ export default function NewProformaInvoice() {
       console.warn("Failed to delete quote after conversion");
     } else {
       // Optionally alert success of delete
+      toast.success("Quote Deleted Successfully")
       console.log("Quote deleted successfully after conversion");
     }
 
 
       router.push("/books/sales/proforma-invoice"); // Adjust as needed
     } catch (err) {
-      alert("Error saving proforma invoice.");
+      toast.error("Error saving proforma invoice.");
       console.error(err);
     }
   };

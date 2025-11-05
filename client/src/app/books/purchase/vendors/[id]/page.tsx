@@ -3,6 +3,7 @@
 import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import Breadcrumb from "@/app/breadcrumb";
 import {
   FaUser,
   FaEnvelope,
@@ -130,23 +131,19 @@ export default function ViewVendorPage() {
   }, [vendorId]);
 
   if (loading) return <p>Loading vendor details...</p>;
-  if (error) return <p className="text-red-600">{error}</p>;
+  if (error) return <p className="text-red-600">{error} </p>;
   if (!vendor) return <p>Vendor not found.</p>;
 
   return (
     <div className="min-h-screen p-6 bg-gray-50 sm:p-8">
       <div className="max-w-6xl p-6 mx-auto bg-white border border-gray-300 rounded-lg shadow">
        <div className="flex items-center justify-between mb-6">
+        <div><Breadcrumb/>
           <h1 className="text-2xl font-semibold text-gray-900">
             Vendor Details
           </h1>
+          </div>
           <div className="flex items-center space-x-2">
-            <Link
-              href={`/books/purchase/vendors/${vendor.id}/edit`}
-              className="text-white bg-green-600 hover:bg-green-700 rounded px-4 py-1 font-semibold"
-            >
-              Edit
-            </Link>
             <button
               className="text-green-700 border border-green-700 rounded px-4 py-1"
               onClick={() => router.back()}
